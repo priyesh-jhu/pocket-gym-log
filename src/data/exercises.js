@@ -17,11 +17,21 @@ export const dayTemplates = {
       ],
     },
     exercises:[
-      {name:"Barbell/DB Bench Press", target:"3 x 6-10", muscles:"Mid chest, front delts, triceps", tip:"Touch bar to lower chest. Drive feet into the floor.", alt:"Push-ups with feet elevated on a chair"},
-      {name:"Incline DB Press", target:"3 x 10-12", muscles:"Upper chest, front delts", tip:"15-30 degree incline only. Full stretch at the bottom.", alt:"Pike push-ups or elevated push-ups on a box"},
-      {name:"Overhead Press", target:"3 x 8-10", muscles:"Front + side delts, upper traps, triceps", tip:"Bar path straight up — don't press forward.", alt:"Seated DB press if balance is an issue"},
-      {name:"Lateral Raises", target:"3 x 15-20", muscles:"Side delts (isolated)", tip:"Light weight. Lead with elbows, slight forward lean.", alt:"Resistance bands work perfectly"},
-      {name:"Tricep Dips/Skull Crushers", target:"3 x 10-12", muscles:"All 3 tricep heads", tip:"Dips: stay upright for tricep focus.", alt:"Bench dips if no dip bars"},
+      {variants:[
+        {equipment:"free", name:"Barbell/DB Bench Press", target:"3 x 6-10", muscles:"Mid chest, front delts, triceps", tip:"Touch bar to lower chest. Drive feet into the floor.", alt:"Push-ups with feet elevated on a chair"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Incline DB Press", target:"3 x 10-12", muscles:"Upper chest, front delts", tip:"15-30 degree incline only. Full stretch at the bottom.", alt:"Pike push-ups or elevated push-ups on a box"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Overhead Press", target:"3 x 8-10", muscles:"Front + side delts, upper traps, triceps", tip:"Bar path straight up — don't press forward.", alt:"Seated DB press if balance is an issue"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Lateral Raises", target:"3 x 15-20", muscles:"Side delts (isolated)", tip:"Light weight. Lead with elbows, slight forward lean.", alt:"Resistance bands work perfectly"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Tricep Dips/Skull Crushers", target:"3 x 10-12", muscles:"All 3 tricep heads", tip:"Dips: stay upright for tricep focus.", alt:"Bench dips if no dip bars"},
+      ]},
     ],
     cardio:"10 min incline walk — Easy",
   },
@@ -39,11 +49,21 @@ export const dayTemplates = {
       ],
     },
     exercises:[
-      {name:"Pull-ups/Lat Pulldown", target:"3 x 5-10", muscles:"Lats, teres major, biceps", tip:"Dead hang at bottom. Drive elbows to hips, not backward.", alt:"Band-assisted pull-ups, or inverted rows under a barbell"},
-      {name:"Bent-Over Barbell Row", target:"3 x 8-10", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Hinge to 45 degrees. Pull to belly button, not chest.", alt:"Both DBs bent-over, or chest-supported incline DB row"},
-      {name:"Single-Arm DB Row", target:"3 x 10-12 each", muscles:"Lats, mid back, rear delts", tip:"Drive elbow straight back toward hip. Full lat stretch at bottom.", alt:"Brace on your own thigh if no bench"},
-      {name:"Face Pulls/Band Pull-Aparts", target:"3 x 15-20", muscles:"Rear delts, external rotators, mid traps", tip:"Pull to forehead, elbows flared high. Never skip — keeps shoulders healthy.", alt:"Band pull-aparts anywhere"},
-      {name:"Bicep Curls", target:"3 x 10-12", muscles:"Biceps, brachialis", tip:"Strict form, no swinging. Slow on the way down.", alt:"Resistance bands, EZ bar, hammer curls"},
+      {variants:[
+        {equipment:"free", name:"Pull-ups/Lat Pulldown", target:"3 x 5-10", muscles:"Lats, teres major, biceps", tip:"Dead hang at bottom. Drive elbows to hips, not backward.", alt:"Band-assisted pull-ups, or inverted rows under a barbell"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Bent-Over Barbell Row", target:"3 x 8-10", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Hinge to 45 degrees. Pull to belly button, not chest.", alt:"Both DBs bent-over, or chest-supported incline DB row"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Single-Arm DB Row", target:"3 x 10-12 each", muscles:"Lats, mid back, rear delts", tip:"Drive elbow straight back toward hip. Full lat stretch at bottom.", alt:"Brace on your own thigh if no bench"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Face Pulls/Band Pull-Aparts", target:"3 x 15-20", muscles:"Rear delts, external rotators, mid traps", tip:"Pull to forehead, elbows flared high. Never skip — keeps shoulders healthy.", alt:"Band pull-aparts anywhere"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Bicep Curls", target:"3 x 10-12", muscles:"Biceps, brachialis", tip:"Strict form, no swinging. Slow on the way down.", alt:"Resistance bands, EZ bar, hammer curls"},
+      ]},
     ],
     cardio:"10 min light cycling or brisk walk — Easy",
   },
@@ -61,11 +81,21 @@ export const dayTemplates = {
       ],
     },
     exercises:[
-      {name:"Back Squat/Goblet Squat", target:"4 x 6-10", muscles:"Quads, glutes, adductors, core", tip:"Depth matters. Knees track over toes. Brace core before every rep.", alt:"Goblet squat with one heavy dumbbell"},
-      {name:"Romanian Deadlift", target:"3 x 10-12", muscles:"Hamstrings, glutes, erectors", tip:"Hinge, not squat. Push hips back until deep hamstring stretch.", alt:"Two dumbbells if no barbell"},
-      {name:"Bulgarian Split Squat", target:"3 x 8-10 each", muscles:"Quads, glutes, adductors — fixes imbalances", tip:"Rear foot elevated. Lower slowly, front knee tracks over toes.", alt:"Hold one or two dumbbells"},
-      {name:"Glute Bridge/Hip Thrust", target:"3 x 12-15", muscles:"Glutes (primary), hamstrings", tip:"Drive through heels. Squeeze 1 sec at top, posterior pelvic tilt.", alt:"Floor glute bridge bodyweight, or DB on hips for load"},
-      {name:"Standing Calf Raises", target:"4 x 15-20", muscles:"Gastrocnemius (outer calf)", tip:"Full stretch at bottom, pause 1 sec at top.", alt:"Use a step for full range, hold dumbbells for load"},
+      {variants:[
+        {equipment:"free", name:"Back Squat/Goblet Squat", target:"4 x 6-10", muscles:"Quads, glutes, adductors, core", tip:"Depth matters. Knees track over toes. Brace core before every rep.", alt:"Goblet squat with one heavy dumbbell"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Romanian Deadlift", target:"3 x 10-12", muscles:"Hamstrings, glutes, erectors", tip:"Hinge, not squat. Push hips back until deep hamstring stretch.", alt:"Two dumbbells if no barbell"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Bulgarian Split Squat", target:"3 x 8-10 each", muscles:"Quads, glutes, adductors — fixes imbalances", tip:"Rear foot elevated. Lower slowly, front knee tracks over toes.", alt:"Hold one or two dumbbells"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Glute Bridge/Hip Thrust", target:"3 x 12-15", muscles:"Glutes (primary), hamstrings", tip:"Drive through heels. Squeeze 1 sec at top, posterior pelvic tilt.", alt:"Floor glute bridge bodyweight, or DB on hips for load"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Standing Calf Raises", target:"4 x 15-20", muscles:"Gastrocnemius (outer calf)", tip:"Full stretch at bottom, pause 1 sec at top.", alt:"Use a step for full range, hold dumbbells for load"},
+      ]},
     ],
     cardio:"10 min slow walk — active recovery",
   },
@@ -83,11 +113,21 @@ export const dayTemplates = {
       ],
     },
     exercises:[
-      {name:"Plank w/ Shoulder Taps", target:"3 x 30-45 sec", muscles:"Transverse abdominis, anti-rotation core", tip:"Keep hips perfectly still while tapping shoulders.", alt:"Standard plank if too hard initially"},
-      {name:"Hanging Leg Raises", target:"3 x 10-12", muscles:"Lower rectus abdominis, hip flexors", tip:"No swinging. Tuck pelvis under at top — posterior tilt activates lower abs.", alt:"Lying straight leg raises on the floor"},
-      {name:"Ab Wheel/Dead Bug", target:"3 x 8-10", muscles:"Full anterior core", tip:"Ab wheel: only as far as you can control. Dead bug: lower opposite arm/leg, press lower back into floor.", alt:"Dead bug needs zero equipment"},
-      {name:"Cable/DB Woodchop", target:"3 x 12 each side", muscles:"Obliques, rotational core, serratus", tip:"Rotate through torso, not just arms.", alt:"Resistance band anchored to a door or post"},
-      {name:"Weighted Sit-ups/Bicycle Crunches", target:"3 x 15-20", muscles:"Upper rectus abdominis, obliques", tip:"Bicycle crunches: rotate fully, slow down — highest rectus activation of any ab move.", alt:"Bodyweight, hold a plate on chest for sit-ups"},
+      {variants:[
+        {equipment:"free", name:"Plank w/ Shoulder Taps", target:"3 x 30-45 sec", muscles:"Transverse abdominis, anti-rotation core", tip:"Keep hips perfectly still while tapping shoulders.", alt:"Standard plank if too hard initially"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Hanging Leg Raises", target:"3 x 10-12", muscles:"Lower rectus abdominis, hip flexors", tip:"No swinging. Tuck pelvis under at top — posterior tilt activates lower abs.", alt:"Lying straight leg raises on the floor"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Ab Wheel/Dead Bug", target:"3 x 8-10", muscles:"Full anterior core", tip:"Ab wheel: only as far as you can control. Dead bug: lower opposite arm/leg, press lower back into floor.", alt:"Dead bug needs zero equipment"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Cable/DB Woodchop", target:"3 x 12 each side", muscles:"Obliques, rotational core, serratus", tip:"Rotate through torso, not just arms.", alt:"Resistance band anchored to a door or post"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Weighted Sit-ups/Bicycle Crunches", target:"3 x 15-20", muscles:"Upper rectus abdominis, obliques", tip:"Bicycle crunches: rotate fully, slow down — highest rectus activation of any ab move.", alt:"Bodyweight, hold a plate on chest for sit-ups"},
+      ]},
     ],
     cardio:"15 min HIIT: 30s max effort / 30s rest x 15 rounds",
   },
@@ -105,12 +145,32 @@ export const dayTemplates = {
       ],
     },
     exercises:[
-      {name:"Conventional Deadlift", target:"3 x 5-6", muscles:"Erectors, glutes, hamstrings, traps, lats, core", tip:"Heavy day, lower reps. Hinge, brace, push the floor away. Bar drags against shins.", alt:"DB deadlift, or trap bar deadlift if available"},
-      {name:"Back Extensions/Good Mornings", target:"3 x 12-15", muscles:"Erectors (lower back), glutes, hamstrings", tip:"Fills the #1 gap of the week — isolated erector work. Don't hyperextend at top.", alt:"Over a stability ball, or Superman holds on the floor"},
-      {name:"Chest-Supported DB Row", target:"3 x 10-12", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Chest supported removes momentum. Squeeze shoulder blades, hold 1 sec.", alt:"Lie face down on incline bench, row both dumbbells"},
-      {name:"Farmer's Carries", target:"3 x 25-30 meters", muscles:"Upper traps, grip, core, calves", tip:"Walk tall, shoulders packed down and back.", alt:"Any two heavy dumbbells or kettlebells"},
-      {name:"Seated Calf Raises", target:"4 x 15-20", muscles:"Soleus (deep calf — different from Wed)", tip:"Deep stretch at bottom, 1 sec pause at top. Need both calf heads for full development.", alt:"Sit on a bench, dumbbell on knee, raise onto ball of foot"},
+      {variants:[
+        {equipment:"free", name:"Conventional Deadlift", target:"3 x 5-6", muscles:"Erectors, glutes, hamstrings, traps, lats, core", tip:"Heavy day, lower reps. Hinge, brace, push the floor away. Bar drags against shins.", alt:"DB deadlift, or trap bar deadlift if available"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Back Extensions/Good Mornings", target:"3 x 12-15", muscles:"Erectors (lower back), glutes, hamstrings", tip:"Fills the #1 gap of the week — isolated erector work. Don't hyperextend at top.", alt:"Over a stability ball, or Superman holds on the floor"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Chest-Supported DB Row", target:"3 x 10-12", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Chest supported removes momentum. Squeeze shoulder blades, hold 1 sec.", alt:"Lie face down on incline bench, row both dumbbells"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Farmer's Carries", target:"3 x 25-30 meters", muscles:"Upper traps, grip, core, calves", tip:"Walk tall, shoulders packed down and back.", alt:"Any two heavy dumbbells or kettlebells"},
+      ]},
+      {variants:[
+        {equipment:"free", name:"Seated Calf Raises", target:"4 x 15-20", muscles:"Soleus (deep calf — different from Wed)", tip:"Deep stretch at bottom, 1 sec pause at top. Need both calf heads for full development.", alt:"Sit on a bench, dumbbell on knee, raise onto ball of foot"},
+      ]},
     ],
     cardio:"10-15 min incline walk — Easy",
   },
 };
+
+/** The variant matching `equipment`, falling back to the free variant. */
+export function variantFor(exercise, equipment) {
+  return exercise.variants.find(v => v.equipment === equipment) || exercise.variants[0];
+}
+
+/** Every variant name across the whole plan, flattened. */
+export function allVariantNames() {
+  return dayOrder.flatMap(k => dayTemplates[k].exercises.flatMap(ex => ex.variants.map(v => v.name)));
+}

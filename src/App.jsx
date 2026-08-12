@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
-import { dayOrder, dayTemplates } from "./data/exercises.js";
+import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -49,7 +49,10 @@ function newSession(dayKey) {
     date: todayISO(),
     day: dayKey,
     notes: "",
-    exercises: dayTemplates[dayKey].exercises.map(ex => ({ name:ex.name, sets:emptySets() })),
+    exercises: dayTemplates[dayKey].exercises.map(ex => {
+      const v = ex.variants[0];
+      return { name:v.name, equipment:v.equipment, sets:emptySets() };
+    }),
   };
 }
 
@@ -495,7 +498,7 @@ export default function App() {
     return streak;
   }
 
-  const allExNames = Array.from(new Set(Object.values(dayTemplates).flatMap(t=>t.exercises.map(e=>e.name)))).sort();
+  const allExNames = Array.from(new Set(allVariantNames())).sort();
   const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
   const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(s=>String(s.weight).trim()!==""&&String(s.reps).trim()!=="").length,0);
@@ -637,7 +640,7 @@ export default function App() {
 
             {/* Exercises */}
             {draft.exercises.map((ex,ei)=>{
-              const planEx=dayMeta.exercises[ei];
+              const planEx=variantFor(dayMeta.exercises[ei], ex.equipment);
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
               return (
