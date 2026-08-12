@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test src/*.test.js",
+    "test:tz": "for tz in America/New_York America/Los_Angeles Asia/Kolkata Europe/London UTC Pacific/Auckland; do echo \"— $tz\"; TZ=$tz node --test src/*.test.js | grep -E '^# (pass|fail)'; done"
   },
   "dependencies": {
     "react": "^19.2.6",
