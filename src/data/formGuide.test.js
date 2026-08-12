@@ -6,7 +6,7 @@ describe("formGuide integrity", () => {
   const names = Object.keys(formGuide);
 
   test("has an entry for every exercise currently in the plan", () => {
-    assert.equal(names.length, 45);
+    assert.equal(names.length, 50);
   });
 
   test("every guide has all required sections, non-empty", () => {

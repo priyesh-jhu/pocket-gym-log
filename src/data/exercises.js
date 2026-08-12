@@ -167,18 +167,23 @@ export const dayTemplates = {
     exercises:[
       {variants:[
         {equipment:"free", name:"Conventional Deadlift", target:"3 x 5-6", muscles:"Erectors, glutes, hamstrings, traps, lats, core", tip:"Heavy day, lower reps. Hinge, brace, push the floor away. Bar drags against shins.", alt:"DB deadlift, or trap bar deadlift if available"},
+        {equipment:"machine", name:"Smith Machine Deadlift", target:"3 x 6-8", muscles:"Erectors, glutes, hamstrings, traps", tip:"The bar path is fixed — move your FEET, not the bar.", alt:"Trap bar deadlift, or a conventional barbell deadlift"},
       ]},
       {variants:[
         {equipment:"free", name:"Back Extensions/Good Mornings", target:"3 x 12-15", muscles:"Erectors (lower back), glutes, hamstrings", tip:"Fills the #1 gap of the week — isolated erector work. Don't hyperextend at top.", alt:"Over a stability ball, or Superman holds on the floor"},
+        {equipment:"machine", name:"Back Extension Machine", target:"3 x 12-15", muscles:"Erectors (lower back), glutes", tip:"Stop at a straight line — never arch past neutral.", alt:"45° back extension bench, or Superman holds on the floor"},
       ]},
       {variants:[
         {equipment:"free", name:"Chest-Supported DB Row", target:"3 x 10-12", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Chest supported removes momentum. Squeeze shoulder blades, hold 1 sec.", alt:"Lie face down on incline bench, row both dumbbells"},
+        {equipment:"machine", name:"Chest-Supported T-Bar Row", target:"3 x 10-12", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Chest stays on the pad — that's the whole point of the movement.", alt:"Chest-supported DB row on an incline bench"},
       ]},
       {variants:[
         {equipment:"free", name:"Farmer's Carries", target:"3 x 25-30 meters", muscles:"Upper traps, grip, core, calves", tip:"Walk tall, shoulders packed down and back.", alt:"Any two heavy dumbbells or kettlebells"},
+        {equipment:"machine", name:"Shrug Machine", target:"3 x 12-15", muscles:"Upper traps", tip:"Straight up and down — no rolling the shoulders.", alt:"Cable shrug, or heavy DB shrugs"},
       ]},
       {variants:[
         {equipment:"free", name:"Seated Calf Raises", target:"4 x 15-20", muscles:"Soleus (deep calf — different from Wed)", tip:"Deep stretch at bottom, 1 sec pause at top. Need both calf heads for full development.", alt:"Sit on a bench, dumbbell on knee, raise onto ball of foot"},
+        {equipment:"machine", name:"Seated Calf Raise Machine", target:"4 x 15-20", muscles:"Soleus (deep calf)", tip:"Knees stay bent throughout — that's what targets the soleus.", alt:"Sit on a bench with a dumbbell across the knees"},
       ]},
     ],
     cardio:"10-15 min incline walk — Easy",
