@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
+import { emptySets, hasEnteredData, newSession } from "./draft.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -41,21 +42,6 @@ function calcPlates(total, unit) {
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
-function emptySets() { return [{ weight:"", reps:"", unit:"lb", done:false }]; }
-
-function newSession(dayKey) {
-  return {
-    id: "session_" + Date.now(),
-    date: todayISO(),
-    day: dayKey,
-    notes: "",
-    exercises: dayTemplates[dayKey].exercises.map(ex => {
-      const v = ex.variants[0];
-      return { name:v.name, equipment:v.equipment, sets:emptySets() };
-    }),
-  };
-}
-
 function downloadJSON(data, filename) {
   try {
     const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/json"}));
@@ -288,7 +274,7 @@ export default function App() {
   const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
 
   const [currentDay, setCurrentDay] = useState(() => todaysDayKey());
-  const [draft, setDraft] = useState(() => newSession(todaysDayKey()));
+  const [draft, setDraft] = useState(() => newSession(todaysDayKey(), {}));
   const [expandedHistory, setExpandedHistory] = useState(null);
   const [progressExercise, setProgressExercise] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -356,7 +342,7 @@ export default function App() {
     if (user === activeProfile) { setShowProfileMenu(false); return; }
     setActiveProfile(user); storage.set(ACTIVE_KEY, user);
     loadProfile(user);
-    setDraft(newSession(currentDay));
+    setDraft(newSession(currentDay, {}));
     setExpandedHistory(null); setProgressExercise(null);
     setConfirmDelete(null); setConfirmReset(false);
     setRestRunning(false); setRestSeconds(0);
@@ -398,7 +384,7 @@ export default function App() {
     storage.set(weightKey(activeProfile), JSON.stringify(updated));
   }
 
-  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k)); }
+  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, {})); }
 
   function updateSet(ei, si, field, val) {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
@@ -418,17 +404,15 @@ export default function App() {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei||ex.sets.length<=1?ex:{ ...ex, sets:ex.sets.filter((_,j)=>j!==si) }) }));
   }
 
-  function hasAnyData(s) { return s.exercises.some(ex=>ex.sets.some(s=>String(s.weight).trim()!==""||String(s.reps).trim()!=="")); }
-
   function cleanSession(s) {
     return { ...s, exercises: s.exercises.map(ex=>({ ...ex, sets:ex.sets.filter(s=>String(s.weight).trim()!==""||String(s.reps).trim()!=="").map(({done,...r})=>r) })).filter(ex=>ex.sets.length>0) };
   }
 
   function saveSession() {
-    if (!hasAnyData(draft)) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
+    if (!draft.exercises.some(ex => hasEnteredData(ex.sets))) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
     const updated = [...sessions, cleanSession(draft)].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated);
-    setDraft(newSession(currentDay)); setRestRunning(false); setRestSeconds(0);
+    setDraft(newSession(currentDay, {})); setRestRunning(false); setRestSeconds(0);
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u); setConfirmDelete(null); }
