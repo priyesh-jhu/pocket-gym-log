@@ -130,18 +130,23 @@ export const dayTemplates = {
     exercises:[
       {variants:[
         {equipment:"free", name:"Plank w/ Shoulder Taps", target:"3 x 30-45 sec", muscles:"Transverse abdominis, anti-rotation core", tip:"Keep hips perfectly still while tapping shoulders.", alt:"Standard plank if too hard initially"},
+        {equipment:"machine", name:"Ab Crunch Machine", target:"3 x 15-20", muscles:"Rectus abdominis", tip:"Curl the spine — don't just hinge at the hips.", alt:"Kneeling cable crunch"},
       ]},
       {variants:[
         {equipment:"free", name:"Hanging Leg Raises", target:"3 x 10-12", muscles:"Lower rectus abdominis, hip flexors", tip:"No swinging. Tuck pelvis under at top — posterior tilt activates lower abs.", alt:"Lying straight leg raises on the floor"},
+        {equipment:"machine", name:"Captain's Chair Leg Raise", target:"3 x 12-15", muscles:"Lower abs, hip flexors", tip:"Curl the pelvis at the top — that's what hits the lower abs.", alt:"Hanging leg raises from a bar, or lying leg raises"},
       ]},
       {variants:[
         {equipment:"free", name:"Ab Wheel/Dead Bug", target:"3 x 8-10", muscles:"Full anterior core", tip:"Ab wheel: only as far as you can control. Dead bug: lower opposite arm/leg, press lower back into floor.", alt:"Dead bug needs zero equipment"},
+        {equipment:"machine", name:"Kneeling Cable Crunch", target:"3 x 12-15", muscles:"Full anterior core", tip:"Hips stay put — this is a spine curl, not a hip hinge.", alt:"Ab wheel rollout, or a dead bug on the floor"},
       ]},
       {variants:[
         {equipment:"free", name:"Cable/DB Woodchop", target:"3 x 12 each side", muscles:"Obliques, rotational core, serratus", tip:"Rotate through torso, not just arms.", alt:"Resistance band anchored to a door or post"},
+        {equipment:"machine", name:"Torso Rotation Machine", target:"3 x 12-15 each side", muscles:"Obliques, rotational core", tip:"Go light and rotate from the ribs, not the arms.", alt:"Cable woodchop, or a band anchored to a post"},
       ]},
       {variants:[
         {equipment:"free", name:"Weighted Sit-ups/Bicycle Crunches", target:"3 x 15-20", muscles:"Upper rectus abdominis, obliques", tip:"Bicycle crunches: rotate fully, slow down — highest rectus activation of any ab move.", alt:"Bodyweight, hold a plate on chest for sit-ups"},
+        {equipment:"machine", name:"Decline Ab Bench (Weighted)", target:"3 x 15-20", muscles:"Upper rectus abdominis, obliques", tip:"Curl up rounding the spine; hold a plate on the chest to load it.", alt:"Weighted sit-ups on the floor, or bicycle crunches"},
       ]},
     ],
     cardio:"15 min HIIT: 30s max effort / 30s rest x 15 rounds",

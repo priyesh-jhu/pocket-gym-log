@@ -181,6 +181,26 @@ describe("machine variants — WED", () => {
   });
 });
 
+describe("machine variants — THU", () => {
+  test("every THU exercise has a machine variant", () => {
+    for (const ex of dayTemplates.THU.exercises) {
+      assert.ok(ex.variants.find(v => v.equipment === "machine"),
+        `${ex.variants[0].name} has no machine variant`);
+    }
+  });
+
+  test("THU machine variants are the expected exercises", () => {
+    const actual = dayTemplates.THU.exercises.map(ex => variantFor(ex, "machine").name);
+    assert.deepEqual(actual, [
+      "Ab Crunch Machine",
+      "Captain's Chair Leg Raise",
+      "Kneeling Cable Crunch",
+      "Torso Rotation Machine",
+      "Decline Ab Bench (Weighted)",
+    ]);
+  });
+});
+
 describe("form guide coverage", () => {
   test("every variant name in the plan has a form guide", () => {
     for (const name of allVariantNames()) {
