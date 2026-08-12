@@ -56,18 +56,23 @@ export const dayTemplates = {
     exercises:[
       {variants:[
         {equipment:"free", name:"Pull-ups/Lat Pulldown", target:"3 x 5-10", muscles:"Lats, teres major, biceps", tip:"Dead hang at bottom. Drive elbows to hips, not backward.", alt:"Band-assisted pull-ups, or inverted rows under a barbell"},
+        {equipment:"machine", name:"Lat Pulldown Machine", target:"3 x 10-12", muscles:"Lats, teres major, biceps", tip:"Set the thigh pad tight so you can't drive with your legs.", alt:"Assisted pull-up machine"},
       ]},
       {variants:[
         {equipment:"free", name:"Bent-Over Barbell Row", target:"3 x 8-10", muscles:"Rhomboids, mid traps, rear delts, lats", tip:"Hinge to 45 degrees. Pull to belly button, not chest.", alt:"Both DBs bent-over, or chest-supported incline DB row"},
+        {equipment:"machine", name:"Seated Cable Row", target:"3 x 10-12", muscles:"Rhomboids, mid traps, lats, rear delts", tip:"Keep the torso still — the arms do the travelling.", alt:"Chest-supported machine row"},
       ]},
       {variants:[
         {equipment:"free", name:"Single-Arm DB Row", target:"3 x 10-12 each", muscles:"Lats, mid back, rear delts", tip:"Drive elbow straight back toward hip. Full lat stretch at bottom.", alt:"Brace on your own thigh if no bench"},
+        {equipment:"machine", name:"Single-Arm Hammer Strength Row", target:"3 x 10-12 each", muscles:"Lats, mid back, rear delts", tip:"One side at a time — chase an even squeeze, not weight.", alt:"Any iso-lateral plate-loaded row, or a single-arm cable row"},
       ]},
       {variants:[
         {equipment:"free", name:"Face Pulls/Band Pull-Aparts", target:"3 x 15-20", muscles:"Rear delts, external rotators, mid traps", tip:"Pull to forehead, elbows flared high. Never skip — keeps shoulders healthy.", alt:"Band pull-aparts anywhere"},
+        {equipment:"machine", name:"Rear Delt Fly Machine", target:"3 x 15-20", muscles:"Rear delts, external rotators, mid traps", tip:"Lead with the elbows, thumbs pointing back.", alt:"Reverse pec deck, or a cable rear delt fly"},
       ]},
       {variants:[
         {equipment:"free", name:"Bicep Curls", target:"3 x 10-12", muscles:"Biceps, brachialis", tip:"Strict form, no swinging. Slow on the way down.", alt:"Resistance bands, EZ bar, hammer curls"},
+        {equipment:"machine", name:"Preacher Curl Machine", target:"3 x 12-15", muscles:"Biceps, brachialis", tip:"Upper arms stay glued to the pad on every rep.", alt:"Cable curl at the low pulley, or a preacher bench with an EZ-bar"},
       ]},
     ],
     cardio:"10 min light cycling or brisk walk — Easy",

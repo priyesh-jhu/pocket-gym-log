@@ -141,6 +141,26 @@ describe("machine variants — MON", () => {
   });
 });
 
+describe("machine variants — TUE", () => {
+  test("every TUE exercise has a machine variant", () => {
+    for (const ex of dayTemplates.TUE.exercises) {
+      assert.ok(ex.variants.find(v => v.equipment === "machine"),
+        `${ex.variants[0].name} has no machine variant`);
+    }
+  });
+
+  test("TUE machine variants are the expected exercises", () => {
+    const actual = dayTemplates.TUE.exercises.map(ex => variantFor(ex, "machine").name);
+    assert.deepEqual(actual, [
+      "Lat Pulldown Machine",
+      "Seated Cable Row",
+      "Single-Arm Hammer Strength Row",
+      "Rear Delt Fly Machine",
+      "Preacher Curl Machine",
+    ]);
+  });
+});
+
 describe("form guide coverage", () => {
   test("every variant name in the plan has a form guide", () => {
     for (const name of allVariantNames()) {
