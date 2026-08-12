@@ -19,18 +19,23 @@ export const dayTemplates = {
     exercises:[
       {variants:[
         {equipment:"free", name:"Barbell/DB Bench Press", target:"3 x 6-10", muscles:"Mid chest, front delts, triceps", tip:"Touch bar to lower chest. Drive feet into the floor.", alt:"Push-ups with feet elevated on a chair"},
+        {equipment:"machine", name:"Chest Press Machine", target:"3 x 10-12", muscles:"Mid chest, front delts, triceps", tip:"Set the seat so the handles line up with mid-chest, not your neck.", alt:"Any plate-loaded or selectorized chest press"},
       ]},
       {variants:[
         {equipment:"free", name:"Incline DB Press", target:"3 x 10-12", muscles:"Upper chest, front delts", tip:"15-30 degree incline only. Full stretch at the bottom.", alt:"Pike push-ups or elevated push-ups on a box"},
+        {equipment:"machine", name:"Incline Chest Press Machine", target:"3 x 10-12", muscles:"Upper chest, front delts", tip:"Handles should start just below the collarbone.", alt:"Incline setting on any chest press, or a Smith machine incline press"},
       ]},
       {variants:[
         {equipment:"free", name:"Overhead Press", target:"3 x 8-10", muscles:"Front + side delts, upper traps, triceps", tip:"Bar path straight up — don't press forward.", alt:"Seated DB press if balance is an issue"},
+        {equipment:"machine", name:"Shoulder Press Machine", target:"3 x 10-12", muscles:"Front + side delts, triceps", tip:"Handles at ear height to start — no lower.", alt:"Smith machine press, or seated DB press"},
       ]},
       {variants:[
         {equipment:"free", name:"Lateral Raises", target:"3 x 15-20", muscles:"Side delts (isolated)", tip:"Light weight. Lead with elbows, slight forward lean.", alt:"Resistance bands work perfectly"},
+        {equipment:"machine", name:"Lateral Raise Machine", target:"3 x 15-20", muscles:"Side delts (isolated)", tip:"Drive with the pads on your upper arms, not your hands.", alt:"Cable lateral raise, one arm at a time"},
       ]},
       {variants:[
         {equipment:"free", name:"Tricep Dips/Skull Crushers", target:"3 x 10-12", muscles:"All 3 tricep heads", tip:"Dips: stay upright for tricep focus.", alt:"Bench dips if no dip bars"},
+        {equipment:"machine", name:"Cable Tricep Pushdown", target:"3 x 12-15", muscles:"All 3 tricep heads", tip:"Pin the elbows to your ribs — only the forearms move.", alt:"Assisted dip machine, or a band anchored overhead"},
       ]},
     ],
     cardio:"10 min incline walk — Easy",

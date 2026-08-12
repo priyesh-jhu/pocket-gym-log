@@ -1,6 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./exercises.js";
+import { formGuide } from "./formGuide.js";
 
 describe("exercise plan structure", () => {
   test("dayOrder is the five training days", () => {
@@ -117,5 +118,33 @@ describe("exercise variants", () => {
     assert.equal(variantFor(ex, "machine").equipment, ex.variants.length > 1 ? "machine" : "free");
     assert.equal(variantFor(ex, "nonsense").equipment, "free");
     assert.equal(variantFor(ex, undefined).equipment, "free");
+  });
+});
+
+describe("machine variants — MON", () => {
+  test("every MON exercise has a machine variant", () => {
+    for (const ex of dayTemplates.MON.exercises) {
+      const machine = ex.variants.find(v => v.equipment === "machine");
+      assert.ok(machine, `${ex.variants[0].name} has no machine variant`);
+    }
+  });
+
+  test("MON machine variants are the expected exercises", () => {
+    const actual = dayTemplates.MON.exercises.map(ex => variantFor(ex, "machine").name);
+    assert.deepEqual(actual, [
+      "Chest Press Machine",
+      "Incline Chest Press Machine",
+      "Shoulder Press Machine",
+      "Lateral Raise Machine",
+      "Cable Tricep Pushdown",
+    ]);
+  });
+});
+
+describe("form guide coverage", () => {
+  test("every variant name in the plan has a form guide", () => {
+    for (const name of allVariantNames()) {
+      assert.ok(formGuide[name], `no form guide for "${name}" — its ⓘ form button would do nothing`);
+    }
   });
 });
