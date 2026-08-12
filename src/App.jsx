@@ -379,7 +379,10 @@ export default function App() {
     if (rem.length === 0) storage.set(sessionKey("default"), JSON.stringify([]));
     setProfiles(list); storage.set(PROFILES_KEY, JSON.stringify(list));
     const next = list[0]; setActiveProfile(next); storage.set(ACTIVE_KEY, next);
-    loadProfile(next); setConfirmDeleteProfile(false); setShowProfileMenu(false);
+    const prefs = loadProfile(next);
+    setDraft(newSession(currentDay, prefs));
+    setConfirmSwitch(null);
+    setConfirmDeleteProfile(false); setShowProfileMenu(false);
   }
 
   function persist(updated) {
