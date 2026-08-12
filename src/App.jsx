@@ -3,7 +3,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
-import { emptySets, hasEnteredData, newSession } from "./draft.js";
+import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
+import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -295,6 +296,9 @@ export default function App() {
   const [guideExercise, setGuideExercise] = useState(null);
   const [plateFor, setPlateFor] = useState(null);
 
+  const [equipmentPrefs, setEquipmentPrefs] = useState({});
+  const [confirmSwitch, setConfirmSwitch] = useState(null); // { ei, equipment } | null
+
   function switchTab(t) { setActiveTab(t); try { storage.set(TAB_KEY, t); } catch {} }
 
   // Bootstrap
@@ -320,6 +324,9 @@ export default function App() {
         setActiveProfile(active);
         try { const r = storage.get(sessionKey(active)); if (r) { const p = JSON.parse(r); setSessions(Array.isArray(p)?p:[]); } } catch { setSessions([]); }
         try { const r = storage.get(weightKey(active));  if (r) { const p = JSON.parse(r); setBodyweights(Array.isArray(p)?p:[]); } } catch { setBodyweights([]); }
+        const prefs = loadPrefs(storage, active);
+        setEquipmentPrefs(prefs);
+        setDraft(newSession(todaysDayKey(), prefs));
       }
     } catch { if (!cancelled) { setProfiles(["default"]); setActiveProfile("default"); } }
     finally { if (!cancelled) setLoading(false); }
@@ -336,13 +343,17 @@ export default function App() {
   function loadProfile(user) {
     try { const r = storage.get(sessionKey(user)); setSessions(r?JSON.parse(r):[]); } catch { setSessions([]); }
     try { const r = storage.get(weightKey(user));  setBodyweights(r?JSON.parse(r):[]); } catch { setBodyweights([]); }
+    const prefs = loadPrefs(storage, user);
+    setEquipmentPrefs(prefs);
+    return prefs;
   }
 
   function switchProfile(user) {
     if (user === activeProfile) { setShowProfileMenu(false); return; }
     setActiveProfile(user); storage.set(ACTIVE_KEY, user);
-    loadProfile(user);
-    setDraft(newSession(currentDay, {}));
+    const prefs = loadProfile(user);
+    setDraft(newSession(currentDay, prefs));
+    setConfirmSwitch(null);
     setExpandedHistory(null); setProgressExercise(null);
     setConfirmDelete(null); setConfirmReset(false);
     setRestRunning(false); setRestSeconds(0);
@@ -384,7 +395,25 @@ export default function App() {
     storage.set(weightKey(activeProfile), JSON.stringify(updated));
   }
 
-  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, {})); }
+  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setConfirmSwitch(null); }
+
+  function requestEquipmentSwitch(ei, equipment) {
+    const ex = draft.exercises[ei];
+    if (!ex || ex.equipment === equipment) return;
+    if (hasEnteredData(ex.sets)) { setConfirmSwitch({ ei, equipment }); return; }
+    applyEquipmentSwitch(ei, equipment);
+  }
+
+  function applyEquipmentSwitch(ei, equipment) {
+    const planEx = dayTemplates[currentDay].exercises[ei];
+    const v = variantFor(planEx, equipment);
+    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei ? ex : buildDraftExercise(v)) }));
+    const updated = setPref(equipmentPrefs, planEx.variants[0].name, v.equipment);
+    setEquipmentPrefs(updated);
+    savePrefs(storage, activeProfile, updated);
+    setConfirmSwitch(null);
+    setPlateFor(null);
+  }
 
   function updateSet(ei, si, field, val) {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
@@ -412,7 +441,7 @@ export default function App() {
     if (!draft.exercises.some(ex => hasEnteredData(ex.sets))) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
     const updated = [...sessions, cleanSession(draft)].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated);
-    setDraft(newSession(currentDay, {})); setRestRunning(false); setRestSeconds(0);
+    setDraft(newSession(currentDay, equipmentPrefs)); setConfirmSwitch(null); setRestRunning(false); setRestSeconds(0);
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u); setConfirmDelete(null); }
@@ -625,6 +654,7 @@ export default function App() {
             {/* Exercises */}
             {draft.exercises.map((ex,ei)=>{
               const planEx=variantFor(dayMeta.exercises[ei], ex.equipment);
+              const variants=dayMeta.exercises[ei].variants;
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
               return (
@@ -636,6 +666,34 @@ export default function App() {
                     </button>
                     <div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px",flexShrink:0}}>Target: {planEx.target}</div>
                   </div>
+
+                  {variants.length>1&&(
+                    <div style={{display:"flex",gap:4,marginBottom:8}}>
+                      {variants.map(v=>{
+                        const on=ex.equipment===v.equipment;
+                        return (
+                          <button key={v.equipment} onClick={()=>requestEquipmentSwitch(ei,v.equipment)}
+                            style={{background:on?dayMeta.color:"#161723",border:"1px solid "+(on?dayMeta.color:"#1E2035"),borderRadius:7,padding:"3px 11px",color:on?"#fff":"#777",fontSize:10,fontWeight:700,cursor:on?"default":"pointer",fontFamily:"inherit"}}>
+                            {v.equipment==="free"?"Free":"Machine"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {confirmSwitch&&confirmSwitch.ei===ei&&(
+                    <div style={{background:"#0C0D16",border:"1px solid "+dayMeta.color+"40",borderRadius:8,padding:"9px 12px",marginBottom:8}}>
+                      <div style={{fontSize:11,color:"#9CA3AF",lineHeight:1.45,marginBottom:8}}>
+                        Switch to {confirmSwitch.equipment==="machine"?"the machine":"free weights"}? The {countEnteredSets(ex.sets)} set{countEnteredSets(ex.sets)!==1?"s":""} you've entered will be cleared.
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>applyEquipmentSwitch(ei,confirmSwitch.equipment)}
+                          style={{background:dayMeta.color,border:"none",borderRadius:6,padding:"4px 12px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Switch</button>
+                        <button onClick={()=>setConfirmSwitch(null)}
+                          style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 12px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
 
                   {pr&&<div style={{fontSize:10,color:"#FBBF24",marginBottom:6,fontWeight:600}}>🏆 Best: {pr.weight}{ex.sets[0]?.unit||"lb"} × {pr.reps} ({pr.date})</div>}
 
