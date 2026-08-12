@@ -228,3 +228,30 @@ describe("form guide coverage", () => {
     }
   });
 });
+
+describe("whole-plan invariants", () => {
+  const allExercises = () => dayOrder.flatMap(k => dayTemplates[k].exercises);
+
+  test("every exercise has exactly 2 variants — one free, one machine", () => {
+    for (const ex of allExercises()) {
+      assert.equal(ex.variants.length, 2, `${ex.variants[0].name}`);
+      assert.deepEqual(ex.variants.map(v => v.equipment), ["free", "machine"],
+        `${ex.variants[0].name}: expected [free, machine]`);
+    }
+  });
+
+  test("no form guide is orphaned — every guide belongs to a variant", () => {
+    const names = new Set(allVariantNames());
+    for (const guideName of Object.keys(formGuide)) {
+      assert.ok(names.has(guideName), `orphaned guide "${guideName}" — no variant uses it`);
+    }
+  });
+
+  test("a machine variant never shares its form guide with its free counterpart", () => {
+    for (const ex of allExercises()) {
+      assert.notEqual(ex.variants[0].name, ex.variants[1].name);
+      assert.notDeepEqual(formGuide[ex.variants[0].name], formGuide[ex.variants[1].name],
+        `${ex.variants[1].name}: guide is a copy of the free-weight guide`);
+    }
+  });
+});
