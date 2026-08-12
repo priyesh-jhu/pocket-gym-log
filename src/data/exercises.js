@@ -93,18 +93,23 @@ export const dayTemplates = {
     exercises:[
       {variants:[
         {equipment:"free", name:"Back Squat/Goblet Squat", target:"4 x 6-10", muscles:"Quads, glutes, adductors, core", tip:"Depth matters. Knees track over toes. Brace core before every rep.", alt:"Goblet squat with one heavy dumbbell"},
+        {equipment:"machine", name:"Leg Press Machine", target:"4 x 10-12", muscles:"Quads, glutes, adductors", tip:"Never slam into a hard knee lockout at the top.", alt:"Hack squat machine, or a Smith machine squat"},
       ]},
       {variants:[
         {equipment:"free", name:"Romanian Deadlift", target:"3 x 10-12", muscles:"Hamstrings, glutes, erectors", tip:"Hinge, not squat. Push hips back until deep hamstring stretch.", alt:"Two dumbbells if no barbell"},
+        {equipment:"machine", name:"Seated Leg Curl Machine", target:"3 x 12-15", muscles:"Hamstrings", tip:"Pull the toes toward your shins to bias the hamstrings.", alt:"Lying leg curl machine"},
       ]},
       {variants:[
         {equipment:"free", name:"Bulgarian Split Squat", target:"3 x 8-10 each", muscles:"Quads, glutes, adductors — fixes imbalances", tip:"Rear foot elevated. Lower slowly, front knee tracks over toes.", alt:"Hold one or two dumbbells"},
+        {equipment:"machine", name:"Single-Leg Leg Press", target:"3 x 10-12 each", muscles:"Quads, glutes — fixes imbalances", tip:"Foot centred on the platform, weight through the whole foot.", alt:"Leg press one leg at a time, or a Smith machine split squat"},
       ]},
       {variants:[
         {equipment:"free", name:"Glute Bridge/Hip Thrust", target:"3 x 12-15", muscles:"Glutes (primary), hamstrings", tip:"Drive through heels. Squeeze 1 sec at top, posterior pelvic tilt.", alt:"Floor glute bridge bodyweight, or DB on hips for load"},
+        {equipment:"machine", name:"Hip Thrust Machine", target:"3 x 12-15", muscles:"Glutes (primary), hamstrings", tip:"Squeeze at the top and tuck the pelvis — don't arch the back.", alt:"Smith machine hip thrust, or a glute kickback machine"},
       ]},
       {variants:[
         {equipment:"free", name:"Standing Calf Raises", target:"4 x 15-20", muscles:"Gastrocnemius (outer calf)", tip:"Full stretch at bottom, pause 1 sec at top.", alt:"Use a step for full range, hold dumbbells for load"},
+        {equipment:"machine", name:"Standing Calf Raise Machine", target:"4 x 15-20", muscles:"Gastrocnemius (outer calf)", tip:"Full stretch at the bottom, one-second hold at the top.", alt:"Calf raise on the leg press, or a Smith machine calf raise"},
       ]},
     ],
     cardio:"10 min slow walk — active recovery",
