@@ -54,6 +54,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Plate calculator**: Quick load planning
 - **Rest timer**: Between sets
 - **Draft recovery**: In-progress workouts autosave per account and recover after refreshes or crashes
+- **Progressive overload guidance**: Uses the most recent working sets and the exercise's rep target to suggest increasing, repeating, or slightly reducing weight; it never changes entered weights automatically
 
 ## Development
 
@@ -65,7 +66,7 @@ npm run test:tz    # Test timezone behavior
 npm run lint       # ESLint check
 ```
 
-`npm run lint` currently exits non-zero: it reports 6 known pre-existing errors in `src/App.jsx` that are not being fixed.
+`npm run lint` currently exits non-zero: it reports 5 known pre-existing errors in `src/App.jsx` that are not being fixed.
 
 ## Dates & Timezones
 

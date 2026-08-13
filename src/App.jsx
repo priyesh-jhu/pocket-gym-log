@@ -10,6 +10,7 @@ import ProgressDashboard from "./ProgressDashboard.jsx";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
+import { getProgressionRecommendation } from "./progression.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -878,6 +879,7 @@ export default function App() {
               const variants=dayMeta.exercises[ei].variants;
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
+              const progression=last&&getProgressionRecommendation(last.sets,planEx.target);
               return (
                 <div key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
@@ -925,6 +927,12 @@ export default function App() {
                         {last.sets.map((s,j)=><span key={j} style={{fontSize:10,color:"#9CA3AF",background:"#161723",borderRadius:5,padding:"2px 7px"}}>{s.weight||"0"}{s.unit} × {s.reps||"0"}</span>)}
                       </div>
                       <button onClick={()=>copyLastTime(ei,ex.name)} style={{background:"rgba(59,130,246,0.1)",border:"1px solid "+dayMeta.color+"40",borderRadius:6,padding:"3px 9px",color:dayMeta.color,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Copy weights</button>
+                    </div>
+                  )}
+
+                  {progression&&(
+                    <div style={{background:progression.action==="increase"?"rgba(52,211,153,0.08)":progression.action==="reduce"?"rgba(251,191,36,0.08)":"rgba(59,130,246,0.08)",border:"1px solid "+(progression.action==="increase"?"#34D39935":progression.action==="reduce"?"#FBBF2435":"#3B82F635"),borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:10,lineHeight:1.45,color:"#9CA3AF"}}>
+                      <span style={{fontWeight:800,color:progression.action==="increase"?"#34D399":progression.action==="reduce"?"#FBBF24":"#60A5FA"}}>↗ {progression.label}: </span>{progression.message}
                     </div>
                   )}
 
