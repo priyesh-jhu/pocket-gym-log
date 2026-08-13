@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pocket Gym Log</string>
+    <string name="title_activity_main">Pocket Gym Log</string>
+    <string name="package_name">com.pocketgymlog.app</string>
+    <string name="custom_url_scheme">com.pocketgymlog.app</string>
+</resources>

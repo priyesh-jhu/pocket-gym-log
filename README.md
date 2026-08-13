@@ -29,6 +29,28 @@ npx firebase-tools deploy --only hosting,firestore:rules
 
 Firebase serves the production build at `https://pocket-gym-log.web.app` and `https://pocket-gym-log.firebaseapp.com`. The hosting configuration serves `dist/`, rewrites SPA routes to `index.html`, and caches Vite's fingerprinted assets. Add any custom production domain under Firebase Console → Hosting → Add custom domain, then add that domain under Authentication → Settings → Authorized domains.
 
+## Android App
+
+The same React application is packaged as a native Android app with Capacitor. It keeps the existing offline storage and Firestore sync, while Google sign-in uses the native Firebase Authentication flow. Android Studio and its bundled JDK are required to compile or run the native project.
+
+Complete this one-time Firebase setup before the first native build:
+
+1. In Firebase Console → Project settings → Your apps, add an **Android** app with package name `com.pocketgymlog.app`.
+2. Add the SHA-1 fingerprint for the machine that will build the app. After Android Studio is installed, obtain the debug fingerprint with `cd android && ./gradlew signingReport`.
+3. Download `google-services.json` and place it at `android/app/google-services.json`. This machine-specific file is intentionally ignored by Git.
+4. Confirm that Google is enabled under Firebase Console → Authentication → Sign-in method. Keep the Firebase web configuration in `.env.local`, because the shared JavaScript layer still uses the Firebase Web SDK for authentication state and Firestore.
+
+To open and run the project:
+
+```bash
+npm install
+npm run android:open
+```
+
+The command builds the web app, synchronizes it into the Android project, and opens Android Studio. In Android Studio, let Gradle finish syncing, select an emulator or connected device, and click **Run**. Use `npm run android:run` to run from the terminal after an emulator/device is available, or `npm run android:sync` whenever web code or native dependencies change.
+
+For a Play Store release, use Android Studio → Build → Generate Signed Bundle / APK, create or select a release keystore, and generate an Android App Bundle (`.aab`). Keep the keystore and passwords outside this repository. Add the release certificate's SHA-1 to the same Firebase Android app before testing Google sign-in in a release build.
+
 ## The Plan: 5-Day Split
 
 - **MON Push**: Chest, shoulders, triceps, serratus

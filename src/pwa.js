@@ -1,4 +1,7 @@
+import { Capacitor } from "@capacitor/core";
+
 export function registerWorkoutPWA({onUpdate}={}) {
+  if (Capacitor.isNativePlatform()) return () => {};
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return () => {};
   let refreshing=false;
   const controllerChanged=()=>{ if (!refreshing) { refreshing=true; window.location.reload(); } };

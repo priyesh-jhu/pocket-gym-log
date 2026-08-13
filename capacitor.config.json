@@ -1,0 +1,11 @@
+{
+  "appId": "com.pocketgymlog.app",
+  "appName": "Pocket Gym Log",
+  "webDir": "dist",
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": true,
+      "providers": ["google.com"]
+    }
+  }
+}

@@ -15,6 +15,7 @@ dist-ssr
 .env.local
 .env.*.local
 .firebase/
+android/app/google-services.json
 
 # Editor directories and files
 .vscode/*

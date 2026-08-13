@@ -9,15 +9,22 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --test src",
-    "test:tz": "for tz in America/New_York America/Los_Angeles Asia/Kolkata Europe/London UTC Pacific/Auckland; do echo \"— $tz\"; TZ=$tz node --test src | grep -E '^# (pass|fail)'; done"
+    "test:tz": "for tz in America/New_York America/Los_Angeles Asia/Kolkata Europe/London UTC Pacific/Auckland; do echo \"— $tz\"; TZ=$tz node --test src | grep -E '^# (pass|fail)'; done",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "npm run android:sync && cap open android",
+    "android:run": "npm run android:sync && cap run android"
   },
   "dependencies": {
-    "firebase": "^12.17.1",
+    "@capacitor-firebase/authentication": "7.5.0",
+    "@capacitor/android": "7.6.8",
+    "@capacitor/core": "7.6.8",
+    "firebase": "11.10.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "7.6.8",
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

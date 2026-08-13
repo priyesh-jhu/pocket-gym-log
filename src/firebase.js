@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithPopup, signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, getFirestore, serverTimestamp, setDoc, writeBatch } from "firebase/firestore";
+import { Capacitor } from "@capacitor/core";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -36,10 +38,18 @@ export function observeAuth(callback) {
 
 export async function signInWithGoogle() {
   if (!auth) throw new Error("Firebase is not configured.");
+  if (Capacitor.isNativePlatform()) {
+    const result = await FirebaseAuthentication.signInWithGoogle({skipNativeAuth:true});
+    const nativeCredential = result.credential;
+    if (!nativeCredential?.idToken) throw new Error("Native Google sign-in did not return an ID token.");
+    const credential = GoogleAuthProvider.credential(nativeCredential.idToken,nativeCredential.accessToken || undefined);
+    return signInWithCredential(auth,credential);
+  }
   return signInWithPopup(auth, new GoogleAuthProvider());
 }
 
 export async function signOutFirebase() {
+  if (Capacitor.isNativePlatform()) await FirebaseAuthentication.signOut().catch(()=>{});
   if (auth) await signOut(auth);
 }
 
