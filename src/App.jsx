@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, EQUIPMENT_PREFIX } from "./equipmentPrefs.js";
+import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import ProgressDashboard from "./ProgressDashboard.jsx";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
@@ -300,6 +301,9 @@ export default function App() {
   const [equipmentPrefs, setEquipmentPrefs] = useState({});
   const [confirmSwitch, setConfirmSwitch] = useState(null); // { ei, equipment } | null
 
+  const [pendingImport, setPendingImport] = useState(null); // { sessions, bodyweights, equipmentPrefs, profile, skipped } | null
+  const importInputRef = useRef(null);
+
   function switchTab(t) { setActiveTab(t); try { storage.set(TAB_KEY, t); } catch {} }
 
   // Bootstrap
@@ -468,9 +472,50 @@ export default function App() {
   function deleteWeight(id) { const u=bodyweights.filter(e=>e.id!==id); setBodyweights(u); persistWeights(u); setConfirmDeleteWeight(null); }
 
   function exportData() {
-    const ok = downloadJSON({ exportedAt:new Date().toISOString(), profile:activeProfile, loggedSessions:sessions, bodyweights }, "workout-log-"+(activeProfile||"default")+"-"+todayISO()+".json");
+    const backup = buildBackup({ profile:activeProfile, sessions, bodyweights, equipmentPrefs });
+    const ok = downloadJSON(backup, "workout-log-"+(activeProfile||"default")+"-"+todayISO()+".json");
     setSaveStatus(ok?"saved":"error"); setStatusMsg(ok?"Export downloaded ✓":"Export failed.");
     setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2000);
+  }
+
+  function triggerImport() { if (importInputRef.current) importInputRef.current.click(); }
+
+  function handleImportFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (e.target) e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try { parsed = JSON.parse(String(reader.result)); }
+      catch { setSaveStatus("error"); setStatusMsg("That file isn't valid JSON."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000); return; }
+      const result = validateBackup(parsed);
+      if (!result.ok) { setSaveStatus("error"); setStatusMsg(result.error); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000); return; }
+      setPendingImport(result.data);
+    };
+    reader.onerror = () => { setSaveStatus("error"); setStatusMsg("Could not read that file."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000); };
+    reader.readAsText(file);
+  }
+
+  function applyImportedData({ sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs }, msg) {
+    setSessions(newSessions); persist(newSessions);
+    setBodyweights(newWeights); persistWeights(newWeights);
+    setEquipmentPrefs(newPrefs); savePrefs(storage, activeProfile, newPrefs);
+    setDraft(newSession(currentDay, newPrefs));
+    setPendingImport(null);
+    setSaveStatus("saved"); setStatusMsg(msg); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+  }
+
+  function confirmImportMerge() {
+    if (!pendingImport) return;
+    const merged = mergeBackup({ sessions, bodyweights, equipmentPrefs }, pendingImport);
+    applyImportedData(merged, "Imported "+merged.added.sessions+" new session"+(merged.added.sessions!==1?"s":"")+", "+merged.added.bodyweights+" weigh-in"+(merged.added.bodyweights!==1?"s":""));
+  }
+
+  function confirmImportReplace() {
+    if (!pendingImport) return;
+    const replaced = replaceBackup(pendingImport);
+    applyImportedData(replaced, "Replaced with "+replaced.sessions.length+" session"+(replaced.sessions.length!==1?"s":"")+", "+replaced.bodyweights.length+" weigh-in"+(replaced.bodyweights.length!==1?"s":"")+" from the file.");
   }
 
   const prMap = buildPRMap(sessions);
@@ -541,7 +586,11 @@ export default function App() {
             <h1 style={{fontSize:"clamp(22px,5vw,32px)",fontWeight:900,margin:"0 0 4px",letterSpacing:"-0.02em"}}>12-Week Tracker</h1>
             <p style={{color:"#666",fontSize:13,margin:0}}>{sessions.length} session{sessions.length!==1?"s":""} logged · auto-saved{getStreak()>1?"  ·  🔥 "+getStreak()+"-day streak":""}</p>
           </div>
-          <button onClick={exportData} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬇ Export</button>
+          <div style={{display:"flex",gap:8,flexShrink:0}}>
+            <button onClick={exportData} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬇ Export</button>
+            <button onClick={triggerImport} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬆ Import</button>
+            <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
+          </div>
         </div>
 
         {/* Profile bar */}
@@ -601,6 +650,27 @@ export default function App() {
         {saveStatus==="saving"&&<div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#60A5FA"}}>Saving...</div>}
         {saveStatus==="saved"&&<div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#4ADE80"}}>{statusMsg||"Saved ✓"}</div>}
         {saveStatus==="error"&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#F87171"}}>{statusMsg||"Something went wrong."}</div>}
+
+        {/* ── IMPORT CONFIRMATION ── */}
+        {pendingImport&&(
+          <div style={{background:"#0F1018",border:"1px solid #2A2A3A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#ECEAF4",marginBottom:6}}>Import workout data</div>
+            <div style={{fontSize:12,color:"#9CA3AF",lineHeight:1.6}}>
+              File contains <b style={{color:"#ECEAF4"}}>{pendingImport.sessions.length}</b> session{pendingImport.sessions.length!==1?"s":""} and <b style={{color:"#ECEAF4"}}>{pendingImport.bodyweights.length}</b> weigh-in{pendingImport.bodyweights.length!==1?"s":""}, exported from profile <b style={{color:"#ECEAF4"}}>{pendingImport.profile||"unknown"}</b>.
+              {(pendingImport.skipped.sessions>0||pendingImport.skipped.bodyweights>0)&&(
+                <div style={{color:"#F59E0B",marginTop:4}}>Skipped {pendingImport.skipped.sessions} malformed session{pendingImport.skipped.sessions!==1?"s":""} and {pendingImport.skipped.bodyweights} malformed weigh-in{pendingImport.skipped.bodyweights!==1?"s":""}.</div>
+              )}
+            </div>
+            <div style={{fontSize:11,color:"#666",marginTop:8,background:"#0C0D16",border:"1px solid #16172A",borderRadius:8,padding:"8px 10px"}}>
+              This will apply to your currently active profile — <b style={{color:"#9CA3AF"}}>{activeProfile}</b> — regardless of which profile the file was exported from.
+            </div>
+            <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={confirmImportMerge} style={{background:"#3B82F6",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Merge (recommended)</button>
+              <button onClick={confirmImportReplace} style={{background:"#EF4444",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Replace — deletes {sessions.length} existing session{sessions.length!==1?"s":""}</button>
+              <button onClick={()=>setPendingImport(null)} style={{background:"#1E2035",border:"none",borderRadius:8,padding:"8px 16px",color:"#888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+            </div>
+          </div>
+        )}
 
         {/* ── LOG TAB ── */}
         {activeTab==="log" && (
