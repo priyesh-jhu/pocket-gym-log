@@ -394,10 +394,19 @@ export default function App() {
     setConfirmDeleteProfile(false); setShowProfileMenu(false);
   }
 
+  // Raw disk write, no saveStatus side effects — used by persist() below for
+  // the normal save flow, and directly by applyImportedData(), which needs to
+  // attempt (and potentially roll back) a write without an intermediate
+  // "saving..." flicker or timeout racing its own status messages.
+  function writeSessions(updated) {
+    if (!activeProfile) return false;
+    return storage.set(sessionKey(activeProfile), JSON.stringify(updated));
+  }
+
   function persist(updated) {
     if (!activeProfile) return false;
     setSaveStatus("saving");
-    const ok = storage.set(sessionKey(activeProfile), JSON.stringify(updated));
+    const ok = writeSessions(updated);
     if (ok) { setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
     else { setSaveStatus("error"); setStatusMsg("Could not save."); }
     return ok;
@@ -499,32 +508,55 @@ export default function App() {
   }
 
   function applyImportedData({ sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs }, msg) {
-    setSessions(newSessions);
-    const sessionsOk = persist(newSessions);
-    setBodyweights(newWeights);
-    const weightsOk = persistWeights(newWeights);
-    setEquipmentPrefs(newPrefs);
-    const prefsOk = savePrefs(storage, activeProfile, newPrefs);
+    // React state must never diverge from disk. Snapshot what's currently
+    // persisted (the `sessions`/`bodyweights`/`equipmentPrefs` state variables
+    // ARE the on-disk values — nothing else writes to storage except through
+    // persist()/persistWeights()/savePrefs()), attempt every write FIRST, and
+    // only update state once all three have actually landed.
+    const prevSessions = sessions;
+    const prevWeights = bodyweights;
+    const prevPrefs = equipmentPrefs;
 
-    // Don't wipe a workout the user is mid-typing on the Log tab just because
-    // an import happened — only reset the draft when it's still empty. The
-    // imported equipment prefs simply won't apply until the *next* draft.
-    const draftHasData = draft.exercises.some(ex => hasEnteredData(ex.sets));
-    if (!draftHasData) setDraft(newSession(currentDay, newPrefs));
+    const sessionsOk = writeSessions(newSessions);
+    const weightsOk = persistWeights(newWeights);
+    const prefsOk = savePrefs(storage, activeProfile, newPrefs);
 
     setPendingImport(null);
 
     if (sessionsOk && weightsOk && prefsOk) {
+      setSessions(newSessions);
+      setBodyweights(newWeights);
+      setEquipmentPrefs(newPrefs);
+
+      // Don't wipe a workout the user is mid-typing on the Log tab just
+      // because an import happened — only reset the draft when it's still
+      // empty, and only on this success path. The imported equipment prefs
+      // simply won't apply until the *next* draft.
+      const draftHasData = draft.exercises.some(ex => hasEnteredData(ex.sets));
+      if (!draftHasData) setDraft(newSession(currentDay, newPrefs));
+
       setSaveStatus("saved");
       setStatusMsg(msg + (draftHasData ? " Your in-progress workout was kept." : ""));
-    } else {
-      // The write failed (quota, private-mode Safari, etc). Whatever was on
-      // disk before the import is untouched — do NOT claim success, or the
-      // user's next successful save (of much smaller in-memory data) will
-      // permanently overwrite that still-intact history.
-      setSaveStatus("error");
-      setStatusMsg("Import did NOT save (device storage may be full) — your previous data is still safely on disk. Free up space and try again before logging anything new.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+      return;
     }
+
+    // At least one write failed (quota, private-mode Safari, etc). React
+    // state is left untouched — but any of the three writes that DID land
+    // just pushed disk ahead of state, e.g. sessions saved before bodyweights
+    // failed. Left alone, that's a half-applied import sitting on disk, and
+    // the very next ordinary save (smaller payload, so it fits) would make it
+    // permanent even though the UI never claimed success. Roll those back to
+    // the pre-import snapshot so disk matches React state everywhere again.
+    const rollbackFailures = [];
+    if (sessionsOk && !writeSessions(prevSessions)) rollbackFailures.push("sessions");
+    if (weightsOk && !persistWeights(prevWeights)) rollbackFailures.push("weigh-ins");
+    if (prefsOk && !savePrefs(storage, activeProfile, prevPrefs)) rollbackFailures.push("equipment preferences");
+
+    setSaveStatus("error");
+    setStatusMsg(rollbackFailures.length === 0
+      ? "Import did NOT save (device storage may be full) — your previous data is still safely on disk. Free up space and try again before logging anything new."
+      : "Import failed AND couldn't fully undo the partial write (" + rollbackFailures.join(", ") + "). Your saved data may now be inconsistent — export immediately if you can, and check your history before logging anything new.");
     setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
   }
 

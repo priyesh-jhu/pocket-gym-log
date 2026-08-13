@@ -34,7 +34,10 @@ export default class ErrorBoundary extends Component {
   }
 
   static getDerivedStateFromError(error) {
-    return { error };
+    // A thrown falsy value (`throw null`, `throw undefined`) must still count
+    // as an error — otherwise `state.error` is falsy and render() below
+    // decides there's nothing wrong, re-rendering the tree that just threw.
+    return { error: error ?? new Error("Unknown error") };
   }
 
   componentDidCatch(error) {
