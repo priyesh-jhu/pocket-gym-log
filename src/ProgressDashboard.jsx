@@ -1,5 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, weekSummary, muscleBalance } from "./stats.js";
+import { trainingInsights } from "./trainingInsights.js";
 
 const GROUP_COLORS = {
   Chest: "#3B82F6",
@@ -40,6 +41,7 @@ export default function ProgressDashboard({ sessions }) {
   const balance = muscleBalance(list, 4);
   const calendar = activityCalendar(list, 12);
   const consistency = consistencySummary(list);
+  const insights = trainingInsights(list);
 
   const chartData = weeks.map(w => ({ label: w.label, volume: Math.round(toDisplay(w.volume, unit)) }));
 
@@ -99,6 +101,12 @@ export default function ProgressDashboard({ sessions }) {
             </BarChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      <div style={card}>
+        <div style={sectionLabel}>TRAINING INSIGHTS <span style={{color:"#444",fontWeight:500}}>(requires 3 sessions per exercise)</span></div>
+        {insights.length===0?<div style={{fontSize:12,color:"#555",padding:"5px 0"}}>No stalls or sustained declines detected. Keep logging to improve trend confidence.</div>:<div style={{display:"flex",flexDirection:"column",gap:8}}>{insights.map(item=><div key={item.type+item.name} style={{background:item.type==="deload"?"rgba(251,191,36,0.07)":"rgba(59,130,246,0.07)",border:"1px solid "+(item.type==="deload"?"#FBBF2430":"#3B82F630"),borderRadius:9,padding:"9px 10px"}}><div style={{fontSize:11,fontWeight:800,color:item.type==="deload"?"#FBBF24":"#60A5FA",marginBottom:3}}>{item.type==="deload"?"Recovery signal":"Possible plateau"} · {item.name}</div><div style={{fontSize:10,color:"#888",lineHeight:1.45}}>{item.message}</div></div>)}</div>}
+        <div style={{fontSize:9,color:"#444",marginTop:9}}>Guidance is trend-based, not medical advice. Pain or unusual fatigue should be assessed separately.</div>
       </div>
 
       <div style={card}>

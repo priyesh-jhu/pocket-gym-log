@@ -58,6 +58,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Workout summaries**: After saving, shows duration, exercises, sets, total volume, new PRs, improvements over the previous session, and notes
 - **Training consistency**: A 12-week activity calendar plus rolling 28-day adherence to the five-day plan
 - **Custom workouts**: Create reusable custom exercises, add them to any session, and save or apply account-scoped workout templates
+- **Training insights**: Conservatively flags three-session plateaus and sustained performance declines that may justify recovery or a deload
 
 ## Development
 
