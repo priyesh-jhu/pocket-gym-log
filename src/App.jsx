@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
-import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
+import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
-import ProgressDashboard from "./ProgressDashboard.jsx";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
@@ -14,6 +13,11 @@ import { getProgressionIncrements, getProgressionRecommendation, setProgressionI
 import { getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
+import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, removeGoal } from "./userFeatures.js";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
+
+const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -21,6 +25,7 @@ const WEIGHT_PREFIX   = "workout-bodyweight:";
 const TAB_KEY         = "workout-active-tab";
 const LEGACY_ACTIVE_KEY = "workout-active-profile";
 const LEGACY_OWNER_KEY = "workout-legacy-claimed-by";
+const REST_TIMER_PREFIX = "workout-rest-timer:";
 
 const storage = {
   get(key)        { try { return window.localStorage.getItem(key); }      catch { return null; } },
@@ -336,6 +341,11 @@ export default function App() {
   const [templateName, setTemplateName] = useState("");
   const [pendingTemplate, setPendingTemplate] = useState(null);
   const [workoutToolsMsg, setWorkoutToolsMsg] = useState(null);
+  const [readiness, setReadiness] = useState(()=>normalizeReadiness());
+  const [goalExercise, setGoalExercise] = useState("");
+  const [goalTarget, setGoalTarget] = useState("");
+  const [goalUnit, setGoalUnit] = useState("lb");
+  const [goalMsg, setGoalMsg] = useState(null);
 
   const [pendingImport, setPendingImport] = useState(null); // { sessions, bodyweights, equipmentPrefs, profile, skipped } | null
   const importInputRef = useRef(null);
@@ -385,6 +395,21 @@ export default function App() {
   }), []);
 
   // Rest timer
+  useEffect(()=>{
+    const timer=setTimeout(()=>{
+      const raw=storage.get(REST_TIMER_PREFIX+activeProfile);
+      if (!raw) return;
+      try { const saved=JSON.parse(raw),remaining=Math.ceil((saved.endAt-Date.now())/1000); if(remaining>0&&saved.target>0){setRestTarget(saved.target);setRestSeconds(Math.max(0,saved.target-remaining));setRestComplete(false);setRestRunning(true);} else storage.remove(REST_TIMER_PREFIX+activeProfile); } catch { storage.remove(REST_TIMER_PREFIX+activeProfile); }
+    },0);
+    return ()=>clearTimeout(timer);
+  },[activeProfile]);
+
+  useEffect(()=>{
+    const key=REST_TIMER_PREFIX+activeProfile;
+    if(restRunning) storage.set(key,JSON.stringify({target:restTarget,endAt:Date.now()+Math.max(0,restTarget-restSeconds)*1000}));
+    else if(restComplete) storage.remove(key);
+  },[activeProfile,restRunning,restComplete,restSeconds,restTarget]);
+
   useEffect(() => {
     if (!restRunning) return;
     const t = setInterval(() => setRestSeconds(s => {
@@ -392,6 +417,7 @@ export default function App() {
         setRestRunning(false);
         setRestComplete(true);
         if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([150,80,150]);
+        if (typeof Notification!=="undefined"&&Notification.permission==="granted") new Notification("Rest complete",{body:"Time for your next set."});
         return restTarget;
       }
       return s+1;
@@ -564,19 +590,31 @@ export default function App() {
   }
 
   function storeWorkoutTemplate() {
-    const result = saveWorkoutTemplate(equipmentPrefs,templateName,draft);
+    const result = saveWorkoutTemplate(equipmentPrefs,templateName,draft,{restSeconds:restTimerDefault});
     if (!result.ok) { setWorkoutToolsMsg(result.error); return; }
     saveAccountPrefs(result.prefs); setTemplateName(""); setWorkoutToolsMsg(`Saved template “${result.template.name}”.`);
   }
 
   function applySavedWorkoutTemplate(template) {
     setDraft(prev=>applyWorkoutTemplate(prev,template));
+    if(dayTemplates[template.day]) setCurrentDay(template.day);
+    setRestTarget(template.restSeconds||restTimerDefault); setRestSeconds(0); setRestRunning(false); setRestComplete(false);
     setPendingTemplate(null); setDraftSavedAt(null); setConfirmSwitch(null); setPlateFor(null); setWorkoutToolsMsg(`Applied “${template.name}”.`);
   }
 
   function removeDraftExercise(index) {
     if (draft.exercises.length<=1) return;
     setDraft(prev=>({...prev,exercises:prev.exercises.filter((_,i)=>i!==index)}));
+  }
+
+  function moveDraftExercise(index, direction) {
+    setDraft(prev=>{
+      const target=index+direction;
+      if (target<0||target>=prev.exercises.length) return prev;
+      const exercises=[...prev.exercises];
+      [exercises[index],exercises[target]]=[exercises[target],exercises[index]];
+      return {...prev,exercises};
+    });
   }
 
   function updateProgressionIncrement(unit, value) {
@@ -598,10 +636,30 @@ export default function App() {
   }
 
   function startRestTimer(seconds = restTimerDefault) {
+    if(typeof Notification!=="undefined"&&Notification.permission==="default") Notification.requestPermission().catch(()=>{});
     setRestTarget(seconds);
     setRestSeconds(0);
     setRestComplete(false);
     setRestRunning(true);
+    if(Capacitor.isNativePlatform()) LocalNotifications.requestPermissions().then(permission=>permission.display==="granted"&&LocalNotifications.schedule({notifications:[{id:90901,title:"Rest complete",body:"Time for your next set.",schedule:{at:new Date(Date.now()+seconds*1000)}}]})).catch(()=>{});
+  }
+
+  function addRestTime(seconds=30) {
+    setRestTarget(target=>target+seconds);
+    if(!restRunning){setRestComplete(false);setRestRunning(true);}
+    if(Capacitor.isNativePlatform()) LocalNotifications.cancel({notifications:[{id:90901}]}).then(()=>LocalNotifications.schedule({notifications:[{id:90901,title:"Rest complete",body:"Time for your next set.",schedule:{at:new Date(Date.now()+(Math.max(0,restTarget-restSeconds)+seconds)*1000)}}]})).catch(()=>{});
+  }
+
+  function stopRestTimer() {
+    setRestRunning(false);setRestComplete(false);setRestSeconds(0);
+    storage.remove(REST_TIMER_PREFIX+activeProfile);
+    if(Capacitor.isNativePlatform()) LocalNotifications.cancel({notifications:[{id:90901}]}).catch(()=>{});
+  }
+
+  function createTrainingGoal() {
+    const result=addGoal(equipmentPrefs,{exercise:goalExercise,target:goalTarget,unit:goalUnit});
+    if(!result.ok){setGoalMsg(result.error);return;}
+    saveAccountPrefs(result.prefs); setGoalTarget(""); setGoalMsg("Goal added.");
   }
 
   function updateSet(ei, si, field, val) {
@@ -609,9 +667,15 @@ export default function App() {
   }
 
   function toggleSetDone(ei, si) {
-    let nd = false;
-    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || new Date().toISOString(), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>{ if(j!==si)return s; nd=!s.done; return {...s,done:!s.done}; }) }) }));
-    if (nd) startRestTimer(getRestTimerSeconds(equipmentPrefs));
+    const selectedSet=draft.exercises[ei]?.sets[si];
+    const becomingDone=!selectedSet?.done;
+    if(becomingDone&&!isCompleteSet(selectedSet)) {
+      setSaveStatus("error"); setStatusMsg("Enter both weight and reps before completing a set.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500);
+      return;
+    }
+    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || new Date().toISOString(), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,done:becomingDone}) }) }));
+    if (becomingDone) startRestTimer(getRestTimerSeconds(equipmentPrefs));
   }
 
   function addSet(ei) {
@@ -623,13 +687,14 @@ export default function App() {
   }
 
   function cleanSession(s) {
-    return { ...s, exercises: s.exercises.map(ex=>({ ...ex, sets:ex.sets.filter(s=>String(s.weight).trim()!==""||String(s.reps).trim()!=="").map(({done,...r})=>r) })).filter(ex=>ex.sets.length>0) };
+    return { ...s, exercises: s.exercises.map(ex=>({ ...ex, sets:ex.sets.filter(isCompleteSet).map(({done,...r})=>r) })).filter(ex=>ex.sets.length>0) };
   }
 
   function saveSession() {
-    if (!draft.exercises.some(ex => hasEnteredData(ex.sets))) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
+    const cleaned=cleanSession(draft);
+    if (!cleaned.exercises.length) { setSaveStatus("error"); setStatusMsg("Enter both weight and reps for at least one set."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
     const completedAt = new Date().toISOString();
-    const saved = { ...cleanSession(draft), completedAt };
+    const saved = { ...cleaned, readiness:normalizeReadiness(readiness), completedAt };
     setWorkoutSummary(createWorkoutSummary(saved, sessions, completedAt));
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
@@ -799,6 +864,7 @@ export default function App() {
 
   const customExercises = getCustomExercises(equipmentPrefs);
   const workoutTemplates = getWorkoutTemplates(equipmentPrefs);
+  const trainingGoals = getGoals(equipmentPrefs);
   const allExNames = Array.from(new Set([...allVariantNames(),...customExercises.map(item=>item.name),...sessions.flatMap(session=>session.exercises.map(ex=>ex.name))])).sort();
   const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
@@ -960,7 +1026,7 @@ export default function App() {
               </div>
               <div style={{display:"flex",gap:5,alignItems:"center"}}>
                 {REST_TIMER_OPTIONS.map(value=><button key={value} onClick={()=>startRestTimer(value)} aria-label={`Start a ${value} second rest timer`} style={{background:restTarget===value&&restRunning?dayMeta.color:"#161723",border:"1px solid "+(restTarget===value&&restRunning?dayMeta.color:"#2A2A3A"),borderRadius:7,padding:"6px 9px",color:restTarget===value&&restRunning?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}s</button>)}
-                {(restRunning||restComplete)&&<button onClick={()=>{setRestRunning(false);setRestComplete(false);setRestSeconds(0);}} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",padding:"0 3px"}} aria-label="Stop rest timer">×</button>}
+                {(restRunning||restComplete)&&<button onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",padding:"0 3px"}} aria-label="Stop rest timer">×</button>}
               </div>
             </div>
 
@@ -1003,7 +1069,7 @@ export default function App() {
                       <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
                       {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
                     </button>
-                    <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
+                    <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
                   </div>
 
                   {variants.length>1&&(
@@ -1060,8 +1126,8 @@ export default function App() {
                     return (
                       <div key={si} style={{position:"relative",marginBottom:8}}>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                          <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1} and ${set.done?"do not start":"start"} rest timer`} title="Check off set and start rest timer" style={{width:22,height:22,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"transparent",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
-                            {set.done?"✓":(si+1)}
+                          <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1}${set.done?"":" and start rest timer"}`} title={set.done?"Mark this set incomplete":"Mark this set done and start the rest timer"} style={{width:58,height:28,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"#161723",color:set.done?"#fff":"#9CA3AF",fontSize:10,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                            {set.done?"✓ Done":`Set ${si+1}`}
                           </button>
                           <input type="number" inputMode="decimal" placeholder="Weight" value={set.weight} onChange={e=>updateSet(ei,si,"weight",e.target.value)}
                             style={{flex:1,background:"#161723",border:"1px solid "+(isPR?"#FBBF24":"#1E2035"),borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
@@ -1114,6 +1180,12 @@ export default function App() {
                 {workoutTemplates.map(template=><div key={template.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"7px 0",borderTop:"1px solid #16172A"}}><div><div style={{fontSize:11,fontWeight:700}}>{template.name}</div><div style={{fontSize:9,color:"#555"}}>{template.exercises.length} exercise{template.exercises.length!==1?"s":""}</div></div>{pendingTemplate?.id===template.id?<div style={{display:"flex",gap:5,alignItems:"center"}}><span style={{fontSize:9,color:"#FBBF24"}}>Replace current draft?</span><button onClick={()=>applySavedWorkoutTemplate(template)} style={{background:"#3B82F6",border:"none",borderRadius:6,padding:"4px 8px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer"}}>Apply</button><button onClick={()=>setPendingTemplate(null)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#777",fontSize:9,cursor:"pointer"}}>Cancel</button></div>:<button onClick={()=>draftHasContent(draft)?setPendingTemplate(template):applySavedWorkoutTemplate(template)} style={{background:"none",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 9px",color:"#777",fontSize:9,fontWeight:700,cursor:"pointer"}}>Use template</button>}</div>)}
               </div>
               {workoutToolsMsg&&<div style={{fontSize:10,color:workoutToolsMsg.includes("exists")||workoutToolsMsg.startsWith("Enter")?"#F87171":"#4ADE80",marginTop:8}}>{workoutToolsMsg}</div>}
+            </div>
+
+            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}><div><div style={{fontSize:12,color:"#9CA3AF",fontWeight:800}}>READINESS CHECK-IN</div><div style={{fontSize:9,color:"#555"}}>Optional · saved with this workout</div></div><div style={{fontSize:16,fontWeight:900,color:readinessScore(readiness)>=70?"#22C55E":readinessScore(readiness)>=50?"#F59E0B":"#F87171"}}>{readinessScore(readiness)}%</div></div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7}}>{[["energy","Energy"],["sleep","Sleep"],["soreness","Soreness"]].map(([key,label])=><label key={key} style={{fontSize:9,color:"#666"}}>{label}<select value={readiness[key]} onChange={event=>setReadiness(value=>({...value,[key]:Number(event.target.value)}))} style={{display:"block",width:"100%",marginTop:3,background:"#161723",border:"1px solid #2A2A3A",borderRadius:6,padding:"5px",color:"#9CA3AF",fontSize:10}}>{[1,2,3,4,5].map(value=><option key={value} value={value}>{value}/5</option>)}</select></label>)}</div>
+              <label style={{display:"flex",gap:7,alignItems:"center",fontSize:10,color:readiness.pain?"#F87171":"#666",marginTop:9}}><input type="checkbox" checked={readiness.pain} onChange={event=>setReadiness(value=>({...value,pain:event.target.checked}))}/> Pain or unusual discomfort today</label>
             </div>
 
             <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
@@ -1193,7 +1265,7 @@ export default function App() {
             {sessions.length===0
               ? <div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>Log a few sessions first to see progress charts.</div>
               : <>
-                  <ProgressDashboard sessions={sessions}/>
+                  <Suspense fallback={<div style={{padding:24,textAlign:"center",color:"#666",fontSize:12}}>Loading training analytics…</div>}><ProgressDashboard sessions={sessions}/></Suspense>
                   <div style={{marginBottom:16}}>
                     <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Select an exercise</div>
                     <select value={progressExercise||""} onChange={e=>setProgressExercise(e.target.value)}
@@ -1302,6 +1374,13 @@ export default function App() {
                 </div>
               </div>
             </div>
+            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Strength goals</div>
+              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}}>Set a target weight for any exercise. Progress updates from saved sessions.</div>
+              <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 60px auto",gap:6}}><select value={goalExercise} onChange={event=>setGoalExercise(event.target.value)} style={{minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px",color:"#9CA3AF",fontSize:10}}><option value="">Exercise…</option>{allExNames.map(name=><option key={name}>{name}</option>)}</select><input type="number" placeholder="Target" value={goalTarget} onChange={event=>setGoalTarget(event.target.value)} style={{minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px",color:"#E5E7EB",fontSize:10}}/><select value={goalUnit} onChange={event=>setGoalUnit(event.target.value)} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,color:"#9CA3AF",fontSize:10}}><option>lb</option><option>kg</option></select><button onClick={createTrainingGoal} style={{background:"#3B82F6",border:"none",borderRadius:7,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer"}}>Add</button></div>
+              {goalMsg&&<div style={{fontSize:9,color:goalMsg==="Goal added."?"#4ADE80":"#F87171",marginTop:6}}>{goalMsg}</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:trainingGoals.length?10:0}}>{trainingGoals.map(goal=>{const progress=goalProgress(goal,sessions);return <div key={goal.id} style={{borderTop:"1px solid #1A1A28",paddingTop:7}}><div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4,gap:6}}><span style={{fontWeight:700,color:progress.complete?"#4ADE80":"#D4D4D8"}}>{progress.complete?"✓ ":""}{goal.exercise}</span><span style={{color:"#777",marginLeft:"auto"}}>{progress.best}/{goal.target} {goal.unit} · {progress.pct}%</span><button onClick={()=>saveAccountPrefs(removeGoal(equipmentPrefs,goal.id))} aria-label={`Remove ${goal.exercise} goal`} style={{background:"none",border:"none",color:"#666",cursor:"pointer",padding:0}}>×</button></div><div style={{height:5,background:"#161723",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:progress.pct+"%",background:progress.complete?"#22C55E":"#3B82F6"}}/></div></div>;})}</div>
+            </div>
           </div>
         )}
 
@@ -1314,8 +1393,9 @@ export default function App() {
           <div style={{fontSize:22,fontWeight:900,color:restComplete?"#34D399":dayMeta.color,fontVariantNumeric:"tabular-nums",minWidth:56,textAlign:"center"}}>{fmtRest(Math.max(0,restTarget-restSeconds))}</div>
           <div style={{display:"flex",gap:4}}>
             {REST_TIMER_OPTIONS.map(t=><button key={t} onClick={()=>{setRestTarget(t);setRestSeconds(0);setRestComplete(false);setRestRunning(true);}} style={{background:restTarget===t&&!restComplete?dayMeta.color:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:restTarget===t&&!restComplete?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t}s</button>)}
+            <button onClick={()=>addRestTime(30)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#9CA3AF",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+30s</button>
           </div>
-          <button onClick={()=>{setRestRunning(false);setRestComplete(false);setRestSeconds(0);}} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}>×</button>
+          <button onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}>×</button>
         </div>
       )}
 

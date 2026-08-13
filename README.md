@@ -74,13 +74,16 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Progress charts**: Per-exercise history and trends
 - **Bodyweight logging**: With 7-day trend line
 - **Plate calculator**: Quick load planning
-- **Rest timer**: Starts when a set is completed, with an account-scoped 60/90/120-second default and completion vibration on supported phones
+- **Rest timer**: Starts when a set is completed, survives refresh/backgrounding, supports `+30s`, and uses vibration, web notifications, or Android local notifications when available
 - **Draft recovery**: In-progress workouts autosave per account and recover after refreshes or crashes
 - **Progressive overload guidance**: Uses the most recent working sets and the exercise's rep target to suggest increasing, repeating, or slightly reducing weight; configurable lb/kg increments are saved per account and weights are never changed automatically
 - **Workout summaries**: After saving, shows duration, exercises, sets, total volume, new PRs, improvements over the previous session, and notes
-- **Training consistency**: A 12-week activity calendar plus rolling 28-day adherence to the five-day plan
-- **Custom workouts**: Create reusable custom exercises, add them to any session, and save or apply account-scoped workout templates
-- **Training insights**: Conservatively flags three-session plateaus and sustained performance declines that may justify recovery or a deload
+- **Training consistency**: A navigable activity calendar with clickable workout details plus rolling 28-day adherence to the five-day plan
+- **Custom workouts**: Create reusable custom exercises, reorder them, and save account-scoped templates with set counts, targets, equipment, day, and rest defaults
+- **Training insights**: Conservatively flags three-session plateaus and sustained declines, showing the supporting e1RM values and a practical next step
+- **Training analytics**: Browse older periods and chart 4/12/26/52 weeks by exercise, volume, max weight, estimated 1RM, or frequency
+- **Readiness check-ins**: Optionally save energy, sleep, soreness, and pain context with each workout
+- **Strength goals**: Track account-scoped exercise targets with progress bars and completion states
 - **Offline PWA**: Registered app-shell caching, valid install icons, connection status, install prompting, and user-controlled safe updates
 
 ## Development

@@ -4,6 +4,7 @@ import { prefFor } from "./equipmentPrefs.js";
 import { todayISO } from "./dateUtils.js";
 
 const filled = s => String(s.weight ?? "").trim() !== "" || String(s.reps ?? "").trim() !== "";
+export const isCompleteSet = s => String(s?.weight ?? "").trim() !== "" && String(s?.reps ?? "").trim() !== "";
 
 export function emptySets() { return [{ weight:"", reps:"", unit:"lb", done:false }]; }
 

@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
+import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { dayTemplates, variantFor } from "./data/exercises.js";
 
 describe("draft construction", () => {
@@ -27,6 +27,12 @@ describe("draft construction", () => {
   test("hasEnteredData is true when either weight or reps is filled", () => {
     assert.equal(hasEnteredData([{ weight: "135", reps: "", unit: "lb" }]), true);
     assert.equal(hasEnteredData([{ weight: "", reps: "8", unit: "lb" }]), true);
+  });
+
+  test("a savable set requires both weight and reps", () => {
+    assert.equal(isCompleteSet({weight:"100",reps:""}),false);
+    assert.equal(isCompleteSet({weight:"",reps:"10"}),false);
+    assert.equal(isCompleteSet({weight:"100",reps:"10"}),true);
   });
 
   test("hasEnteredData ignores a ticked done flag with no numbers", () => {

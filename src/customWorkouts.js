@@ -34,24 +34,26 @@ export function getWorkoutTemplates(prefs) {
   const raw = prefs?.[WORKOUT_TEMPLATES_KEY];
   if (!Array.isArray(raw)) return [];
   return raw.filter(item => item && text(item.name) && Array.isArray(item.exercises) && item.exercises.length>0)
-    .map(item => ({ id:text(item.id), name:text(item.name), exercises:item.exercises.filter(ex=>ex&&text(ex.name)).map(ex=>({name:text(ex.name),equipment:["free","machine","custom"].includes(ex.equipment)?ex.equipment:"custom",target:text(ex.target)||"3 x 8-12",tip:text(ex.tip,160)})) }));
+    .map(item => ({ id:text(item.id), name:text(item.name), day:text(item.day), restSeconds:[60,90,120].includes(item.restSeconds)?item.restSeconds:90, exercises:item.exercises.filter(ex=>ex&&text(ex.name)).map(ex=>({name:text(ex.name),equipment:["free","machine","custom"].includes(ex.equipment)?ex.equipment:"custom",target:text(ex.target)||"3 x 8-12",tip:text(ex.tip,160),setCount:Math.max(1,Math.min(10,Number(ex.setCount)||1))})) }));
 }
 
-export function saveWorkoutTemplate(prefs, name, draft, now=Date.now()) {
+export function saveWorkoutTemplate(prefs, name, draft, nowOrDefaults=Date.now(), defaults={}) {
+  const now=typeof nowOrDefaults==="number"?nowOrDefaults:Date.now();
+  if(nowOrDefaults&&typeof nowOrDefaults==="object") defaults=nowOrDefaults;
   const cleanName = text(name);
   if (!cleanName) return { ok:false, error:"Enter a template name.", prefs:{...(prefs||{})} };
   const exercises = (draft?.exercises||[]).map(ex => {
     const family = exerciseForVariantName(ex.name);
     const variant = family ? variantFor(family, ex.equipment) : null;
-    return { name:ex.name, equipment:ex.equipment, target:ex.target||variant?.target||"3 x 8-12", tip:ex.tip||variant?.tip||"" };
+    return { name:ex.name, equipment:ex.equipment, target:ex.target||variant?.target||"3 x 8-12", tip:ex.tip||variant?.tip||"", setCount:Math.max(1,Math.min(10,ex.sets?.length||1)) };
   });
   if (!exercises.length) return { ok:false, error:"Add at least one exercise first.", prefs:{...(prefs||{})} };
   const existing = getWorkoutTemplates(prefs).filter(item => item.name.toLowerCase() !== cleanName.toLowerCase());
-  const template = { id:`template-${now}`, name:cleanName, exercises };
+  const template = { id:`template-${now}`, name:cleanName, day:draft?.day||"", restSeconds:[60,90,120].includes(defaults.restSeconds)?defaults.restSeconds:90, exercises };
   return { ok:true, template, prefs:{...(prefs||{}),[WORKOUT_TEMPLATES_KEY]:[...existing,template]} };
 }
 
 export function applyWorkoutTemplate(draft, template) {
   if (!draft || !template?.exercises?.length) return draft;
-  return { ...draft, startedAt:null, notes:"", exercises:template.exercises.map(ex=>({ ...ex, sets:[{weight:"",reps:"",unit:"lb",done:false}] })) };
+  return { ...draft, day:template.day||draft.day, startedAt:null, notes:"", exercises:template.exercises.map(ex=>({ ...ex, sets:Array.from({length:ex.setCount||1},()=>({weight:"",reps:"",unit:"lb",done:false})) })) };
 }

@@ -27,13 +27,14 @@ export function trainingInsights(sessions, limit=5) {
     const recent=entries.slice(-3), [first,middle,last]=recent;
     const change=(last.score-first.score)/first.score;
     const declining=middle.score<first.score && last.score<middle.score && change<=-0.05;
+    const evidence=recent.map(item=>({date:item.date,estimated1RMlb:Math.round(item.score)}));
     if (declining) {
-      insights.push({type:"deload",name,date:last.date,message:"Performance declined in 3 straight sessions. Consider one lighter week at roughly 10–15% less load."});
+      insights.push({type:"deload",name,date:last.date,evidence,changePct:Math.round(change*100),action:"Use 10–15% less load for one week",message:"Performance declined in 3 straight sessions. Consider one lighter week at roughly 10–15% less load."});
       continue;
     }
     const peak=Math.max(...recent.map(item=>item.score));
     const floor=Math.min(...recent.map(item=>item.score));
-    if ((peak-floor)/peak<=0.01) insights.push({type:"stall",name,date:last.date,message:"Performance has been flat for 3 sessions. Try a small rep/load change or an extra recovery day."});
+    if ((peak-floor)/peak<=0.01) insights.push({type:"stall",name,date:last.date,evidence,changePct:Math.round(change*100),action:"Change reps/load slightly or add recovery",message:"Performance has been flat for 3 sessions. Try a small rep/load change or an extra recovery day."});
   }
   return insights.sort((a,b)=>String(b.date).localeCompare(String(a.date)) || (a.type==="deload"?-1:1)).slice(0,limit);
 }
