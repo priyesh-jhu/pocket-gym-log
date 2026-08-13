@@ -597,6 +597,13 @@ export default function App() {
     if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
   }
 
+  function startRestTimer(seconds = restTimerDefault) {
+    setRestTarget(seconds);
+    setRestSeconds(0);
+    setRestComplete(false);
+    setRestRunning(true);
+  }
+
   function updateSet(ei, si, field, val) {
     setDraft(prev => ({ ...prev, startedAt:prev.startedAt || (String(val).trim()!=="" ? new Date().toISOString() : null), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
   }
@@ -604,7 +611,7 @@ export default function App() {
   function toggleSetDone(ei, si) {
     let nd = false;
     setDraft(prev => ({ ...prev, startedAt:prev.startedAt || new Date().toISOString(), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>{ if(j!==si)return s; nd=!s.done; return {...s,done:!s.done}; }) }) }));
-    if (nd) { setRestTarget(getRestTimerSeconds(equipmentPrefs)); setRestSeconds(0); setRestComplete(false); setRestRunning(true); }
+    if (nd) startRestTimer(getRestTimerSeconds(equipmentPrefs));
   }
 
   function addSet(ei) {
@@ -945,6 +952,18 @@ export default function App() {
               <input type="date" value={draft.date} onChange={e=>setDraft(p=>({...p,date:e.target.value}))} style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"6px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit"}}/>
             </div>
 
+            {/* Rest timer controls are always visible during a workout. */}
+            <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"30",borderRadius:12,padding:"11px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:800,color:dayMeta.color}}>⏱ Rest timer</div>
+                <div style={{fontSize:10,color:"#666",marginTop:2}}>{restRunning?`${fmtRest(Math.max(0,restTarget-restSeconds))} remaining`:restComplete?"Rest complete":"Starts automatically when you check off a set"}</div>
+              </div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                {REST_TIMER_OPTIONS.map(value=><button key={value} onClick={()=>startRestTimer(value)} aria-label={`Start a ${value} second rest timer`} style={{background:restTarget===value&&restRunning?dayMeta.color:"#161723",border:"1px solid "+(restTarget===value&&restRunning?dayMeta.color:"#2A2A3A"),borderRadius:7,padding:"6px 9px",color:restTarget===value&&restRunning?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}s</button>)}
+                {(restRunning||restComplete)&&<button onClick={()=>{setRestRunning(false);setRestComplete(false);setRestSeconds(0);}} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",padding:"0 3px"}} aria-label="Stop rest timer">×</button>}
+              </div>
+            </div>
+
             {/* Warm-up */}
             {dayMeta.warmup&&(
               <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
@@ -1041,7 +1060,7 @@ export default function App() {
                     return (
                       <div key={si} style={{position:"relative",marginBottom:8}}>
                         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                          <button onClick={()=>toggleSetDone(ei,si)} style={{width:22,height:22,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"transparent",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
+                          <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1} and ${set.done?"do not start":"start"} rest timer`} title="Check off set and start rest timer" style={{width:22,height:22,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"transparent",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
                             {set.done?"✓":(si+1)}
                           </button>
                           <input type="number" inputMode="decimal" placeholder="Weight" value={set.weight} onChange={e=>updateSet(ei,si,"weight",e.target.value)}

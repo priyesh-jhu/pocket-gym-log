@@ -79,10 +79,13 @@ export default function ProgressDashboard({ sessions }) {
             <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:consistency.goalPct>=80?"#22C55E":consistency.goalPct>=50?"#F59E0B":"#9CA3AF"}}>{consistency.goalPct}%</div><div style={{fontSize:9,color:"#555"}}>5-day goal</div></div>
           </div>
         </div>
+        <div style={{fontSize:9,color:"#555",marginBottom:7}}>Swipe or scroll sideways to view all 12 weeks →</div>
         <div style={{display:"grid",gridTemplateColumns:"18px minmax(0,1fr)",gap:6,alignItems:"stretch"}}>
           <div style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4,fontSize:8,color:"#555",textAlign:"right",alignItems:"center"}}>{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
-          <div style={{display:"grid",gridTemplateColumns:`repeat(${calendar.length},minmax(8px,1fr))`,gap:4}}>
-            {calendar.map((week,wi)=><div key={wi} style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4}}>{week.map(day=><div key={day.date} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} style={{aspectRatio:"1",minHeight:8,borderRadius:3,background:day.future?"#0B0C13":day.count>1?"#2563EB":day.count===1?"#3B82F6":"#171824",border:"1px solid "+(day.count?"#60A5FA30":"#1E203520"),opacity:day.future?0.35:1}} />)}</div>)}
+          <div tabIndex="0" aria-label="12-week training calendar. Scroll horizontally to see every week." style={{overflowX:"auto",overscrollBehaviorX:"contain",WebkitOverflowScrolling:"touch",paddingBottom:7,cursor:"ew-resize"}}>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${calendar.length},24px)`,gap:5,minWidth:"max-content"}}>
+              {calendar.map((week,wi)=><div key={wi} style={{display:"grid",gridTemplateRows:"repeat(7,20px)",gap:4}}>{week.map(day=><div key={day.date} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} style={{width:20,height:20,borderRadius:3,background:day.future?"#0B0C13":day.count>1?"#2563EB":day.count===1?"#3B82F6":"#171824",border:"1px solid "+(day.count?"#60A5FA30":"#1E203520"),opacity:day.future?0.35:1}} />)}</div>)}
+            </div>
           </div>
         </div>
         <div style={{height:5,borderRadius:4,background:"#161723",overflow:"hidden",marginTop:12}}><div style={{height:"100%",width:consistency.goalPct+"%",background:consistency.goalPct>=80?"#22C55E":"#3B82F6",borderRadius:4}} /></div>
