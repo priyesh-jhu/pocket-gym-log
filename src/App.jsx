@@ -11,6 +11,7 @@ import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loa
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
+import { getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -313,6 +314,7 @@ export default function App() {
   const [restSeconds, setRestSeconds] = useState(0);
   const [restRunning, setRestRunning] = useState(false);
   const [restTarget, setRestTarget] = useState(90);
+  const [restComplete, setRestComplete] = useState(false);
 
   const [bodyweights, setBodyweights] = useState([]);
   const [weightInput, setWeightInput] = useState("");
@@ -376,7 +378,15 @@ export default function App() {
   // Rest timer
   useEffect(() => {
     if (!restRunning) return;
-    const t = setInterval(() => setRestSeconds(s => { if (s+1>=restTarget){setRestRunning(false);return restTarget;} return s+1; }), 1000);
+    const t = setInterval(() => setRestSeconds(s => {
+      if (s+1>=restTarget) {
+        setRestRunning(false);
+        setRestComplete(true);
+        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([150,80,150]);
+        return restTarget;
+      }
+      return s+1;
+    }), 1000);
     return () => clearInterval(t);
   }, [restRunning, restTarget]);
 
@@ -529,6 +539,17 @@ export default function App() {
     if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
   }
 
+  function updateRestTimerDefault(seconds) {
+    const updated = setRestTimerSeconds(equipmentPrefs, seconds);
+    setEquipmentPrefs(updated);
+    savePrefs(storage, activeProfile, updated);
+    setRestTarget(getRestTimerSeconds(updated));
+    setRestSeconds(0);
+    setRestRunning(false);
+    setRestComplete(false);
+    if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
+  }
+
   function updateSet(ei, si, field, val) {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
   }
@@ -536,7 +557,7 @@ export default function App() {
   function toggleSetDone(ei, si) {
     let nd = false;
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>{ if(j!==si)return s; nd=!s.done; return {...s,done:!s.done}; }) }) }));
-    if (nd) { setRestSeconds(0); setRestRunning(true); }
+    if (nd) { setRestTarget(getRestTimerSeconds(equipmentPrefs)); setRestSeconds(0); setRestComplete(false); setRestRunning(true); }
   }
 
   function addSet(ei) {
@@ -557,7 +578,7 @@ export default function App() {
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
-    setDraft(newSession(currentDay, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setRestRunning(false); setRestSeconds(0);
+    setDraft(newSession(currentDay, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setRestRunning(false); setRestComplete(false); setRestSeconds(0);
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
@@ -725,6 +746,7 @@ export default function App() {
   const dayMeta = dayTemplates[currentDay];
   const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(s=>String(s.weight).trim()!==""&&String(s.reps).trim()!=="").length,0);
   const progressionIncrements = getProgressionIncrements(equipmentPrefs);
+  const restTimerDefault = getRestTimerSeconds(equipmentPrefs);
 
   if (loading) return (
     <div style={{background:"#08090E",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#666",fontFamily:"sans-serif"}}>
@@ -1166,20 +1188,30 @@ export default function App() {
                 </div>
               ))}
             </div>
+            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Rest timer</div>
+              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:14}}>The timer starts automatically whenever you check off a set. A supported phone will vibrate when rest is complete.</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,paddingTop:10,borderTop:"1px solid #16172A"}}>
+                <div><div style={{fontSize:12,fontWeight:700}}>Default duration</div><div style={{fontSize:10,color:"#555"}}>{restTimerDefault} seconds after each set</div></div>
+                <div style={{display:"flex",gap:5}}>
+                  {REST_TIMER_OPTIONS.map(value=><button key={value} onClick={()=>updateRestTimerDefault(value)} style={{background:restTimerDefault===value?"#3B82F6":"#161723",border:"1px solid "+(restTimerDefault===value?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"6px 10px",color:restTimerDefault===value?"#fff":"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}s</button>)}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
       </div>
 
       {/* Rest timer */}
-      {restRunning&&(
-        <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#13141F",border:"1px solid "+dayMeta.color+"40",borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.5)",zIndex:50}}>
-          <div style={{fontSize:11,color:"#888",fontWeight:700}}>REST</div>
-          <div style={{fontSize:22,fontWeight:900,color:dayMeta.color,fontVariantNumeric:"tabular-nums",minWidth:56,textAlign:"center"}}>{fmtRest(restTarget-restSeconds)}</div>
+      {(restRunning||restComplete)&&(
+        <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#13141F",border:"1px solid "+(restComplete?"#34D39970":dayMeta.color+"40"),borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.5)",zIndex:50}}>
+          <div style={{fontSize:11,color:restComplete?"#34D399":"#888",fontWeight:700}}>{restComplete?"REST COMPLETE":"REST"}</div>
+          <div style={{fontSize:22,fontWeight:900,color:restComplete?"#34D399":dayMeta.color,fontVariantNumeric:"tabular-nums",minWidth:56,textAlign:"center"}}>{fmtRest(Math.max(0,restTarget-restSeconds))}</div>
           <div style={{display:"flex",gap:4}}>
-            {[60,90,120].map(t=><button key={t} onClick={()=>{setRestTarget(t);setRestSeconds(0);}} style={{background:restTarget===t?dayMeta.color:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:restTarget===t?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t}s</button>)}
+            {REST_TIMER_OPTIONS.map(t=><button key={t} onClick={()=>{setRestTarget(t);setRestSeconds(0);setRestComplete(false);setRestRunning(true);}} style={{background:restTarget===t&&!restComplete?dayMeta.color:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:restTarget===t&&!restComplete?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t}s</button>)}
           </div>
-          <button onClick={()=>{setRestRunning(false);setRestSeconds(0);}} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}>×</button>
+          <button onClick={()=>{setRestRunning(false);setRestComplete(false);setRestSeconds(0);}} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}>×</button>
         </div>
       )}
 
