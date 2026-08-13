@@ -4,7 +4,7 @@ import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
-import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
+import { loadPrefs, savePrefs, setPref, EQUIPMENT_PREFIX } from "./equipmentPrefs.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -368,6 +368,8 @@ export default function App() {
     setProfiles(updated);
     storage.set(PROFILES_KEY, JSON.stringify(updated));
     storage.set(sessionKey(name), JSON.stringify([]));
+    storage.remove(EQUIPMENT_PREFIX + name);
+    storage.remove(weightKey(name));
     setNewProfileName("");
     switchProfile(name);
   }
@@ -375,6 +377,8 @@ export default function App() {
   function deleteProfile(user) {
     const rem = profiles.filter(p => p !== user);
     storage.remove(sessionKey(user));
+    storage.remove(EQUIPMENT_PREFIX + user);
+    storage.remove(weightKey(user));
     const list = rem.length > 0 ? rem : ["default"];
     if (rem.length === 0) storage.set(sessionKey("default"), JSON.stringify([]));
     setProfiles(list); storage.set(PROFILES_KEY, JSON.stringify(list));
