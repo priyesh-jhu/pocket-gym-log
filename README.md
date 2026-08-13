@@ -96,6 +96,16 @@ npm run test:tz    # Test timezone behavior
 npm run lint       # ESLint check
 ```
 
+## Releases and app version
+
+The displayed app version comes directly from `package.json` and appears in the footer of every build. Before publishing a release, increment it using semantic versioning:
+
+```bash
+npm version patch --no-git-tag-version  # 1.0.0 → 1.0.1
+```
+
+Use `minor` for a backward-compatible feature release and `major` for a breaking release. The footer and service-worker cache both read this package version automatically, so the normal test, build, commit, push, and deploy sequence will publish the same version everywhere.
+
 `npm run lint` currently exits non-zero: it reports 5 known pre-existing errors in `src/App.jsx` that are not being fixed.
 
 ## Dates & Timezones

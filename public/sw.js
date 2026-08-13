@@ -1,9 +1,11 @@
 // Service worker for the Workout Tracker PWA.
 // Strategy: network-first for navigation (so updates land when online),
 // cache-first for static assets (so the app opens instantly & offline).
-// Bump CACHE_VERSION whenever you deploy a new build to force a refresh.
+// The registration URL includes package.json's version, so every version bump
+// gets a fresh cache without requiring a second manual version edit here.
 
-const CACHE_VERSION = "workout-tracker-v2";
+const RELEASE_VERSION = new URL(self.location.href).searchParams.get("v") || "development";
+const CACHE_VERSION = `workout-tracker-${RELEASE_VERSION}`;
 const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {

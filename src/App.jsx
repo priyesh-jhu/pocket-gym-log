@@ -16,6 +16,7 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, removeGoal } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import packageInfo from "../package.json";
 
 const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
 
@@ -1385,6 +1386,10 @@ export default function App() {
         )}
 
       </div>
+
+      <footer style={{maxWidth:720,margin:"18px auto 0",padding:"16px 20px 22px",borderTop:"1px solid #12131E",textAlign:"center",fontSize:9,color:"#414354",letterSpacing:"0.08em"}}>
+        POCKET GYM LOG · v{packageInfo.version}
+      </footer>
 
       {/* Rest timer */}
       {(restRunning||restComplete)&&(
