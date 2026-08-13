@@ -37,6 +37,8 @@ npm run test:tz    # Test timezone behavior
 npm run lint       # ESLint check
 ```
 
+`npm run lint` currently exits non-zero: it reports 6 known pre-existing errors in `src/App.jsx` that are not being fixed.
+
 ## Dates & Timezones
 
 Dates are **calendar dates in your LOCAL timezone**. The only place that should build them is `src/dateUtils.js`—never use `toISOString()` for a training date. This was the root cause of past bugs where evening sessions got saved a day ahead.
