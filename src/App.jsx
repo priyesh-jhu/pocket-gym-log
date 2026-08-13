@@ -4,7 +4,7 @@ import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
-import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
+import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
@@ -581,6 +581,17 @@ export default function App() {
     saveAccountPrefs(result.prefs);
     setDraft(prev=>addExerciseToDraft(prev,result.exercise));
     setNewExerciseName(""); setNewExerciseTarget("3 x 8-12"); setWorkoutToolsMsg(`Added ${result.exercise.name}.`);
+  }
+
+  function addDashboardExercise(name) {
+    const family=exerciseForVariantName(name);
+    if(!family) { setSaveStatus("error"); setStatusMsg("That exercise is not available in the built-in workout plan."); return; }
+    const variant=family.variants.find(item=>item.name===name)||variantFor(family,prefFor(equipmentPrefs,family.variants[0].name));
+    setDraft(previous=>previous.exercises.some(exercise=>family.variants.some(item=>item.name===exercise.name))
+      ? previous
+      : {...previous,exercises:[...previous.exercises,buildDraftExercise(variant)]});
+    switchTab("log");
+    setWorkoutToolsMsg(`${variant.name} added to your current workout.`);
   }
 
   function addSavedCustomExercise() {
@@ -1266,7 +1277,7 @@ export default function App() {
             {sessions.length===0
               ? <div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>Log a few sessions first to see progress charts.</div>
               : <>
-                  <Suspense fallback={<div style={{padding:24,textAlign:"center",color:"#666",fontSize:12}}>Loading training analytics…</div>}><ProgressDashboard sessions={sessions}/></Suspense>
+                  <Suspense fallback={<div style={{padding:24,textAlign:"center",color:"#666",fontSize:12}}>Loading training analytics…</div>}><ProgressDashboard sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/></Suspense>
                   <div style={{marginBottom:16}}>
                     <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Select an exercise</div>
                     <select value={progressExercise||""} onChange={e=>setProgressExercise(e.target.value)}

@@ -81,6 +81,11 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Training consistency**: A navigable activity calendar with clickable workout details plus rolling 28-day adherence to the five-day plan
 - **Custom workouts**: Create reusable custom exercises, reorder them, and save account-scoped templates with set counts, targets, equipment, day, and rest defaults
 - **Training insights**: Conservatively flags three-session plateaus and sustained declines, showing the supporting e1RM values and a practical next step
+- **Muscle coverage gaps**: Flags major muscle groups trained in one or fewer of the last four completed weeks, without penalizing the current partial week
+- **Body muscle heatmap**: Front-and-back muscle coverage map with rolling week and month views, an explicit list of missed muscles, and guide-backed exercise suggestions to fill the gaps
+- **Dashboard planning**: Shared week/month/three-month ranges, estimated set-volume mode, weekly muscle targets, last-trained history, and a focused daily-priority list
+- **Actionable recommendations**: Exercise suggestions account for recent exercise selection, equipment habits, and readiness warnings, and can be added directly to the current workout
+- **Custom dashboard**: Reorder, show, or hide analytics cards; settings follow the signed-in account through the existing Firestore settings sync
 - **Training analytics**: Browse older periods and chart 4/12/26/52 weeks by exercise, volume, max weight, estimated 1RM, or frequency
 - **Readiness check-ins**: Optionally save energy, sleep, soreness, and pain context with each workout
 - **Strength goals**: Track account-scoped exercise targets with progress bars and completion states

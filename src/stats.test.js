@@ -1,8 +1,9 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
+import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, muscleBalance, activityCalendar, consistencySummary,
+  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -140,5 +141,89 @@ describe("activity calendar and consistency", () => {
   test("consistency cannot exceed 100 percent", () => {
     const sessions = Array.from({length:28}, (_,i) => mkSession(addDaysISO("2026-07-17", i), []));
     assert.equal(consistencySummary(sessions, "2026-08-13").goalPct, 100);
+  });
+});
+
+describe("muscle coverage gaps",()=>{
+  test("flags groups trained in one or fewer of four completed weeks",()=>{
+    const sessions=[
+      mkSession("2026-08-03",[{name:"Incline DB Press",sets:[mkSet("50","10")]}]),
+      mkSession("2026-07-27",[{name:"Incline DB Press",sets:[mkSet("50","10")]}]),
+      mkSession("2026-07-20",[{name:"Conventional Deadlift",sets:[mkSet("100","5")]}]),
+    ];
+    const gaps=muscleCoverageGaps(sessions,4,"2026-08-13");
+    assert.equal(gaps.some(item=>item.group==="Chest"),false);
+    assert.equal(gaps.find(item=>item.group==="Legs").activeWeeks,1);
+    assert.equal(gaps.find(item=>item.group==="Core").missedWeeks,4);
+  });
+
+  test("requires three completed weeks and excludes the current incomplete week",()=>{
+    assert.deepEqual(muscleCoverageGaps([mkSession("2026-08-10",[{name:"Incline DB Press",sets:[mkSet("50","10")]}])],4,"2026-08-13"),[]);
+    const sessions=["2026-08-10","2026-08-03","2026-07-27","2026-07-20"].map(date=>mkSession(date,[{name:"Incline DB Press",sets:[mkSet("50","10")]}]))
+    const gaps=muscleCoverageGaps(sessions,4,"2026-08-13");
+    assert.equal(gaps.some(item=>item.group==="Chest"),false);
+  });
+});
+
+describe("muscle heatmap coverage",()=>{
+  test("scores primary and secondary muscles inside the selected range",()=>{
+    const result=muscleHeatmapCoverage([mkSession("2026-08-10",[{name:"Incline DB Press",sets:[mkSet("50","10")]}])],7,"2026-08-13");
+    assert.equal(result.scores.chest,1);
+    assert.equal(result.scores.frontDelts,1);
+    assert.equal(result.scores.triceps,0.5);
+    assert.equal(result.missed.includes("lats"),true);
+  });
+  test("excludes sessions before the rolling range",()=>{
+    const result=muscleHeatmapCoverage([mkSession("2026-08-01",[{name:"Incline DB Press",sets:[mkSet("50","10")]}])],7,"2026-08-13");
+    assert.equal(result.scores.chest,0);
+  });
+  test("does not count an exercise without a logged set",()=>{
+    const result=muscleHeatmapCoverage([mkSession("2026-08-10",[{name:"Incline DB Press",sets:[]}])],7,"2026-08-13");
+    assert.equal(result.scores.chest,0);
+  });
+});
+
+describe("exercise suggestions for missed muscles",()=>{
+  test("prefers one direct compound exercise that covers multiple gaps",()=>{
+    const result=exerciseSuggestionsForMissed(["quads","glutes"]);
+    assert.deepEqual(result.suggestions.map(item=>item.name),["Back Squat/Goblet Squat"]);
+    assert.deepEqual(result.suggestions[0].direct,["quads","glutes"]);
+    assert.deepEqual(result.uncovered,[]);
+  });
+
+  test("uses an explicitly labeled supporting match where no primary exercise exists",()=>{
+    const result=exerciseSuggestionsForMissed(["adductors"]);
+    assert.equal(result.suggestions[0].name,"Back Squat/Goblet Squat");
+    assert.deepEqual(result.suggestions[0].direct,[]);
+    assert.deepEqual(result.suggestions[0].supporting,["adductors"]);
+  });
+
+  test("ignores unknown muscle identifiers",()=>{
+    assert.deepEqual(exerciseSuggestionsForMissed(["notReal"]),{suggestions:[],uncovered:[]});
+  });
+  test("avoids repeating a recent equivalent when another direct option exists",()=>{
+    const result=exerciseSuggestionsForMissed(["sideDelts"],{recentExercises:["Lateral Raises"],preferredEquipment:"machine"});
+    assert.equal(result.suggestions[0].name,"Shoulder Press Machine");
+    assert.deepEqual(result.suggestions[0].direct,["sideDelts"]);
+  });
+});
+
+describe("dashboard muscle targets",()=>{
+  test("credits full primary sets and half secondary sets",()=>{
+    const sessions=[mkSession("2026-08-13",[{name:"Incline DB Press",sets:[mkSet(50,10),mkSet(50,10)]}])];
+    const result=muscleSetVolume(sessions,7,"2026-08-13");
+    assert.equal(result.sets.chest,2);
+    assert.equal(result.sets.triceps,1);
+    assert.equal(result.lastTrained.chest,"2026-08-13");
+  });
+  test("summarizes a shared rolling range",()=>{
+    const result=dashboardRangeSummary([mkSession("2026-08-13",[{name:"A",sets:[mkSet(10,10)]}]),mkSession("2026-08-01",[])],7,"2026-08-13");
+    assert.equal(result.sessions,1); assert.equal(result.sets,1); assert.equal(result.volume,100);
+  });
+  test("calculates target progress and prioritizes the largest deficit",()=>{
+    const baseline=Object.fromEntries(Object.keys(MUSCLES).map(muscle=>[muscle,10]));
+    const volume={sets:{...baseline,chest:8,lats:2},lastTrained:{chest:"2026-08-12",lats:"2026-08-01"}};
+    const priorities=musclePriorities(volume,{...baseline,chest:10,lats:12},5,"2026-08-13");
+    assert.equal(priorities[0].muscle,"lats"); assert.equal(priorities.find(item=>item.muscle==="chest").pct,80);
   });
 });
