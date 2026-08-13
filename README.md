@@ -55,6 +55,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Rest timer**: Starts when a set is completed, with an account-scoped 60/90/120-second default and completion vibration on supported phones
 - **Draft recovery**: In-progress workouts autosave per account and recover after refreshes or crashes
 - **Progressive overload guidance**: Uses the most recent working sets and the exercise's rep target to suggest increasing, repeating, or slightly reducing weight; configurable lb/kg increments are saved per account and weights are never changed automatically
+- **Workout summaries**: After saving, shows duration, exercises, sets, total volume, new PRs, improvements over the previous session, and notes
 
 ## Development
 

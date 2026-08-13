@@ -24,6 +24,7 @@ export function newSession(dayKey, prefs = {}, now = new Date()) {
     id: "session_" + now.getTime(),
     date: todayISO(now),
     day: dayKey,
+    startedAt: null,
     notes: "",
     exercises: dayTemplates[dayKey].exercises.map(ex =>
       buildDraftExercise(variantFor(ex, prefFor(prefs, ex.variants[0].name)))),

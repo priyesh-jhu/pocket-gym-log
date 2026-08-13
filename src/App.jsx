@@ -12,6 +12,7 @@ import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
 import { getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
+import { createWorkoutSummary } from "./workoutSummary.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -294,6 +295,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
+  const [workoutSummary, setWorkoutSummary] = useState(null);
 
   // Internal storage namespace: Firebase UID when signed in, isolated guest
   // storage otherwise. This value is never used as the displayed username.
@@ -551,12 +553,12 @@ export default function App() {
   }
 
   function updateSet(ei, si, field, val) {
-    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
+    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || (String(val).trim()!=="" ? new Date().toISOString() : null), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
   }
 
   function toggleSetDone(ei, si) {
     let nd = false;
-    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>{ if(j!==si)return s; nd=!s.done; return {...s,done:!s.done}; }) }) }));
+    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || new Date().toISOString(), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>{ if(j!==si)return s; nd=!s.done; return {...s,done:!s.done}; }) }) }));
     if (nd) { setRestTarget(getRestTimerSeconds(equipmentPrefs)); setRestSeconds(0); setRestComplete(false); setRestRunning(true); }
   }
 
@@ -574,7 +576,9 @@ export default function App() {
 
   function saveSession() {
     if (!draft.exercises.some(ex => hasEnteredData(ex.sets))) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
-    const saved = cleanSession(draft);
+    const completedAt = new Date().toISOString();
+    const saved = { ...cleanSession(draft), completedAt };
+    setWorkoutSummary(createWorkoutSummary(saved, sessions, completedAt));
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
@@ -804,6 +808,21 @@ export default function App() {
         {saveStatus==="saving"&&<div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#60A5FA"}}>Saving...</div>}
         {saveStatus==="saved"&&<div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#4ADE80"}}>{statusMsg||"Saved ✓"}</div>}
         {saveStatus==="error"&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#F87171"}}>{statusMsg||"Something went wrong."}</div>}
+
+        {workoutSummary&&(
+          <div style={{background:"linear-gradient(145deg,rgba(52,211,153,0.12),#0F1018 55%)",border:"1px solid rgba(52,211,153,0.3)",borderRadius:14,padding:"16px",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:14}}>
+              <div><div style={{fontSize:16,fontWeight:900,color:"#34D399"}}>✓ Workout complete</div><div style={{fontSize:11,color:"#777",marginTop:2}}>{workoutSummary.date} · {dayTemplates[workoutSummary.day]?.label || workoutSummary.day || "Workout"}</div></div>
+              <button onClick={()=>setWorkoutSummary(null)} aria-label="Dismiss workout summary" style={{background:"none",border:"none",color:"#777",fontSize:18,cursor:"pointer",fontFamily:"inherit"}}>×</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:workoutSummary.prs.length||workoutSummary.improvements.length||workoutSummary.notes?12:0}}>
+              {[[workoutSummary.durationMinutes?workoutSummary.durationMinutes+"m":"—","Duration"],[workoutSummary.exercises,"Exercises"],[workoutSummary.sets,"Sets"],[workoutSummary.volumeLb.toLocaleString(),"Volume (lb)"]].map(([value,label])=><div key={label} style={{background:"rgba(8,9,14,0.55)",borderRadius:8,padding:"8px 6px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,color:"#ECEAF4",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div><div style={{fontSize:9,color:"#666",marginTop:2}}>{label}</div></div>)}
+            </div>
+            {workoutSummary.prs.length>0&&<div style={{fontSize:11,color:"#FBBF24",lineHeight:1.55,marginTop:7}}>🏆 New PR{workoutSummary.prs.length!==1?"s":""}: {workoutSummary.prs.map(pr=>`${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}</div>}
+            {workoutSummary.improvements.length>0&&<div style={{fontSize:11,color:"#60A5FA",lineHeight:1.55,marginTop:7}}>↗ Heavier than last time: {workoutSummary.improvements.map(item=>`${item.name} +${item.increaseLb} lb`).join(" · ")}</div>}
+            {workoutSummary.notes&&<div style={{fontSize:11,color:"#9CA3AF",lineHeight:1.5,marginTop:9,paddingTop:8,borderTop:"1px solid #1E2035"}}>“{workoutSummary.notes}”</div>}
+          </div>
+        )}
 
         {/* ── IMPORT CONFIRMATION ── */}
         {pendingImport&&(
