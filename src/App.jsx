@@ -4,16 +4,17 @@ import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
-import { loadPrefs, savePrefs, setPref, EQUIPMENT_PREFIX } from "./equipmentPrefs.js";
+import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import ProgressDashboard from "./ProgressDashboard.jsx";
+import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudProfile, saveCloudProfile } from "./firebase.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
 const WEIGHT_PREFIX   = "workout-bodyweight:";
-const PROFILES_KEY    = "workout-profiles";
-const ACTIVE_KEY      = "workout-active-profile";
 const TAB_KEY         = "workout-active-tab";
+const LEGACY_ACTIVE_KEY = "workout-active-profile";
+const LEGACY_OWNER_KEY = "workout-legacy-claimed-by";
 
 const storage = {
   get(key)        { try { return window.localStorage.getItem(key); }      catch { return null; } },
@@ -23,7 +24,27 @@ const storage = {
 
 function sessionKey(u) { return SESSION_PREFIX + u; }
 function weightKey(u)  { return WEIGHT_PREFIX  + u; }
-function cleanUsername(r) { return String(r || "").trim().slice(0, 24); }
+function readStoredArray(key) {
+  try {
+    const raw = storage.get(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
+}
+function firebaseErrorMessage(error, fallback) {
+  const messages = {
+    "auth/configuration-not-found": "Firebase Authentication is not configured. Open Authentication in the Firebase console, click Get started, then enable and save the Google provider.",
+    "auth/operation-not-allowed": "Google sign-in is not enabled in Firebase Authentication.",
+    "auth/unauthorized-domain": "This site is not listed under Firebase Authentication → Authorized domains.",
+    "auth/popup-blocked": "The browser blocked the Google sign-in popup. Allow popups for this site and retry.",
+    "auth/popup-closed-by-user": "Google sign-in was cancelled before it completed.",
+    "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and retry.",
+    "permission-denied": "Firestore denied access. Publish the owner-only rules from firestore.rules.",
+    "firestore/permission-denied": "Firestore denied access. Publish the owner-only rules from firestore.rules.",
+    "cloud/timeout": "Firestore did not respond. Confirm that a Firestore database has been created for this Firebase project.",
+  };
+  return messages[error?.code] || (error?.message ? `${fallback} (${error.message})` : fallback);
+}
 
 // ─── PLATE CALCULATOR ─────────────────────────────────────────────────────────
 const PLATE_SETS = {
@@ -270,11 +291,9 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
 
-  const [profiles, setProfiles] = useState([]);
-  const [activeProfile, setActiveProfile] = useState(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [newProfileName, setNewProfileName] = useState("");
-  const [confirmDeleteProfile, setConfirmDeleteProfile] = useState(false);
+  // Internal storage namespace: Firebase UID when signed in, isolated guest
+  // storage otherwise. This value is never used as the displayed username.
+  const [activeProfile, setActiveProfile] = useState("guest");
 
   const [currentDay, setCurrentDay] = useState(() => todaysDayKey());
   const [draft, setDraft] = useState(() => newSession(todaysDayKey(), {}));
@@ -303,6 +322,8 @@ export default function App() {
 
   const [pendingImport, setPendingImport] = useState(null); // { sessions, bodyweights, equipmentPrefs, profile, skipped } | null
   const importInputRef = useRef(null);
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [cloudStatus, setCloudStatus] = useState(firebaseConfigured ? "signed-out" : "unconfigured");
 
   function switchTab(t) { setActiveTab(t); try { storage.set(TAB_KEY, t); } catch {} }
 
@@ -310,33 +331,31 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     try {
-      let list = [];
-      const rawList = storage.get(PROFILES_KEY);
-      if (rawList) { try { const p = JSON.parse(rawList); if (Array.isArray(p)) list = p; } catch {} }
-      const legacy = storage.get("workout-sessions");
-      if (legacy && list.length === 0) {
-        storage.set(sessionKey("default"), legacy);
-        storage.remove("workout-sessions");
-        list = ["default"];
-      }
-      if (list.length === 0) list = ["default"];
-      let active = storage.get(ACTIVE_KEY);
-      if (!active || !list.includes(active)) active = list[0];
-      storage.set(PROFILES_KEY, JSON.stringify(list));
-      storage.set(ACTIVE_KEY, active);
       if (!cancelled) {
-        setProfiles(list);
-        setActiveProfile(active);
-        try { const r = storage.get(sessionKey(active)); if (r) { const p = JSON.parse(r); setSessions(Array.isArray(p)?p:[]); } } catch { setSessions([]); }
-        try { const r = storage.get(weightKey(active));  if (r) { const p = JSON.parse(r); setBodyweights(Array.isArray(p)?p:[]); } } catch { setBodyweights([]); }
-        const prefs = loadPrefs(storage, active);
+        const prefs = loadPrefs(storage, "guest");
+        setSessions(readStoredArray(sessionKey("guest")));
+        setBodyweights(readStoredArray(weightKey("guest")));
         setEquipmentPrefs(prefs);
         setDraft(newSession(todaysDayKey(), prefs));
       }
-    } catch { if (!cancelled) { setProfiles(["default"]); setActiveProfile("default"); } }
+    } catch { /* Guest mode remains empty if device storage is unavailable. */ }
     finally { if (!cancelled) setLoading(false); }
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => observeAuth(user => {
+    setFirebaseUser(user);
+    const namespace = user ? user.uid : "guest";
+    setActiveProfile(namespace);
+    setCloudStatus(user ? "connected" : (firebaseConfigured ? "signed-out" : "unconfigured"));
+    if (!user) {
+      const prefs = loadPrefs(storage, namespace);
+      setSessions(readStoredArray(sessionKey(namespace)));
+      setBodyweights(readStoredArray(weightKey(namespace)));
+      setEquipmentPrefs(prefs);
+      setDraft(newSession(todaysDayKey(), prefs));
+    }
+  }), []);
 
   // Rest timer
   useEffect(() => {
@@ -345,54 +364,69 @@ export default function App() {
     return () => clearInterval(t);
   }, [restRunning, restTarget]);
 
-  function loadProfile(user) {
-    try { const r = storage.get(sessionKey(user)); setSessions(r?JSON.parse(r):[]); } catch { setSessions([]); }
-    try { const r = storage.get(weightKey(user));  setBodyweights(r?JSON.parse(r):[]); } catch { setBodyweights([]); }
-    const prefs = loadPrefs(storage, user);
-    setEquipmentPrefs(prefs);
-    return prefs;
+  function localProfileData(profile) {
+    return { sessions:readStoredArray(sessionKey(profile)), bodyweights:readStoredArray(weightKey(profile)), equipmentPrefs:loadPrefs(storage, profile) };
   }
 
-  function switchProfile(user) {
-    if (user === activeProfile) { setShowProfileMenu(false); return; }
-    setActiveProfile(user); storage.set(ACTIVE_KEY, user);
-    const prefs = loadProfile(user);
-    setDraft(newSession(currentDay, prefs));
-    setConfirmSwitch(null);
-    setExpandedHistory(null); setProgressExercise(null);
-    setConfirmDelete(null); setConfirmReset(false);
-    setRestRunning(false); setRestSeconds(0);
-    setShowProfileMenu(false);
+  async function syncProfileFromCloud(user, profile) {
+    setCloudStatus("syncing");
+    try {
+      let local = localProfileData(profile);
+      const legacyOwner = storage.get(LEGACY_OWNER_KEY);
+      if (!legacyOwner) {
+        const legacyProfile = storage.get(LEGACY_ACTIVE_KEY) || "default";
+        const legacy = localProfileData(legacyProfile);
+        local = mergeBackup(local, legacy);
+      }
+      // "default" is the legacy document written by the first Firebase
+      // implementation. Read it once when "main" does not exist, then save
+      // the merged result to "main".
+      const cloud = await loadCloudProfile(user.uid, "main") || await loadCloudProfile(user.uid, "default");
+      const merged = cloud ? mergeBackup(local, cloud) : local;
+      const sessionsOk = storage.set(sessionKey(profile), JSON.stringify(merged.sessions));
+      const weightsOk = storage.set(weightKey(profile), JSON.stringify(merged.bodyweights));
+      const prefsOk = savePrefs(storage, profile, merged.equipmentPrefs);
+      if (!sessionsOk || !weightsOk || !prefsOk) throw new Error("Could not save merged data on this device.");
+      await saveCloudProfile(user.uid, "main", { ...merged, account:{ displayName:user.displayName||null, email:user.email||null } });
+      if (!legacyOwner) storage.set(LEGACY_OWNER_KEY, user.uid);
+      setSessions(merged.sessions); setBodyweights(merged.bodyweights); setEquipmentPrefs(merged.equipmentPrefs);
+      setDraft(newSession(currentDay, merged.equipmentPrefs));
+      setCloudStatus("connected");
+    } catch (error) {
+      console.error("Firebase sync failed", error);
+      setCloudStatus("error"); setSaveStatus("error");
+      setStatusMsg(firebaseErrorMessage(error, "Cloud sync failed") + " Your data is still saved on this device.");
+    }
   }
 
-  function createProfile() {
-    const name = cleanUsername(newProfileName);
-    if (!name) return;
-    if (profiles.includes(name)) { switchProfile(name); setNewProfileName(""); return; }
-    const updated = [...profiles, name];
-    setProfiles(updated);
-    storage.set(PROFILES_KEY, JSON.stringify(updated));
-    storage.set(sessionKey(name), JSON.stringify([]));
-    storage.remove(EQUIPMENT_PREFIX + name);
-    storage.remove(weightKey(name));
-    setNewProfileName("");
-    switchProfile(name);
+  async function connectFirebase() {
+    setCloudStatus("syncing");
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Google sign-in failed", error);
+      setCloudStatus("error"); setSaveStatus("error");
+      setStatusMsg(firebaseErrorMessage(error, "Google sign-in failed"));
+    }
   }
 
-  function deleteProfile(user) {
-    const rem = profiles.filter(p => p !== user);
-    storage.remove(sessionKey(user));
-    storage.remove(EQUIPMENT_PREFIX + user);
-    storage.remove(weightKey(user));
-    const list = rem.length > 0 ? rem : ["default"];
-    if (rem.length === 0) storage.set(sessionKey("default"), JSON.stringify([]));
-    setProfiles(list); storage.set(PROFILES_KEY, JSON.stringify(list));
-    const next = list[0]; setActiveProfile(next); storage.set(ACTIVE_KEY, next);
-    const prefs = loadProfile(next);
-    setDraft(newSession(currentDay, prefs));
-    setConfirmSwitch(null);
-    setConfirmDeleteProfile(false); setShowProfileMenu(false);
+  async function disconnectFirebase() { await signOutFirebase(); setCloudStatus("signed-out"); }
+
+  function pushCloud(data) {
+    if (!firebaseUser || !activeProfile) return;
+    setCloudStatus("syncing");
+    saveCloudProfile(firebaseUser.uid, "main", { ...data, account:{ displayName:firebaseUser.displayName||null, email:firebaseUser.email||null } })
+      .then(()=>setCloudStatus("connected"))
+      .catch(error=>{ console.error("Firebase save failed", error); setCloudStatus("error"); });
   }
+
+  useEffect(() => {
+    if (loading || !firebaseUser || !activeProfile) return;
+    const timer = setTimeout(() => syncProfileFromCloud(firebaseUser, activeProfile), 0);
+    return () => clearTimeout(timer);
+    // Sync only when authentication or the selected local profile changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, firebaseUser, activeProfile]);
 
   // Raw disk write, no saveStatus side effects — used by persist() below for
   // the normal save flow, and directly by applyImportedData(), which needs to
@@ -407,14 +441,20 @@ export default function App() {
     if (!activeProfile) return false;
     setSaveStatus("saving");
     const ok = writeSessions(updated);
-    if (ok) { setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
+    if (ok) { pushCloud({sessions:updated, bodyweights, equipmentPrefs}); setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
     else { setSaveStatus("error"); setStatusMsg("Could not save."); }
     return ok;
   }
 
-  function persistWeights(updated) {
+  function writeWeights(updated) {
     if (!activeProfile) return false;
     return storage.set(weightKey(activeProfile), JSON.stringify(updated));
+  }
+
+  function persistWeights(updated) {
+    const ok = writeWeights(updated);
+    if (ok) pushCloud({sessions, bodyweights:updated, equipmentPrefs});
+    return ok;
   }
 
   function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setConfirmSwitch(null); }
@@ -433,6 +473,7 @@ export default function App() {
     const updated = setPref(equipmentPrefs, planEx.variants[0].name, v.equipment);
     setEquipmentPrefs(updated);
     savePrefs(storage, activeProfile, updated);
+    pushCloud({sessions, bodyweights, equipmentPrefs:updated});
     setConfirmSwitch(null);
     setPlateFor(null);
   }
@@ -482,8 +523,10 @@ export default function App() {
   function deleteWeight(id) { const u=bodyweights.filter(e=>e.id!==id); setBodyweights(u); persistWeights(u); setConfirmDeleteWeight(null); }
 
   function exportData() {
-    const backup = buildBackup({ profile:activeProfile, sessions, bodyweights, equipmentPrefs });
-    const ok = downloadJSON(backup, "workout-log-"+(activeProfile||"default")+"-"+todayISO()+".json");
+    const accountName = firebaseUser?.displayName || firebaseUser?.email || "guest";
+    const safeName = accountName.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "");
+    const backup = buildBackup({ profile:accountName, sessions, bodyweights, equipmentPrefs });
+    const ok = downloadJSON(backup, "workout-log-"+(safeName||"guest")+"-"+todayISO()+".json");
     setSaveStatus(ok?"saved":"error"); setStatusMsg(ok?"Export downloaded ✓":"Export failed.");
     setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2000);
   }
@@ -518,7 +561,7 @@ export default function App() {
     const prevPrefs = equipmentPrefs;
 
     const sessionsOk = writeSessions(newSessions);
-    const weightsOk = persistWeights(newWeights);
+    const weightsOk = writeWeights(newWeights);
     const prefsOk = savePrefs(storage, activeProfile, newPrefs);
 
     setPendingImport(null);
@@ -527,6 +570,7 @@ export default function App() {
       setSessions(newSessions);
       setBodyweights(newWeights);
       setEquipmentPrefs(newPrefs);
+      pushCloud({sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs});
 
       // Don't wipe a workout the user is mid-typing on the Log tab just
       // because an import happened — only reset the draft when it's still
@@ -550,7 +594,7 @@ export default function App() {
     // the pre-import snapshot so disk matches React state everywhere again.
     const rollbackFailures = [];
     if (sessionsOk && !writeSessions(prevSessions)) rollbackFailures.push("sessions");
-    if (weightsOk && !persistWeights(prevWeights)) rollbackFailures.push("weigh-ins");
+    if (weightsOk && !writeWeights(prevWeights)) rollbackFailures.push("weigh-ins");
     if (prefsOk && !savePrefs(storage, activeProfile, prevPrefs)) rollbackFailures.push("equipment preferences");
 
     setSaveStatus("error");
@@ -646,53 +690,28 @@ export default function App() {
             <p style={{color:"#666",fontSize:13,margin:0}}>{sessions.length} session{sessions.length!==1?"s":""} logged · auto-saved{getStreak()>1?"  ·  🔥 "+getStreak()+"-day streak":""}</p>
           </div>
           <div style={{display:"flex",gap:8,flexShrink:0}}>
+            {firebaseConfigured && (firebaseUser ? (
+              <button onClick={disconnectFirebase} title={(firebaseUser.email||"Signed in")+" — click to sign out"} style={{background:cloudStatus==="error"?"#2A1717":"#13251B",border:`1px solid ${cloudStatus==="error"?"#7F1D1D":"#245C37"}`,borderRadius:10,padding:"10px 14px",color:cloudStatus==="error"?"#F87171":"#4ADE80",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>☁ {cloudStatus==="syncing"?"Syncing…":cloudStatus==="error"?"Sync error":"Synced"}</button>
+            ) : (
+              <button onClick={connectFirebase} disabled={cloudStatus==="syncing"} style={{background:"#13141F",border:"1px solid #3B82F6",borderRadius:10,padding:"10px 14px",color:"#60A5FA",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>☁ {cloudStatus==="syncing"?"Connecting…":"Google Sign-in"}</button>
+            ))}
             <button onClick={exportData} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬇ Export</button>
             <button onClick={triggerImport} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬆ Import</button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
           </div>
         </div>
 
-        {/* Profile bar */}
-        <div style={{marginTop:18,position:"relative"}}>
-          <button onClick={()=>{setShowProfileMenu(v=>!v);setConfirmDeleteProfile(false);}} style={{display:"inline-flex",alignItems:"center",gap:10,background:"#13141F",border:"1px solid #2A2A3A",borderRadius:100,padding:"6px 8px 6px 6px",cursor:"pointer",fontFamily:"inherit"}}>
-            <span style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#3B82F6,#8B5CF6)",color:"#fff",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",textTransform:"uppercase"}}>{(activeProfile||"?").slice(0,1)}</span>
-            <span style={{fontSize:13,fontWeight:700,color:"#ECEAF4",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeProfile}</span>
-            <span style={{fontSize:10,color:"#666",paddingRight:4}}>{showProfileMenu?"▲":"▼"}</span>
-          </button>
-
-          {showProfileMenu && (
-            <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,zIndex:60,background:"#0F1018",border:"1px solid #2A2A3A",borderRadius:14,padding:10,width:280,boxShadow:"0 12px 40px rgba(0,0,0,0.6)"}}>
-              <div style={{fontSize:10,color:"#666",fontWeight:700,letterSpacing:"0.1em",padding:"4px 8px 8px"}}>SWITCH PROFILE</div>
-              {profiles.map(p => (
-                <button key={p} onClick={()=>switchProfile(p)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,background:p===activeProfile?"#161723":"none",border:"none",borderRadius:8,padding:"8px",cursor:"pointer",fontFamily:"inherit",marginBottom:2}}>
-                  <span style={{width:24,height:24,borderRadius:"50%",background:p===activeProfile?"linear-gradient(135deg,#3B82F6,#8B5CF6)":"#1E2035",color:"#fff",fontSize:11,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",textTransform:"uppercase",flexShrink:0}}>{p.slice(0,1)}</span>
-                  <span style={{fontSize:13,color:p===activeProfile?"#ECEAF4":"#9CA3AF",fontWeight:p===activeProfile?700:500,flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p}</span>
-                  {p===activeProfile&&<span style={{fontSize:10,color:"#4ADE80"}}>● active</span>}
-                </button>
-              ))}
-              <div style={{borderTop:"1px solid #1A1A28",margin:"8px 0",paddingTop:10}}>
-                <div style={{display:"flex",gap:6}}>
-                  <input type="text" value={newProfileName} onChange={e=>setNewProfileName(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")createProfile();}} placeholder="New username..." maxLength={24}
-                    style={{flex:1,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
-                  <button onClick={createProfile} disabled={!cleanUsername(newProfileName)}
-                    style={{background:cleanUsername(newProfileName)?"#3B82F6":"#1E2035",border:"none",borderRadius:8,padding:"8px 14px",color:cleanUsername(newProfileName)?"#fff":"#555",fontSize:13,fontWeight:700,cursor:cleanUsername(newProfileName)?"pointer":"default",fontFamily:"inherit",flexShrink:0}}>Add</button>
-                </div>
-              </div>
-              {profiles.length > 1 && (
-                <div style={{borderTop:"1px solid #1A1A28",marginTop:8,paddingTop:8}}>
-                  {confirmDeleteProfile ? (
-                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px"}}>
-                      <span style={{fontSize:11,color:"#888",flex:1}}>Delete "{activeProfile}"?</span>
-                      <button onClick={()=>deleteProfile(activeProfile)} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Yes</button>
-                      <button onClick={()=>setConfirmDeleteProfile(false)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 10px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>No</button>
-                    </div>
-                  ) : (
-                    <button onClick={()=>setConfirmDeleteProfile(true)} style={{background:"none",border:"none",color:"#5A5A66",fontSize:11,cursor:"pointer",fontFamily:"inherit",padding:"4px 8px",textDecoration:"underline"}}>Delete current profile</button>
-                  )}
-                </div>
-              )}
-            </div>
+        {/* Account identity */}
+        <div style={{marginTop:18,display:"inline-flex",alignItems:"center",gap:10,background:"#13141F",border:"1px solid #2A2A3A",borderRadius:100,padding:"6px 12px 6px 6px"}}>
+          {firebaseUser?.photoURL ? (
+            <img src={firebaseUser.photoURL} alt="" referrerPolicy="no-referrer" style={{width:28,height:28,borderRadius:"50%"}}/>
+          ) : (
+            <span style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#3B82F6,#8B5CF6)",color:"#fff",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",textTransform:"uppercase"}}>{(firebaseUser?.displayName||firebaseUser?.email||"Guest").slice(0,1)}</span>
           )}
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#ECEAF4",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{firebaseUser?.displayName||firebaseUser?.email||"Guest mode"}</div>
+            <div style={{fontSize:9,color:firebaseUser?"#4ADE80":"#666",fontWeight:700,letterSpacing:"0.08em"}}>{firebaseUser?"PRIVATE ACCOUNT":"DEVICE ONLY"}</div>
+          </div>
         </div>
       </div>
 
@@ -724,7 +743,7 @@ export default function App() {
               )}
             </div>
             <div style={{fontSize:11,color:"#666",marginTop:8,background:"#0C0D16",border:"1px solid #16172A",borderRadius:8,padding:"8px 10px"}}>
-              This will apply to your currently active profile — <b style={{color:"#9CA3AF"}}>{activeProfile}</b> — regardless of which profile the file was exported from.
+              This will apply to <b style={{color:"#9CA3AF"}}>{firebaseUser?.displayName||firebaseUser?.email||"this device's guest log"}</b>, regardless of which account the file was exported from.
             </div>
             <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
               <button onClick={confirmImportMerge} style={{background:"#3B82F6",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Merge (recommended)</button>

@@ -1,6 +1,33 @@
 # Workout Tracker
 
-A lightweight, offline-first PWA for tracking workouts. Data lives in localStorage on your device (never synced), with multiple named profiles and an Export button for backup or data transfer.
+A lightweight, offline-first PWA for tracking workouts. Data is saved locally, with optional private Firebase sync through Google sign-in and JSON backup/restore.
+
+## Firebase Sync
+
+Copy `.env.example` to `.env.local` and fill in the Firebase web-app config values. In the Firebase console, enable Google under Authentication, create a Firestore database, and publish `firestore.rules`. The rules only allow an authenticated user to access documents beneath their own UID.
+
+After configuration, use **Google Sign-in** in the app header. Each Google account gets one isolated workout log, both in Firestore and in UID-scoped device storage. Subsequent workout, bodyweight, import, and equipment-preference changes sync automatically while localStorage remains available offline. Signed-out activity is kept separately in guest mode and is never automatically merged into an account. During the upgrade from the old named-profile version, the first Google account on an existing installation claims the previously active local profile once; later accounts cannot claim or read it.
+
+To inspect saved data, open Firebase Console → Firestore Database → Data, then expand `users` → your Firebase UID → `profiles` → `main`. The document contains `sessions`, `bodyweights`, and `equipmentPrefs`. Authentication → Users shows the matching Google account and UID.
+
+### Deploy to Firebase Hosting
+
+The repository is connected to the `pocket-gym-log` Firebase project. From the app directory, authenticate once and deploy:
+
+```bash
+npx firebase-tools login
+npm run build
+npx firebase-tools deploy --only hosting,firestore:rules
+```
+
+For later updates, login is not normally required again. Run these two commands from `workout-tracker/` whenever you want to publish the latest version:
+
+```bash
+npm run build
+npx firebase-tools deploy --only hosting,firestore:rules
+```
+
+Firebase serves the production build at `https://pocket-gym-log.web.app` and `https://pocket-gym-log.firebaseapp.com`. The hosting configuration serves `dist/`, rewrites SPA routes to `index.html`, and caches Vite's fingerprinted assets. Add any custom production domain under Firebase Console → Hosting → Add custom domain, then add that domain under Authentication → Settings → Authorized domains.
 
 ## The Plan: 5-Day Split
 
