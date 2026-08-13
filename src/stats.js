@@ -147,3 +147,31 @@ export function muscleBalance(sessions, weeks = 4, todayIso = todayISO()) {
     .map(([group, volume]) => ({ group, volume, pct: Math.round((volume / total) * 100) }))
     .sort((a, b) => b.volume - a.volume);
 }
+
+/** Twelve-week Monday→Sunday activity grid. Each inner array is one week. */
+export function activityCalendar(sessions, weeks = 12, todayIso = todayISO()) {
+  const countByDate = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date || session.date > todayIso) continue;
+    countByDate.set(session.date, (countByDate.get(session.date) || 0) + 1);
+  }
+  const firstMonday = addDaysISO(weekStartISO(todayIso), -7*(weeks-1));
+  return Array.from({length:weeks}, (_,week) => Array.from({length:7}, (_,day) => {
+    const date = addDaysISO(firstMonday, week*7+day);
+    return { date, count:countByDate.get(date) || 0, future:date>todayIso };
+  }));
+}
+
+/** Adherence summary for the rolling last four weeks, against a five-day plan. */
+export function consistencySummary(sessions, todayIso = todayISO()) {
+  const start = addDaysISO(todayIso, -27);
+  const dates = new Set((Array.isArray(sessions) ? sessions : [])
+    .map(session => session?.date)
+    .filter(date => date && date>=start && date<=todayIso));
+  const activeWeeks = new Set([...dates].map(weekStartISO)).size;
+  return {
+    workouts:dates.size,
+    activeWeeks,
+    goalPct:Math.min(100, Math.round((dates.size/20)*100)),
+  };
+}

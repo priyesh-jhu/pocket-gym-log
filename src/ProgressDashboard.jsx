@@ -1,5 +1,5 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { dominantUnit, weeklyVolume, weekSummary, muscleBalance } from "./stats.js";
+import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, weekSummary, muscleBalance } from "./stats.js";
 
 const GROUP_COLORS = {
   Chest: "#3B82F6",
@@ -38,6 +38,8 @@ export default function ProgressDashboard({ sessions }) {
   const summary = weekSummary(list);
   const weeks = weeklyVolume(list, 12);
   const balance = muscleBalance(list, 4);
+  const calendar = activityCalendar(list, 12);
+  const consistency = consistencySummary(list);
 
   const chartData = weeks.map(w => ({ label: w.label, volume: Math.round(toDisplay(w.volume, unit)) }));
 
@@ -64,6 +66,24 @@ export default function ProgressDashboard({ sessions }) {
             <div style={{ fontSize: 11, color: "#555" }}>vs previous week</div>
           </div>
         </div>
+      </div>
+
+      <div style={card}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12,flexWrap:"wrap"}}>
+          <div><div style={{...sectionLabel,marginBottom:3}}>TRAINING CALENDAR</div><div style={{fontSize:10,color:"#444"}}>Last 12 weeks · darker squares mean more sessions</div></div>
+          <div style={{display:"flex",gap:14}}>
+            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:"#3B82F6"}}>{consistency.workouts}</div><div style={{fontSize:9,color:"#555"}}>days / 28</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:"#22C55E"}}>{consistency.activeWeeks}</div><div style={{fontSize:9,color:"#555"}}>active weeks</div></div>
+            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:consistency.goalPct>=80?"#22C55E":consistency.goalPct>=50?"#F59E0B":"#9CA3AF"}}>{consistency.goalPct}%</div><div style={{fontSize:9,color:"#555"}}>5-day goal</div></div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"18px minmax(0,1fr)",gap:6,alignItems:"stretch"}}>
+          <div style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4,fontSize:8,color:"#555",textAlign:"right",alignItems:"center"}}>{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
+          <div style={{display:"grid",gridTemplateColumns:`repeat(${calendar.length},minmax(8px,1fr))`,gap:4}}>
+            {calendar.map((week,wi)=><div key={wi} style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4}}>{week.map(day=><div key={day.date} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} style={{aspectRatio:"1",minHeight:8,borderRadius:3,background:day.future?"#0B0C13":day.count>1?"#2563EB":day.count===1?"#3B82F6":"#171824",border:"1px solid "+(day.count?"#60A5FA30":"#1E203520"),opacity:day.future?0.35:1}} />)}</div>)}
+          </div>
+        </div>
+        <div style={{height:5,borderRadius:4,background:"#161723",overflow:"hidden",marginTop:12}}><div style={{height:"100%",width:consistency.goalPct+"%",background:consistency.goalPct>=80?"#22C55E":"#3B82F6",borderRadius:4}} /></div>
       </div>
 
       <div style={card}>

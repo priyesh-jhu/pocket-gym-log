@@ -1,7 +1,8 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
+import { addDaysISO } from "./dateUtils.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, muscleBalance,
+  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, muscleBalance, activityCalendar, consistencySummary,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -117,5 +118,27 @@ describe("muscleBalance", () => {
     assert.equal(byGroup.get("Back").volume, 500);
     assert.equal(byGroup.get("Legs").pct, 50);
     assert.equal(byGroup.get("Legs").volume, 500);
+  });
+});
+
+describe("activity calendar and consistency", () => {
+  test("builds complete Monday-to-Sunday weeks ending with the current week", () => {
+    const sessions = [mkSession("2026-08-10", []), mkSession("2026-08-10", []), mkSession("2026-08-13", [])];
+    const calendar = activityCalendar(sessions, 2, "2026-08-13");
+    assert.equal(calendar.length, 2);
+    assert.equal(calendar[0][0].date, "2026-08-03");
+    assert.equal(calendar[1][0].count, 2);
+    assert.equal(calendar[1][3].count, 1);
+    assert.equal(calendar[1][6].future, true);
+  });
+
+  test("summarizes unique workout days over the rolling last 28 days", () => {
+    const sessions = [mkSession("2026-08-13", []), mkSession("2026-08-13", []), mkSession("2026-08-10", []), mkSession("2026-07-01", [])];
+    assert.deepEqual(consistencySummary(sessions, "2026-08-13"), { workouts:2, activeWeeks:1, goalPct:10 });
+  });
+
+  test("consistency cannot exceed 100 percent", () => {
+    const sessions = Array.from({length:28}, (_,i) => mkSession(addDaysISO("2026-07-17", i), []));
+    assert.equal(consistencySummary(sessions, "2026-08-13").goalPct, 100);
   });
 });
