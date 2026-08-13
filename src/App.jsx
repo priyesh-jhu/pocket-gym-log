@@ -5,6 +5,7 @@ import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, EQUIPMENT_PREFIX } from "./equipmentPrefs.js";
+import ProgressDashboard from "./ProgressDashboard.jsx";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -837,6 +838,7 @@ export default function App() {
             {sessions.length===0
               ? <div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>Log a few sessions first to see progress charts.</div>
               : <>
+                  <ProgressDashboard sessions={sessions}/>
                   <div style={{marginBottom:16}}>
                     <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Select an exercise</div>
                     <select value={progressExercise||""} onChange={e=>setProgressExercise(e.target.value)}
