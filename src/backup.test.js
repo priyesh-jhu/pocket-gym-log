@@ -50,6 +50,28 @@ describe("backup validate/merge", () => {
     assert.equal(r.data.skipped.sessions, 3);
   });
 
+  test("rejects a session whose exercise has a non-array sets (the render-crash payload)", () => {
+    // This is the exact shape that used to pass validation and then crash
+    // buildPRMap's `ex.sets.forEach(...)` on every render, permanently
+    // bricking the app once persisted (CRITICAL-1).
+    const r = validateBackup({
+      loggedSessions: [{ id: "s1", date: "2026-01-01", exercises: [{ name: "Bench", sets: "not-an-array" }] }],
+      bodyweights: [],
+    });
+    assert.equal(r.ok, true);
+    assert.equal(r.data.sessions.length, 0);
+    assert.equal(r.data.skipped.sessions, 1);
+  });
+
+  test("rejects a session whose exercise has a non-object set", () => {
+    const r = validateBackup({
+      loggedSessions: [{ id: "s1", date: "2026-01-01", exercises: [{ name: "Bench", sets: ["not-an-object"] }] }],
+      bodyweights: [],
+    });
+    assert.equal(r.data.sessions.length, 0);
+    assert.equal(r.data.skipped.sessions, 1);
+  });
+
   test("skips a malformed bodyweight entry and counts it", () => {
     const r = validateBackup({
       loggedSessions: [],
@@ -64,12 +86,30 @@ describe("backup validate/merge", () => {
     assert.equal(r.data.skipped.bodyweights, 2);
   });
 
+  test("rejects weights parseFloat would let through, and stores good ones as numbers", () => {
+    const r = validateBackup({
+      loggedSessions: [],
+      bodyweights: [
+        { id: "w1", date: "2026-01-01", weight: "150abc" }, // parseFloat("150abc") is 150 — must be rejected
+        { id: "w2", date: "2026-01-02", weight: [180] },     // parseFloat([180]) is 180 — must be rejected
+        { id: "w3", date: "2026-01-03", weight: "  165.5  " }, // parses cleanly once trimmed — must survive
+      ],
+    });
+    assert.equal(r.data.bodyweights.length, 1);
+    assert.equal(r.data.skipped.bodyweights, 2);
+    assert.equal(r.data.bodyweights[0].weight, 165.5);
+    assert.equal(typeof r.data.bodyweights[0].weight, "number");
+  });
+
   test("merge is a union: local-only and incoming-only entries both survive", () => {
-    const current = { sessions: [{ id: "a", date: "2026-01-01" }], bodyweights: [], equipmentPrefs: {} };
-    const incoming = { sessions: [{ id: "b", date: "2026-01-02" }], bodyweights: [], equipmentPrefs: {} };
+    const current = { sessions: [{ id: "b", date: "2026-01-02" }], bodyweights: [], equipmentPrefs: {} };
+    const incoming = { sessions: [{ id: "a", date: "2026-01-01" }], bodyweights: [], equipmentPrefs: {} };
     const merged = mergeBackup(current, incoming);
     assert.equal(merged.sessions.length, 2);
     assert.deepEqual(merged.sessions.map(s => s.id).sort(), ["a", "b"]);
+    // Sorted with .sort() above so a reversed/dropped date comparator would
+    // still pass that assertion — pin the actual output order too.
+    assert.deepEqual(merged.sessions.map(s => s.date), ["2026-01-01", "2026-01-02"]);
   });
 
   test("merge keeps the LOCAL session on id collision", () => {
@@ -96,6 +136,21 @@ describe("backup validate/merge", () => {
     mergeBackup(current, incoming);
     assert.deepEqual(current, currentSnapshot);
     assert.deepEqual(incoming, incomingSnapshot);
+  });
+
+  test("merge reports overwritten bodyweights on collision with a different value (Merge is 'recommended' but must not silently clobber)", () => {
+    const current = { sessions: [], bodyweights: [{ id: "w1", date: "2026-01-01", weight: 180, unit: "lb" }], equipmentPrefs: {} };
+    const incoming = { sessions: [], bodyweights: [{ id: "w2", date: "2026-01-01", weight: 175, unit: "lb" }], equipmentPrefs: {} };
+    const merged = mergeBackup(current, incoming);
+    assert.deepEqual(merged.added, { sessions: 0, bodyweights: 0 });
+    assert.deepEqual(merged.overwritten, { bodyweights: 1 });
+  });
+
+  test("merge does not count a same-value collision as overwritten", () => {
+    const current = { sessions: [], bodyweights: [{ id: "w1", date: "2026-01-01", weight: 180, unit: "lb" }], equipmentPrefs: {} };
+    const incoming = { sessions: [], bodyweights: [{ id: "w2", date: "2026-01-01", weight: 180, unit: "lb" }], equipmentPrefs: {} };
+    const merged = mergeBackup(current, incoming);
+    assert.deepEqual(merged.overwritten, { bodyweights: 0 });
   });
 
   test("added counts only genuinely new entries", () => {

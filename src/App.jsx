@@ -395,16 +395,17 @@ export default function App() {
   }
 
   function persist(updated) {
-    if (!activeProfile) return;
+    if (!activeProfile) return false;
     setSaveStatus("saving");
     const ok = storage.set(sessionKey(activeProfile), JSON.stringify(updated));
     if (ok) { setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
     else { setSaveStatus("error"); setStatusMsg("Could not save."); }
+    return ok;
   }
 
   function persistWeights(updated) {
-    if (!activeProfile) return;
-    storage.set(weightKey(activeProfile), JSON.stringify(updated));
+    if (!activeProfile) return false;
+    return storage.set(weightKey(activeProfile), JSON.stringify(updated));
   }
 
   function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setConfirmSwitch(null); }
@@ -498,18 +499,41 @@ export default function App() {
   }
 
   function applyImportedData({ sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs }, msg) {
-    setSessions(newSessions); persist(newSessions);
-    setBodyweights(newWeights); persistWeights(newWeights);
-    setEquipmentPrefs(newPrefs); savePrefs(storage, activeProfile, newPrefs);
-    setDraft(newSession(currentDay, newPrefs));
+    setSessions(newSessions);
+    const sessionsOk = persist(newSessions);
+    setBodyweights(newWeights);
+    const weightsOk = persistWeights(newWeights);
+    setEquipmentPrefs(newPrefs);
+    const prefsOk = savePrefs(storage, activeProfile, newPrefs);
+
+    // Don't wipe a workout the user is mid-typing on the Log tab just because
+    // an import happened — only reset the draft when it's still empty. The
+    // imported equipment prefs simply won't apply until the *next* draft.
+    const draftHasData = draft.exercises.some(ex => hasEnteredData(ex.sets));
+    if (!draftHasData) setDraft(newSession(currentDay, newPrefs));
+
     setPendingImport(null);
-    setSaveStatus("saved"); setStatusMsg(msg); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+
+    if (sessionsOk && weightsOk && prefsOk) {
+      setSaveStatus("saved");
+      setStatusMsg(msg + (draftHasData ? " Your in-progress workout was kept." : ""));
+    } else {
+      // The write failed (quota, private-mode Safari, etc). Whatever was on
+      // disk before the import is untouched — do NOT claim success, or the
+      // user's next successful save (of much smaller in-memory data) will
+      // permanently overwrite that still-intact history.
+      setSaveStatus("error");
+      setStatusMsg("Import did NOT save (device storage may be full) — your previous data is still safely on disk. Free up space and try again before logging anything new.");
+    }
+    setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
   }
 
   function confirmImportMerge() {
     if (!pendingImport) return;
     const merged = mergeBackup({ sessions, bodyweights, equipmentPrefs }, pendingImport);
-    applyImportedData(merged, "Imported "+merged.added.sessions+" new session"+(merged.added.sessions!==1?"s":"")+", "+merged.added.bodyweights+" weigh-in"+(merged.added.bodyweights!==1?"s":""));
+    const overwritten = merged.overwritten.bodyweights;
+    applyImportedData(merged, "Imported "+merged.added.sessions+" new session"+(merged.added.sessions!==1?"s":"")+", "+merged.added.bodyweights+" weigh-in"+(merged.added.bodyweights!==1?"s":"")
+      +(overwritten>0 ? ", "+overwritten+" weigh-in"+(overwritten!==1?"s":"")+" updated" : ""));
   }
 
   function confirmImportReplace() {
@@ -519,6 +543,9 @@ export default function App() {
   }
 
   const prMap = buildPRMap(sessions);
+  // How many weigh-ins the pending import would silently overwrite if merged —
+  // shown in the confirm panel so "Merge (recommended)" doesn't hide it.
+  const pendingOverwrite = pendingImport ? mergeBackup({ sessions, bodyweights, equipmentPrefs }, pendingImport).overwritten.bodyweights : 0;
 
   function getLastTime(name) {
     for (const s of [...sessions].sort((a,b)=>b.date.localeCompare(a.date))) {
@@ -659,6 +686,9 @@ export default function App() {
               File contains <b style={{color:"#ECEAF4"}}>{pendingImport.sessions.length}</b> session{pendingImport.sessions.length!==1?"s":""} and <b style={{color:"#ECEAF4"}}>{pendingImport.bodyweights.length}</b> weigh-in{pendingImport.bodyweights.length!==1?"s":""}, exported from profile <b style={{color:"#ECEAF4"}}>{pendingImport.profile||"unknown"}</b>.
               {(pendingImport.skipped.sessions>0||pendingImport.skipped.bodyweights>0)&&(
                 <div style={{color:"#F59E0B",marginTop:4}}>Skipped {pendingImport.skipped.sessions} malformed session{pendingImport.skipped.sessions!==1?"s":""} and {pendingImport.skipped.bodyweights} malformed weigh-in{pendingImport.skipped.bodyweights!==1?"s":""}.</div>
+              )}
+              {pendingOverwrite>0&&(
+                <div style={{color:"#60A5FA",marginTop:4}}>Merging will update {pendingOverwrite} weigh-in{pendingOverwrite!==1?"s":""} you already logged for those dates with the imported value.</div>
               )}
             </div>
             <div style={{fontSize:11,color:"#666",marginTop:8,background:"#0C0D16",border:"1px solid #16172A",borderRadius:8,padding:"8px 10px"}}>
