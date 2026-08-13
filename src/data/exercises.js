@@ -199,3 +199,12 @@ export function variantFor(exercise, equipment) {
 export function allVariantNames() {
   return dayOrder.flatMap(k => dayTemplates[k].exercises.flatMap(ex => ex.variants.map(v => v.name)));
 }
+
+/** The built-in exercise family containing a variant name, or null for custom exercises. */
+export function exerciseForVariantName(name) {
+  for (const day of dayOrder) {
+    const exercise = dayTemplates[day].exercises.find(item => item.variants.some(variant => variant.name === name));
+    if (exercise) return exercise;
+  }
+  return null;
+}

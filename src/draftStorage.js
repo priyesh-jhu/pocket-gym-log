@@ -10,20 +10,21 @@ const validSet = set => set && typeof set === "object" && !Array.isArray(set) &&
 export function validateDraft(value) {
   if (!value || typeof value !== "object" || !dayTemplates[value.day]) return false;
   if (typeof value.id !== "string" || typeof value.date !== "string" || typeof value.notes !== "string") return false;
-  const plan = dayTemplates[value.day].exercises;
-  if (!Array.isArray(value.exercises) || value.exercises.length !== plan.length) return false;
-  return value.exercises.every((exercise, index) => {
-    if (!exercise || !["free","machine"].includes(exercise.equipment)) return false;
-    if (variantFor(plan[index], exercise.equipment).name !== exercise.name) return false;
+  if (!Array.isArray(value.exercises) || value.exercises.length < 1 || value.exercises.length > 50) return false;
+  return value.exercises.every(exercise => {
+    if (!exercise || !["free","machine","custom"].includes(exercise.equipment) || typeof exercise.name !== "string" || !exercise.name.trim()) return false;
     return Array.isArray(exercise.sets) && exercise.sets.length > 0 && exercise.sets.every(validSet);
   });
 }
 
 export function draftHasContent(draft) {
   if (!validateDraft(draft)) return false;
+  const plan = dayTemplates[draft.day].exercises;
+  const customShape = draft.exercises.length !== plan.length || draft.exercises.some((exercise,index) =>
+    !plan[index] || variantFor(plan[index], exercise.equipment).name !== exercise.name);
   return draft.notes.trim() !== "" || draft.exercises.some(exercise =>
     exercise.equipment === "machine" || exercise.sets.length > 1 || exercise.sets.some(set =>
-      String(set.weight).trim() !== "" || String(set.reps).trim() !== "" || set.done === true));
+      String(set.weight).trim() !== "" || String(set.reps).trim() !== "" || set.done === true)) || customShape;
 }
 
 export function loadDraft(storage, namespace) {

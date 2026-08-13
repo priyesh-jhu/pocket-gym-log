@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
-import { dayOrder, dayTemplates, variantFor, allVariantNames } from "./data/exercises.js";
+import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
@@ -13,6 +13,7 @@ import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorag
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
 import { getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
+import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -329,6 +330,12 @@ export default function App() {
 
   const [equipmentPrefs, setEquipmentPrefs] = useState({});
   const [confirmSwitch, setConfirmSwitch] = useState(null); // { ei, equipment } | null
+  const [customExerciseId, setCustomExerciseId] = useState("");
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [newExerciseTarget, setNewExerciseTarget] = useState("3 x 8-12");
+  const [templateName, setTemplateName] = useState("");
+  const [pendingTemplate, setPendingTemplate] = useState(null);
+  const [workoutToolsMsg, setWorkoutToolsMsg] = useState(null);
 
   const [pendingImport, setPendingImport] = useState(null); // { sessions, bodyweights, equipmentPrefs, profile, skipped } | null
   const importInputRef = useRef(null);
@@ -523,7 +530,8 @@ export default function App() {
   }
 
   function applyEquipmentSwitch(ei, equipment) {
-    const planEx = dayTemplates[currentDay].exercises[ei];
+    const planEx = exerciseForVariantName(draft.exercises[ei]?.name);
+    if (!planEx) return;
     const v = variantFor(planEx, equipment);
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei ? ex : buildDraftExercise(v)) }));
     const updated = setPref(equipmentPrefs, planEx.variants[0].name, v.equipment);
@@ -532,6 +540,43 @@ export default function App() {
     if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
     setConfirmSwitch(null);
     setPlateFor(null);
+  }
+
+  function saveAccountPrefs(updated) {
+    setEquipmentPrefs(updated);
+    savePrefs(storage, activeProfile, updated);
+    if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
+  }
+
+  function createAndAddExercise() {
+    const result = createCustomExercise(equipmentPrefs, {name:newExerciseName,target:newExerciseTarget});
+    if (!result.ok) { setWorkoutToolsMsg(result.error); return; }
+    saveAccountPrefs(result.prefs);
+    setDraft(prev=>addExerciseToDraft(prev,result.exercise));
+    setNewExerciseName(""); setNewExerciseTarget("3 x 8-12"); setWorkoutToolsMsg(`Added ${result.exercise.name}.`);
+  }
+
+  function addSavedCustomExercise() {
+    const exercise = getCustomExercises(equipmentPrefs).find(item=>item.id===customExerciseId);
+    if (!exercise) return;
+    setDraft(prev=>addExerciseToDraft(prev,exercise));
+    setWorkoutToolsMsg(`Added ${exercise.name}.`);
+  }
+
+  function storeWorkoutTemplate() {
+    const result = saveWorkoutTemplate(equipmentPrefs,templateName,draft);
+    if (!result.ok) { setWorkoutToolsMsg(result.error); return; }
+    saveAccountPrefs(result.prefs); setTemplateName(""); setWorkoutToolsMsg(`Saved template “${result.template.name}”.`);
+  }
+
+  function applySavedWorkoutTemplate(template) {
+    setDraft(prev=>applyWorkoutTemplate(prev,template));
+    setPendingTemplate(null); setDraftSavedAt(null); setConfirmSwitch(null); setPlateFor(null); setWorkoutToolsMsg(`Applied “${template.name}”.`);
+  }
+
+  function removeDraftExercise(index) {
+    if (draft.exercises.length<=1) return;
+    setDraft(prev=>({...prev,exercises:prev.exercises.filter((_,i)=>i!==index)}));
   }
 
   function updateProgressionIncrement(unit, value) {
@@ -745,7 +790,9 @@ export default function App() {
     return streak;
   }
 
-  const allExNames = Array.from(new Set(allVariantNames())).sort();
+  const customExercises = getCustomExercises(equipmentPrefs);
+  const workoutTemplates = getWorkoutTemplates(equipmentPrefs);
+  const allExNames = Array.from(new Set([...allVariantNames(),...customExercises.map(item=>item.name),...sessions.flatMap(session=>session.exercises.map(ex=>ex.name))])).sort();
   const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
   const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(s=>String(s.weight).trim()!==""&&String(s.reps).trim()!=="").length,0);
@@ -924,8 +971,9 @@ export default function App() {
 
             {/* Exercises */}
             {draft.exercises.map((ex,ei)=>{
-              const planEx=variantFor(dayMeta.exercises[ei], ex.equipment);
-              const variants=dayMeta.exercises[ei].variants;
+              const family=exerciseForVariantName(ex.name);
+              const planEx=family?variantFor(family,ex.equipment):{name:ex.name,equipment:"custom",target:ex.target||"3 x 8-12",tip:ex.tip||"Custom exercise"};
+              const variants=family?family.variants:[planEx];
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
               const progression=last&&getProgressionRecommendation(last.sets,planEx.target,progressionIncrements);
@@ -936,7 +984,7 @@ export default function App() {
                       <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
                       {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
                     </button>
-                    <div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px",flexShrink:0}}>Target: {planEx.target}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
                   </div>
 
                   {variants.length>1&&(
@@ -1030,6 +1078,24 @@ export default function App() {
                 </div>
               );
             })}
+
+            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
+              <div style={{fontSize:12,color:"#666",fontWeight:800,marginBottom:10}}>CUSTOMIZE WORKOUT</div>
+              {customExercises.length>0&&<div style={{display:"flex",gap:7,marginBottom:10}}>
+                <select value={customExerciseId} onChange={e=>setCustomExerciseId(e.target.value)} style={{flex:1,minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}}><option value="">Add a saved exercise…</option>{customExercises.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
+                <button onClick={addSavedCustomExercise} disabled={!customExerciseId} style={{background:customExerciseId?"#3B82F6":"#1E2035",border:"none",borderRadius:8,padding:"8px 13px",color:customExerciseId?"#fff":"#555",fontSize:11,fontWeight:700,cursor:customExerciseId?"pointer":"default",fontFamily:"inherit"}}>Add</button>
+              </div>}
+              <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) minmax(95px,0.8fr) auto",gap:7,marginBottom:12}}>
+                <input value={newExerciseName} onChange={e=>setNewExerciseName(e.target.value)} placeholder="New exercise name" style={{minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} />
+                <input value={newExerciseTarget} onChange={e=>setNewExerciseTarget(e.target.value)} placeholder="3 x 8-12" style={{minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} />
+                <button onClick={createAndAddExercise} style={{background:"#1E2035",border:"1px solid #2A2A3A",borderRadius:8,padding:"8px 11px",color:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Create + add</button>
+              </div>
+              <div style={{borderTop:"1px solid #1A1A28",paddingTop:11}}>
+                <div style={{display:"flex",gap:7,marginBottom:workoutTemplates.length?9:0}}><input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="Template name (e.g. Quick Push)" style={{flex:1,minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} /><button onClick={storeWorkoutTemplate} style={{background:"#1E2035",border:"1px solid #2A2A3A",borderRadius:8,padding:"8px 11px",color:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save current template</button></div>
+                {workoutTemplates.map(template=><div key={template.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"7px 0",borderTop:"1px solid #16172A"}}><div><div style={{fontSize:11,fontWeight:700}}>{template.name}</div><div style={{fontSize:9,color:"#555"}}>{template.exercises.length} exercise{template.exercises.length!==1?"s":""}</div></div>{pendingTemplate?.id===template.id?<div style={{display:"flex",gap:5,alignItems:"center"}}><span style={{fontSize:9,color:"#FBBF24"}}>Replace current draft?</span><button onClick={()=>applySavedWorkoutTemplate(template)} style={{background:"#3B82F6",border:"none",borderRadius:6,padding:"4px 8px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer"}}>Apply</button><button onClick={()=>setPendingTemplate(null)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#777",fontSize:9,cursor:"pointer"}}>Cancel</button></div>:<button onClick={()=>draftHasContent(draft)?setPendingTemplate(template):applySavedWorkoutTemplate(template)} style={{background:"none",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 9px",color:"#777",fontSize:9,fontWeight:700,cursor:"pointer"}}>Use template</button>}</div>)}
+              </div>
+              {workoutToolsMsg&&<div style={{fontSize:10,color:workoutToolsMsg.includes("exists")||workoutToolsMsg.startsWith("Enter")?"#F87171":"#4ADE80",marginTop:8}}>{workoutToolsMsg}</div>}
+            </div>
 
             <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
               <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Session Notes (optional)</div>
