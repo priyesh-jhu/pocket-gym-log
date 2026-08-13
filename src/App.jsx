@@ -7,7 +7,8 @@ import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, newSes
 import { loadPrefs, savePrefs, setPref } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import ProgressDashboard from "./ProgressDashboard.jsx";
-import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudProfile, saveCloudProfile } from "./firebase.js";
+import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
+import { reconcileCloudData } from "./cloudData.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -378,16 +379,13 @@ export default function App() {
         const legacy = localProfileData(legacyProfile);
         local = mergeBackup(local, legacy);
       }
-      // "default" is the legacy document written by the first Firebase
-      // implementation. Read it once when "main" does not exist, then save
-      // the merged result to "main".
-      const cloud = await loadCloudProfile(user.uid, "main") || await loadCloudProfile(user.uid, "default");
-      const merged = cloud ? mergeBackup(local, cloud) : local;
+      const cloud = await loadCloudData(user.uid);
+      const merged = reconcileCloudData(local, cloud);
       const sessionsOk = storage.set(sessionKey(profile), JSON.stringify(merged.sessions));
       const weightsOk = storage.set(weightKey(profile), JSON.stringify(merged.bodyweights));
       const prefsOk = savePrefs(storage, profile, merged.equipmentPrefs);
       if (!sessionsOk || !weightsOk || !prefsOk) throw new Error("Could not save merged data on this device.");
-      await saveCloudProfile(user.uid, "main", { ...merged, account:{ displayName:user.displayName||null, email:user.email||null } });
+      await saveCloudSnapshot(user.uid, { ...merged, account:{ displayName:user.displayName||null, email:user.email||null } });
       if (!legacyOwner) storage.set(LEGACY_OWNER_KEY, user.uid);
       setSessions(merged.sessions); setBodyweights(merged.bodyweights); setEquipmentPrefs(merged.equipmentPrefs);
       setDraft(newSession(currentDay, merged.equipmentPrefs));
@@ -412,12 +410,22 @@ export default function App() {
 
   async function disconnectFirebase() { await signOutFirebase(); setCloudStatus("signed-out"); }
 
-  function pushCloud(data) {
-    if (!firebaseUser || !activeProfile) return;
+  function runCloud(operation) {
+    if (!firebaseUser || !operation) return;
     setCloudStatus("syncing");
-    saveCloudProfile(firebaseUser.uid, "main", { ...data, account:{ displayName:firebaseUser.displayName||null, email:firebaseUser.email||null } })
+    const promise = typeof operation === "function" ? operation() : operation;
+    promise
       .then(()=>setCloudStatus("connected"))
       .catch(error=>{ console.error("Firebase save failed", error); setCloudStatus("error"); });
+  }
+
+  function accountMetadata() {
+    return { displayName:firebaseUser?.displayName||null, email:firebaseUser?.email||null };
+  }
+
+  function pushSnapshot(data, replace=false) {
+    if (!firebaseUser) return;
+    runCloud(saveCloudSnapshot(firebaseUser.uid, { ...data, account:accountMetadata() }, { replace }));
   }
 
   useEffect(() => {
@@ -437,11 +445,11 @@ export default function App() {
     return storage.set(sessionKey(activeProfile), JSON.stringify(updated));
   }
 
-  function persist(updated) {
+  function persist(updated, cloudOperation=null) {
     if (!activeProfile) return false;
     setSaveStatus("saving");
     const ok = writeSessions(updated);
-    if (ok) { pushCloud({sessions:updated, bodyweights, equipmentPrefs}); setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
+    if (ok) { runCloud(cloudOperation); setSaveStatus("saved"); setTimeout(()=>setSaveStatus("idle"),1500); }
     else { setSaveStatus("error"); setStatusMsg("Could not save."); }
     return ok;
   }
@@ -451,9 +459,9 @@ export default function App() {
     return storage.set(weightKey(activeProfile), JSON.stringify(updated));
   }
 
-  function persistWeights(updated) {
+  function persistWeights(updated, cloudOperation=null) {
     const ok = writeWeights(updated);
-    if (ok) pushCloud({sessions, bodyweights:updated, equipmentPrefs});
+    if (ok) runCloud(cloudOperation);
     return ok;
   }
 
@@ -473,7 +481,7 @@ export default function App() {
     const updated = setPref(equipmentPrefs, planEx.variants[0].name, v.equipment);
     setEquipmentPrefs(updated);
     savePrefs(storage, activeProfile, updated);
-    pushCloud({sessions, bodyweights, equipmentPrefs:updated});
+    if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
     setConfirmSwitch(null);
     setPlateFor(null);
   }
@@ -502,25 +510,26 @@ export default function App() {
 
   function saveSession() {
     if (!draft.exercises.some(ex => hasEnteredData(ex.sets))) { setSaveStatus("error"); setStatusMsg("Add at least one value."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
-    const updated = [...sessions, cleanSession(draft)].sort((a,b)=>a.date.localeCompare(b.date));
-    setSessions(updated); persist(updated);
+    const saved = cleanSession(draft);
+    const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
+    setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     setDraft(newSession(currentDay, equipmentPrefs)); setConfirmSwitch(null); setRestRunning(false); setRestSeconds(0);
   }
 
-  function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u); setConfirmDelete(null); }
-  function resetAll() { setSessions([]); persist([]); setConfirmReset(false); }
+  function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
+  function resetAll() { setSessions([]); persist([]); pushSnapshot({sessions:[],bodyweights,equipmentPrefs}, true); setConfirmReset(false); }
 
   function addWeight() {
     const w = parseFloat(weightInput);
     if (isNaN(w)||w<=0) { setSaveStatus("error"); setStatusMsg("Enter a valid weight."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2000); return; }
     const entry = { id:"w_"+Date.now(), date:weightDate, weight:w, unit:weightUnit };
     const updated = [...bodyweights.filter(e=>e.date!==weightDate), entry].sort((a,b)=>a.date.localeCompare(b.date));
-    setBodyweights(updated); persistWeights(updated);
+    setBodyweights(updated); persistWeights(updated, firebaseUser ? ()=>saveCloudBodyweight(firebaseUser.uid, entry) : null);
     setWeightInput("");
     setSaveStatus("saved"); setStatusMsg("Weight logged ✓"); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
   }
 
-  function deleteWeight(id) { const u=bodyweights.filter(e=>e.id!==id); setBodyweights(u); persistWeights(u); setConfirmDeleteWeight(null); }
+  function deleteWeight(id) { const removed=bodyweights.find(e=>e.id===id); const u=bodyweights.filter(e=>e.id!==id); setBodyweights(u); persistWeights(u, firebaseUser&&removed ? ()=>deleteCloudBodyweight(firebaseUser.uid, removed.date) : null); setConfirmDeleteWeight(null); }
 
   function exportData() {
     const accountName = firebaseUser?.displayName || firebaseUser?.email || "guest";
@@ -550,7 +559,7 @@ export default function App() {
     reader.readAsText(file);
   }
 
-  function applyImportedData({ sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs }, msg) {
+  function applyImportedData({ sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs }, msg, replaceCloud=false) {
     // React state must never diverge from disk. Snapshot what's currently
     // persisted (the `sessions`/`bodyweights`/`equipmentPrefs` state variables
     // ARE the on-disk values — nothing else writes to storage except through
@@ -570,7 +579,7 @@ export default function App() {
       setSessions(newSessions);
       setBodyweights(newWeights);
       setEquipmentPrefs(newPrefs);
-      pushCloud({sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs});
+      pushSnapshot({sessions:newSessions, bodyweights:newWeights, equipmentPrefs:newPrefs}, replaceCloud);
 
       // Don't wipe a workout the user is mid-typing on the Log tab just
       // because an import happened — only reset the draft when it's still
@@ -615,7 +624,7 @@ export default function App() {
   function confirmImportReplace() {
     if (!pendingImport) return;
     const replaced = replaceBackup(pendingImport);
-    applyImportedData(replaced, "Replaced with "+replaced.sessions.length+" session"+(replaced.sessions.length!==1?"s":"")+", "+replaced.bodyweights.length+" weigh-in"+(replaced.bodyweights.length!==1?"s":"")+" from the file.");
+    applyImportedData(replaced, "Replaced with "+replaced.sessions.length+" session"+(replaced.sessions.length!==1?"s":"")+", "+replaced.bodyweights.length+" weigh-in"+(replaced.bodyweights.length!==1?"s":"")+" from the file.", true);
   }
 
   const prMap = buildPRMap(sessions);

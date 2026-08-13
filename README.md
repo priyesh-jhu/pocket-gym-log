@@ -8,7 +8,7 @@ Copy `.env.example` to `.env.local` and fill in the Firebase web-app config valu
 
 After configuration, use **Google Sign-in** in the app header. Each Google account gets one isolated workout log, both in Firestore and in UID-scoped device storage. Subsequent workout, bodyweight, import, and equipment-preference changes sync automatically while localStorage remains available offline. Signed-out activity is kept separately in guest mode and is never automatically merged into an account. During the upgrade from the old named-profile version, the first Google account on an existing installation claims the previously active local profile once; later accounts cannot claim or read it.
 
-To inspect saved data, open Firebase Console → Firestore Database → Data, then expand `users` → your Firebase UID → `profiles` → `main`. The document contains `sessions`, `bodyweights`, and `equipmentPrefs`. Authentication → Users shows the matching Google account and UID.
+To inspect saved data, open Firebase Console → Firestore Database → Data, then expand `users` → your Firebase UID. Workout sessions are individual documents under `sessions`, weigh-ins are under `bodyweights`, and account/equipment preferences are in `settings/main`. Authentication → Users shows the matching Google account and UID. Older `profiles/main` or `profiles/default` documents are retained as read-only migration sources and are no longer updated.
 
 ### Deploy to Firebase Hosting
 
