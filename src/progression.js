@@ -1,4 +1,24 @@
-const INCREMENTS = { lb:5, kg:2.5 };
+export const DEFAULT_INCREMENTS = { lb:5, kg:2.5 };
+export const PROGRESSION_PREF_KEY = "__progressionIncrements";
+
+function validIncrement(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0.25 && number <= 100 ? number : fallback;
+}
+
+export function getProgressionIncrements(prefs) {
+  const stored = prefs?.[PROGRESSION_PREF_KEY];
+  return {
+    lb:validIncrement(stored?.lb, DEFAULT_INCREMENTS.lb),
+    kg:validIncrement(stored?.kg, DEFAULT_INCREMENTS.kg),
+  };
+}
+
+export function setProgressionIncrement(prefs, unit, value) {
+  if (unit !== "lb" && unit !== "kg") return { ...(prefs || {}) };
+  const current = getProgressionIncrements(prefs);
+  return { ...(prefs || {}), [PROGRESSION_PREF_KEY]:{ ...current, [unit]:validIncrement(value, current[unit]) } };
+}
 
 export function parseRepTarget(target) {
   if (typeof target !== "string" || /\b(?:sec(?:ond)?s?|met(?:er|re)s?)\b/i.test(target)) return null;
@@ -27,13 +47,13 @@ function formatWeight(weight) {
   return Number.isInteger(weight) ? String(weight) : String(Number(weight.toFixed(2)));
 }
 
-export function getProgressionRecommendation(sets, target) {
+export function getProgressionRecommendation(sets, target, increments=DEFAULT_INCREMENTS) {
   const goal = parseRepTarget(target);
   const work = workingGroup(sets);
   if (!goal || !work) return null;
 
   const enoughSets = work.reps.length >= goal.sets;
-  const increment = INCREMENTS[work.unit];
+  const increment = validIncrement(increments?.[work.unit], DEFAULT_INCREMENTS[work.unit]);
   if (enoughSets && work.reps.every(reps => reps >= goal.maxReps)) {
     const next = work.weight + increment;
     return {

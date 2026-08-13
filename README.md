@@ -54,7 +54,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Plate calculator**: Quick load planning
 - **Rest timer**: Between sets
 - **Draft recovery**: In-progress workouts autosave per account and recover after refreshes or crashes
-- **Progressive overload guidance**: Uses the most recent working sets and the exercise's rep target to suggest increasing, repeating, or slightly reducing weight; it never changes entered weights automatically
+- **Progressive overload guidance**: Uses the most recent working sets and the exercise's rep target to suggest increasing, repeating, or slightly reducing weight; configurable lb/kg increments are saved per account and weights are never changed automatically
 
 ## Development
 

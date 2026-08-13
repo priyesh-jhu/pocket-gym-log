@@ -10,7 +10,7 @@ import ProgressDashboard from "./ProgressDashboard.jsx";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
-import { getProgressionRecommendation } from "./progression.js";
+import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -522,6 +522,13 @@ export default function App() {
     setPlateFor(null);
   }
 
+  function updateProgressionIncrement(unit, value) {
+    const updated = setProgressionIncrement(equipmentPrefs, unit, value);
+    setEquipmentPrefs(updated);
+    savePrefs(storage, activeProfile, updated);
+    if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
+  }
+
   function updateSet(ei, si, field, val) {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
   }
@@ -717,6 +724,7 @@ export default function App() {
   const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
   const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(s=>String(s.weight).trim()!==""&&String(s.reps).trim()!=="").length,0);
+  const progressionIncrements = getProgressionIncrements(equipmentPrefs);
 
   if (loading) return (
     <div style={{background:"#08090E",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#666",fontFamily:"sans-serif"}}>
@@ -763,7 +771,7 @@ export default function App() {
 
       {/* ── TABS ── */}
       <div style={{display:"flex",borderBottom:"1px solid #16172A",maxWidth:720,margin:"0 auto",overflowX:"auto"}}>
-        {[["log","Log Workout"],["history","History"],["progress","Progress"],["weight","Weight"]].map(([id,label])=>(
+        {[["log","Log Workout"],["history","History"],["progress","Progress"],["weight","Weight"],["settings","Settings"]].map(([id,label])=>(
           <button key={id} onClick={()=>switchTab(id)} style={{background:"none",border:"none",color:activeTab===id?"#ECEAF4":"#444",fontWeight:700,fontSize:13,padding:"14px 18px",cursor:"pointer",borderBottom:activeTab===id?"2px solid #3B82F6":"2px solid transparent",transition:"all 0.15s",fontFamily:"inherit",whiteSpace:"nowrap"}}>{label}</button>
         ))}
       </div>
@@ -879,7 +887,7 @@ export default function App() {
               const variants=dayMeta.exercises[ei].variants;
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
-              const progression=last&&getProgressionRecommendation(last.sets,planEx.target);
+              const progression=last&&getProgressionRecommendation(last.sets,planEx.target,progressionIncrements);
               return (
                 <div key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
@@ -1140,6 +1148,26 @@ export default function App() {
           confirmDeleteWeight={confirmDeleteWeight} setConfirmDeleteWeight={setConfirmDeleteWeight}
           onAdd={addWeight} onDelete={deleteWeight}
         />}
+
+        {/* ── SETTINGS TAB ── */}
+        {activeTab==="settings"&&(
+          <div>
+            <div style={{fontSize:18,fontWeight:900,marginBottom:4}}>Settings</div>
+            <div style={{fontSize:12,color:"#666",marginBottom:16}}>Preferences are saved for {firebaseUser?"your Google account":"guest mode on this device"}.</div>
+            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
+              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Progression increments</div>
+              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:14}}>When you complete the top of an exercise's rep range, recommendations use these steps. Reductions use the same amount.</div>
+              {[["lb","Pounds",[2.5,5,10]],["kg","Kilograms",[1,2.5,5]]].map(([unit,label,options])=>(
+                <div key={unit} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 0",borderTop:"1px solid #16172A"}}>
+                  <div><div style={{fontSize:12,fontWeight:700}}>{label}</div><div style={{fontSize:10,color:"#555"}}>Current step: {progressionIncrements[unit]} {unit}</div></div>
+                  <div style={{display:"flex",gap:5}}>
+                    {options.map(value=><button key={value} onClick={()=>updateProgressionIncrement(unit,value)} style={{background:progressionIncrements[unit]===value?"#3B82F6":"#161723",border:"1px solid "+(progressionIncrements[unit]===value?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"6px 10px",color:progressionIncrements[unit]===value?"#fff":"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}</button>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 

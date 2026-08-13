@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { getProgressionRecommendation, parseRepTarget } from "./progression.js";
+import { getProgressionIncrements, getProgressionRecommendation, parseRepTarget, setProgressionIncrement } from "./progression.js";
 
 describe("progressive-overload recommendations", () => {
   test("parses rep ranges and each-side targets", () => {
@@ -24,6 +24,19 @@ describe("progressive-overload recommendations", () => {
   test("uses a 2.5 kg increment", () => {
     const sets = [12, 12, 12].map(reps => ({ weight:"40", reps, unit:"kg" }));
     assert.equal(getProgressionRecommendation(sets, "3 x 10-12").message.startsWith("Try 42.5 kg"), true);
+  });
+
+  test("reads, validates, and updates account-scoped increment preferences", () => {
+    assert.deepEqual(getProgressionIncrements({}), { lb:5, kg:2.5 });
+    assert.deepEqual(getProgressionIncrements({ __progressionIncrements:{ lb:10, kg:"bad" } }), { lb:10, kg:2.5 });
+    const prefs = setProgressionIncrement({ "Bench Press":"machine" }, "lb", 2.5);
+    assert.equal(prefs["Bench Press"], "machine");
+    assert.deepEqual(getProgressionIncrements(prefs), { lb:2.5, kg:2.5 });
+  });
+
+  test("uses customized increments in its advice", () => {
+    const sets = [10, 10, 10].map(reps => ({ weight:100, reps, unit:"lb" }));
+    assert.match(getProgressionRecommendation(sets, "3 x 8-10", { lb:10, kg:5 }).message, /110 lb/);
   });
 
   test("holds when performance is mixed or fewer prescribed working sets were logged", () => {
