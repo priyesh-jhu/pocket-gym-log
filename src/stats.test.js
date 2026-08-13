@@ -92,4 +92,30 @@ describe("muscleBalance", () => {
     ])];
     assert.deepEqual(muscleBalance(sessions, 4, "2026-08-13"), []);
   });
+
+  test("splits volume evenly across two different muscle groups", () => {
+    const sessions = [mkSession("2026-08-10", [
+      { name: "Incline DB Press", sets: [mkSet("100", "10")] },
+    ])];
+    const result = muscleBalance(sessions, 4, "2026-08-13");
+    assert.equal(result.length, 2);
+    const byGroup = new Map(result.map(r => [r.group, r]));
+    assert.equal(byGroup.get("Chest").pct, 50);
+    assert.equal(byGroup.get("Chest").volume, 500);
+    assert.equal(byGroup.get("Shoulders").pct, 50);
+    assert.equal(byGroup.get("Shoulders").volume, 500);
+  });
+
+  test("collapses three primary muscles spanning two groups into 50/50, not thirds", () => {
+    const sessions = [mkSession("2026-08-10", [
+      { name: "Conventional Deadlift", sets: [mkSet("100", "10")] },
+    ])];
+    const result = muscleBalance(sessions, 4, "2026-08-13");
+    assert.equal(result.length, 2);
+    const byGroup = new Map(result.map(r => [r.group, r]));
+    assert.equal(byGroup.get("Back").pct, 50);
+    assert.equal(byGroup.get("Back").volume, 500);
+    assert.equal(byGroup.get("Legs").pct, 50);
+    assert.equal(byGroup.get("Legs").volume, 500);
+  });
 });
