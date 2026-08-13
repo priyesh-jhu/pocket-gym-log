@@ -53,6 +53,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Bodyweight logging**: With 7-day trend line
 - **Plate calculator**: Quick load planning
 - **Rest timer**: Between sets
+- **Draft recovery**: In-progress workouts autosave per account and recover after refreshes or crashes
 
 ## Development
 

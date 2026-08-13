@@ -9,6 +9,7 @@ import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backu
 import ProgressDashboard from "./ProgressDashboard.jsx";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
+import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -298,6 +299,9 @@ export default function App() {
 
   const [currentDay, setCurrentDay] = useState(() => todaysDayKey());
   const [draft, setDraft] = useState(() => newSession(todaysDayKey(), {}));
+  const [draftSavedAt, setDraftSavedAt] = useState(null);
+  const [confirmDiscardDraft, setConfirmDiscardDraft] = useState(false);
+  const draftNamespaceRef = useRef("guest");
   const [expandedHistory, setExpandedHistory] = useState(null);
   const [progressExercise, setProgressExercise] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
@@ -328,6 +332,16 @@ export default function App() {
 
   function switchTab(t) { setActiveTab(t); try { storage.set(TAB_KEY, t); } catch {} }
 
+  function restoreDraft(namespace, prefs) {
+    const saved = loadDraft(storage, namespace);
+    const next = saved?.draft || newSession(todaysDayKey(), prefs);
+    draftNamespaceRef.current = namespace;
+    setCurrentDay(next.day);
+    setDraft(next);
+    setDraftSavedAt(saved?.savedAt || null);
+    setConfirmDiscardDraft(false);
+  }
+
   // Bootstrap
   useEffect(() => {
     let cancelled = false;
@@ -337,7 +351,7 @@ export default function App() {
         setSessions(readStoredArray(sessionKey("guest")));
         setBodyweights(readStoredArray(weightKey("guest")));
         setEquipmentPrefs(prefs);
-        setDraft(newSession(todaysDayKey(), prefs));
+        restoreDraft("guest", prefs);
       }
     } catch { /* Guest mode remains empty if device storage is unavailable. */ }
     finally { if (!cancelled) setLoading(false); }
@@ -354,7 +368,7 @@ export default function App() {
       setSessions(readStoredArray(sessionKey(namespace)));
       setBodyweights(readStoredArray(weightKey(namespace)));
       setEquipmentPrefs(prefs);
-      setDraft(newSession(todaysDayKey(), prefs));
+      restoreDraft(namespace, prefs);
     }
   }), []);
 
@@ -388,7 +402,7 @@ export default function App() {
       await saveCloudSnapshot(user.uid, { ...merged, account:{ displayName:user.displayName||null, email:user.email||null } });
       if (!legacyOwner) storage.set(LEGACY_OWNER_KEY, user.uid);
       setSessions(merged.sessions); setBodyweights(merged.bodyweights); setEquipmentPrefs(merged.equipmentPrefs);
-      setDraft(newSession(currentDay, merged.equipmentPrefs));
+      restoreDraft(profile, merged.equipmentPrefs);
       setCloudStatus("connected");
     } catch (error) {
       console.error("Firebase sync failed", error);
@@ -436,6 +450,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, firebaseUser, activeProfile]);
 
+  useEffect(() => {
+    if (loading || draftNamespaceRef.current !== activeProfile) return;
+    const timer = setTimeout(() => {
+      if (draftHasContent(draft)) {
+        const now = new Date();
+        if (saveDraft(storage, activeProfile, draft, now)) setDraftSavedAt(now.toISOString());
+      } else {
+        clearDraft(storage, activeProfile);
+        setDraftSavedAt(null);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [draft, activeProfile, loading]);
+
   // Raw disk write, no saveStatus side effects — used by persist() below for
   // the normal save flow, and directly by applyImportedData(), which needs to
   // attempt (and potentially roll back) a write without an intermediate
@@ -465,7 +493,14 @@ export default function App() {
     return ok;
   }
 
-  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setConfirmSwitch(null); }
+  function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); }
+
+  function discardDraft() {
+    clearDraft(storage, activeProfile);
+    const fresh = newSession(currentDay, equipmentPrefs);
+    draftNamespaceRef.current = activeProfile;
+    setDraft(fresh); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setPlateFor(null);
+  }
 
   function requestEquipmentSwitch(ei, equipment) {
     const ex = draft.exercises[ei];
@@ -513,7 +548,8 @@ export default function App() {
     const saved = cleanSession(draft);
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
-    setDraft(newSession(currentDay, equipmentPrefs)); setConfirmSwitch(null); setRestRunning(false); setRestSeconds(0);
+    clearDraft(storage, activeProfile);
+    setDraft(newSession(currentDay, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setRestRunning(false); setRestSeconds(0);
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
@@ -773,6 +809,23 @@ export default function App() {
                 </button>;
               })}
             </div>
+
+            {draftHasContent(draft)&&(
+              <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.22)",borderRadius:10,padding:"9px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,color:"#60A5FA",fontWeight:700,flex:1}}>
+                  {draftSavedAt ? "Draft saved on this device · "+new Date(draftSavedAt).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}) : "Saving draft…"}
+                </span>
+                {confirmDiscardDraft ? (
+                  <span style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:10,color:"#9CA3AF"}}>Discard entered workout?</span>
+                    <button onClick={discardDraft} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"4px 9px",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Discard</button>
+                    <button onClick={()=>setConfirmDiscardDraft(false)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 9px",color:"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                  </span>
+                ) : (
+                  <button onClick={()=>setConfirmDiscardDraft(true)} style={{background:"none",border:"none",color:"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>Discard draft</button>
+                )}
+              </div>
+            )}
 
             {/* Coach note */}
             <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"25",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
