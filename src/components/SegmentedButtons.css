@@ -1,0 +1,24 @@
+/* 42px option + 3px container padding top and bottom = 48dp target */
+.m3-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--surface-container-highest);
+  border-radius: var(--shape-full);
+}
+.m3-seg__opt {
+  min-height: 42px;
+  padding: 0 var(--sp4);
+  border: 0;
+  border-radius: var(--shape-full);
+  background: transparent;
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: var(--text-label-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--dur-short) var(--ease-std),
+              color var(--dur-short) var(--ease-std);
+}
+.m3-seg__opt[aria-pressed="true"] { background: var(--filled-bg); color: var(--filled-fg); }

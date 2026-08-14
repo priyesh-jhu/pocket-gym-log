@@ -1,0 +1,12 @@
+.m3-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp4);
+  min-height: 56px;
+  padding: var(--sp3) 0;
+}
+.m3-list-item + .m3-list-item { border-top: 1px solid var(--outline-variant); }
+.m3-list-item__body     { flex: 1; min-width: 0; }
+.m3-list-item__title    { font-size: var(--text-body-lg); font-weight: 600; color: var(--on-surface); }
+.m3-list-item__sub      { margin-top: 2px; font-size: var(--text-body-sm); color: var(--on-surface-variant); }
+.m3-list-item__trailing { flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp2); }

@@ -1,3 +1,6 @@
 export { default as Card } from "./Card.jsx";
 export { default as Button } from "./Button.jsx";
 export { default as Chip } from "./Chip.jsx";
+export { default as TextField } from "./TextField.jsx";
+export { default as ListItem } from "./ListItem.jsx";
+export { default as SegmentedButtons } from "./SegmentedButtons.jsx";
