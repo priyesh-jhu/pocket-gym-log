@@ -55,6 +55,41 @@
 .session-exit-confirm strong { color: var(--on-surface); font-size: var(--text-body); }
 .session-exit-confirm span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
 
+.session-exercise-nav {
+  position: sticky;
+  top: calc(72px + env(safe-area-inset-top));
+  z-index: 35;
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: var(--sp2);
+  margin-bottom: var(--sp3);
+  padding: var(--sp2);
+  border-radius: var(--shape-lg);
+  background: var(--surface-container-high);
+  box-shadow: var(--elev-1);
+  text-align: center;
+}
+.session-exercise-nav strong,
+.session-exercise-nav span { display: block; }
+.session-exercise-nav strong { font-size: var(--text-body); }
+.session-exercise-nav span { margin-top: 2px; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.session-open-exercise {
+  min-height: 32px;
+  padding: 0 var(--sp2);
+  border: 0;
+  border-radius: var(--shape-full);
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  font-size: var(--text-label-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.workout-card.is-collapsed { padding-block: var(--sp3) !important; }
+.workout-card.is-collapsed > :not(.exercise-head) { display: none !important; }
+.workout-card.is-collapsed .exercise-head { margin-bottom: 0 !important; align-items: center !important; }
+.workout-card.is-collapsed .exercise-actions > :not(.session-open-exercise) { display: none !important; }
+
 @media (max-width: 640px) {
   .app-shell { width: 100%; box-shadow: none; }
   .app-content { padding: 14px 12px 0 !important; }

@@ -17,7 +17,7 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BarChart3, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
 import { AppBar, Button, NavBar } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
@@ -317,6 +317,8 @@ export default function App() {
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [confirmExitSession, setConfirmExitSession] = useState(false);
+  const [activeExercise, setActiveExercise] = useState(0);
+  const [sessionElapsed, setSessionElapsed] = useState(0);
   const sessionHistoryRef = useRef(false);
 
   // Internal storage namespace: Firebase UID when signed in, isolated guest
@@ -576,6 +578,7 @@ export default function App() {
       sessionHistoryRef.current = true;
     }
     setSessionActive(true);
+    setActiveExercise(0);
   }
 
   function leaveSession() {
@@ -603,6 +606,17 @@ export default function App() {
     window.addEventListener("popstate", handleBack);
     return () => window.removeEventListener("popstate", handleBack);
   }, [sessionActive, draft]);
+
+  useEffect(() => {
+    if (!sessionActive) return undefined;
+    const updateElapsed = () => {
+      const started = new Date(draft.startedAt).getTime();
+      setSessionElapsed(Number.isFinite(started) ? Math.max(0, Math.floor((Date.now() - started) / 1000)) : 0);
+    };
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [sessionActive, draft.startedAt]);
 
   function requestEquipmentSwitch(ei, equipment) {
     const ex = draft.exercises[ei];
@@ -672,6 +686,7 @@ export default function App() {
   function removeDraftExercise(index) {
     if (draft.exercises.length<=1) return;
     setDraft(prev=>({...prev,exercises:prev.exercises.filter((_,i)=>i!==index)}));
+    setActiveExercise(current => current > index ? current - 1 : Math.min(current, draft.exercises.length - 2));
   }
 
   function moveDraftExercise(index, direction) {
@@ -682,6 +697,7 @@ export default function App() {
       [exercises[index],exercises[target]]=[exercises[target],exercises[index]];
       return {...prev,exercises};
     });
+    setActiveExercise(current => current === index ? index + direction : current === index + direction ? index : current);
   }
 
   function updateProgressionIncrement(unit, value) {
@@ -951,7 +967,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <AppBar
-        overline={new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
+        overline={sessionActive ? `Workout · ${fmtRest(sessionElapsed)}` : new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
         title={sessionActive ? dayMeta.label : "Pocket Gym Log"}
         actions={sessionActive
           ? <Button variant="text" onClick={requestSessionExit} aria-label="Exit workout"><X size={20} /></Button>
@@ -1133,6 +1149,11 @@ export default function App() {
             )}
 
             {/* Exercises */}
+            <div className="session-exercise-nav" aria-label="Exercise navigation">
+              <Button variant="text" aria-label="Previous exercise" disabled={activeExercise === 0} onClick={() => setActiveExercise(index => Math.max(0, index - 1))}><ChevronLeft size={20} /></Button>
+              <div><strong>Exercise {activeExercise + 1} of {draft.exercises.length}</strong><span>{draftFilled} completed set{draftFilled === 1 ? "" : "s"}</span></div>
+              <Button variant="text" aria-label="Next exercise" disabled={activeExercise === draft.exercises.length - 1} onClick={() => setActiveExercise(index => Math.min(draft.exercises.length - 1, index + 1))}><ChevronRight size={20} /></Button>
+            </div>
             {draft.exercises.map((ex,ei)=>{
               const family=exerciseForVariantName(ex.name);
               const planEx=family?variantFor(family,ex.equipment):{name:ex.name,equipment:"custom",target:ex.target||"3 x 8-12",tip:ex.tip||"Custom exercise"};
@@ -1143,13 +1164,13 @@ export default function App() {
               const last=getLastTime(ex.name);
               const progression=last&&getProgressionRecommendation(last.sets,planEx.target,progressionIncrements);
               return (
-                <div className="workout-card" key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+                <div className={`workout-card ${ei === activeExercise ? "is-active" : "is-collapsed"}`} key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
                   <div className="exercise-head" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
                     <button onClick={()=>formGuide[ex.name]&&setGuideExercise(ex.name)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,cursor:formGuide[ex.name]?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
                       <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
                       {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
                     </button>
-                    <div className="exercise-actions" style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
+                    <div className="exercise-actions" style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><button className="session-open-exercise" onClick={()=>setActiveExercise(ei)}>{ex.sets.filter(set => set.done).length}/{ex.sets.length} sets{ei === activeExercise ? "" : " · Open"}</button><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
                   </div>
 
                   {variants.length>1&&(
