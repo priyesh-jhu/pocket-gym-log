@@ -25,10 +25,10 @@ This milestone finishes the approved Android-first redesign from its current bro
   2. Users can change analytics ranges and dashboard customization through accessible Material controls and sheets.
   3. Progress charts, labels, states, and controls remain legible and coherent when switching between light and dark themes.
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 - [x] 01-01-PLAN.md
-- [ ] 01-02-PLAN.md
+- [x] 01-02-PLAN.md
 - [ ] 01-03-PLAN.md
 
 ### Phase 2: History and Weight Screens
@@ -70,7 +70,7 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Progress Completion | 1/3 | In Progress|  |
+| 1. Progress Completion | 2/3 | In Progress|  |
 | 2. History and Weight Screens | 0/TBD | Not started | - |
 | 3. Redesign Cleanup and Android Verification | 0/TBD | Not started | - |
 
