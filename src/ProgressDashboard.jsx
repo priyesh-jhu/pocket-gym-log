@@ -160,7 +160,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           {selectedPriority&&<div className="progress-muscle-detail">
             <h3>{MUSCLES[selectedMuscle]}</h3><p>{MUSCLES[selectedMuscle]}: {selectedPriority.done.toFixed(1)} of {selectedPriority.target} estimated sets</p>
             <div className="progress-target-track"><span style={{width:selectedPriority.pct+"%"}} /></div>
-            <label>Weekly target sets <input type="number" min="1" max="40" value={settings.targets[selectedMuscle]} onChange={event=>saveSettings({targets:{...settings.targets,[selectedMuscle]:Math.max(1,Math.min(40,Number(event.target.value)||1))}})}/></label>
+            <label>Weekly target sets <input type="number" min="1" max="40" value={settings.targets[selectedMuscle]} onChange={event=>{const target=Math.max(1,Math.min(40,Number(event.target.value)||1));saveSettings(current=>({targets:{...current.targets,[selectedMuscle]:target}}));}}/></label>
             <h4>Recent exercises</h4>{selectedHistory.length?<div className="progress-history-list">{selectedHistory.map((item,index)=><div key={item.date+item.name+index}>{item.date} · {item.name} · {item.sets} set{item.sets===1?"":"s"}</div>)}</div>:<p>No matching exercise in this range.</p>}
           </div>}
           {exerciseSuggestions.suggestions.length>0?<div className="progress-suggestions"><h3>Exercises to fill the gaps</h3><p>Chosen from the app's verified muscle guide, with direct work preferred.</p>

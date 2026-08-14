@@ -11,6 +11,8 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
   useEffect(() => {
     if (!open) return undefined;
     previousFocus.current = document.activeElement;
+    const sheetNode = sheetRef.current;
+    const returnTarget = returnFocusRef?.current || previousFocus.current;
     const frame = requestAnimationFrame(() => (initialFocusRef?.current || headingRef.current)?.focus());
     const focusable = () => [...(sheetRef.current?.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])];
     const closeFromUi = () => {
@@ -29,7 +31,7 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
     const onPopState = event => {
       if (historyKey.current && event.state?.sheetKey !== historyKey.current) onClose();
     };
-    sheetRef.current?.addEventListener("keydown", onKeyDown);
+    sheetNode?.addEventListener("keydown", onKeyDown);
     if (dismissOnHistory) {
       historyKey.current = `sheet-${titleId}`;
       window.history.pushState({ ...window.history.state, sheetKey: historyKey.current }, "");
@@ -37,10 +39,9 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
     }
     return () => {
       cancelAnimationFrame(frame);
-      sheetRef.current?.removeEventListener("keydown", onKeyDown);
+      sheetNode?.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("popstate", onPopState);
-      const target = returnFocusRef?.current || previousFocus.current;
-      requestAnimationFrame(() => target?.isConnected && target.focus?.());
+      requestAnimationFrame(() => returnTarget?.isConnected && returnTarget.focus?.());
       historyKey.current = null;
     };
   }, [dismissOnHistory, initialFocusRef, onClose, open, returnFocusRef, titleId]);

@@ -74,20 +74,28 @@ function E1RMGroup({ sessions }) {
 export default function ProgressScreen({ sessions = [], preferences = {}, onSavePreferences, onAddExercise, loading = false }) {
   const normalized = useMemo(() => normalizeDashboardSettings(preferences), [preferences]);
   const confirmedRef = useRef(normalized);
+  const customizeInitialRef = useRef(null);
+  const customizeReturnRef = useRef(null);
+  const saveErrorRef = useRef(null);
   const [customizing, setCustomizing] = useState(false);
   const [saveError, setSaveError] = useState("");
 
   const settings = normalized;
   useEffect(() => { confirmedRef.current = normalized; }, [normalized]);
+  useEffect(() => { if (saveError) saveErrorRef.current?.focus(); }, [saveError]);
 
   const saveChanges = changes => {
-    const next = updateDashboardSettings(confirmedRef.current, changes);
+    const latest = confirmedRef.current;
+    const resolved = typeof changes === "function" ? changes(latest) : changes;
+    const next = updateDashboardSettings(latest, resolved);
     if (next === confirmedRef.current) return true;
-    const saved = onSavePreferences?.({ ...preferences, [DASHBOARD_KEY]: next });
+    let saved;
+    try { saved = onSavePreferences?.({ ...preferences, [DASHBOARD_KEY]: next }); }
+    catch { saved = false; }
     if (saved === false) { setSaveError("Dashboard changes couldn’t be saved. Try again."); return false; }
     confirmedRef.current = next; setSaveError(""); return true;
   };
-  const toggleGroup = id => saveChanges({ hiddenCards: settings.hiddenCards.includes(id) ? settings.hiddenCards.filter(item => item !== id) : [...settings.hiddenCards, id] });
+  const toggleGroup = id => saveChanges(current => ({ hiddenCards: current.hiddenCards.includes(id) ? current.hiddenCards.filter(item => item !== id) : [...current.hiddenCards, id] }));
   const moveGroup = (id, direction) => {
     const order = [...confirmedRef.current.cardOrder];
     const from = order.indexOf(id), to = from + direction;
@@ -104,12 +112,12 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
 
   return <section className="progress-screen" aria-labelledby="progress-title">
     <h1 id="progress-title" className="sr-only">Training progress</h1>
-    <ProgressToolbar settings={settings} onChange={saveChanges} onCustomize={() => setCustomizing(true)} />
-    <div className="progress-live" aria-live="polite">{saveError}</div>
-    <Sheet open={customizing} title="Customize dashboard" onClose={() => setCustomizing(false)}>
+    <ProgressToolbar settings={settings} onChange={saveChanges} onCustomize={event => { customizeReturnRef.current=event.currentTarget; setCustomizing(true); }} />
+    <div ref={saveErrorRef} tabIndex={-1} className="progress-live" role="status" aria-live="polite">{saveError}</div>
+    <Sheet open={customizing} title="Customize dashboard" closeLabel="Close Customize dashboard" initialFocusRef={customizeInitialRef} returnFocusRef={customizeReturnRef} dismissOnHistory onClose={() => setCustomizing(false)}>
       <p className="progress-sheet-copy">Choose which analytics groups appear and adjust their order.</p>
       <div className="progress-customize-list">{settings.cardOrder.map((id, index) => <div key={id} className="progress-customize-row">
-        <button type="button" role="switch" aria-label={`Show ${PROGRESS_GROUP_LABELS[id]}`} aria-checked={!settings.hiddenCards.includes(id)} className="progress-switch" onClick={() => toggleGroup(id)}><span /></button>
+        <button ref={index===0?customizeInitialRef:null} type="button" role="switch" aria-label={`Show ${PROGRESS_GROUP_LABELS[id]}`} aria-checked={!settings.hiddenCards.includes(id)} className="progress-switch" onClick={() => toggleGroup(id)}><span /></button>
         <span>{PROGRESS_GROUP_LABELS[id]}</span>
         <button type="button" disabled={index === 0} aria-label={`Move ${PROGRESS_GROUP_LABELS[id]} up`} onClick={() => moveGroup(id, -1)}>↑</button>
         <button type="button" disabled={index === settings.cardOrder.length - 1} aria-label={`Move ${PROGRESS_GROUP_LABELS[id]} down`} onClick={() => moveGroup(id, 1)}>↓</button>
