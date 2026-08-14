@@ -644,6 +644,13 @@ export default function App() {
     if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
   }
 
+  function saveProgressPreferences(updated) {
+    if (!savePrefs(storage, activeProfile, updated)) return false;
+    setEquipmentPrefs(updated);
+    if (firebaseUser) runCloud(saveCloudSettings(firebaseUser.uid, updated, accountMetadata()));
+    return true;
+  }
+
   function createAndAddExercise() {
     const result = createCustomExercise(equipmentPrefs, {name:newExerciseName,target:newExerciseTarget});
     if (!result.ok) { setWorkoutToolsMsg(result.error); return; }
@@ -1338,7 +1345,7 @@ export default function App() {
 
         {/* ── PROGRESS TAB ── */}
         {activeTab==="progress" && (
-          <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/>
+          <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveProgressPreferences} onAddExercise={addDashboardExercise} loading={loading}/>
         )}
 
         {/* ── WEIGHT TAB ── */}

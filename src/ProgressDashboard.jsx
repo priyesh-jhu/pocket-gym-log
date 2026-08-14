@@ -5,7 +5,8 @@ import { trainingInsights } from "./trainingInsights.js";
 import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import MuscleHeatmap from "./MuscleHeatmap.jsx";
-import { Button, SegmentedButtons, Sheet } from "./components/index.js";
+import { Button, Card, Sheet } from "./components/index.js";
+import { normalizeDashboardSettings } from "./progressDashboardSettings.js";
 import useThemeTokens from "./charts/useThemeTokens.js";
 import "./ProgressDashboard.css";
 
@@ -21,18 +22,7 @@ function fmtVolume(lb, unit) {
 
 const card = { background: "#0F1018", border: "1px solid #16172A", borderRadius: 14, padding: "16px", marginBottom: 16 };
 const sectionLabel = { fontSize: 12, color: "#666", fontWeight: 700, marginBottom: 10 };
-const DASHBOARD_KEY="__dashboardSettings";
-const CARD_IDS=["heatmap","summary","calendar","trend","balance"];
-const CARD_LABELS={heatmap:"Body heatmap",summary:"Range summary",calendar:"Training calendar",trend:"Training trend",balance:"Muscle balance"};
-const DEFAULT_TARGETS=Object.fromEntries(Object.keys(MUSCLES).map(muscle=>[muscle,10]));
-
-function dashboardSettings(preferences) {
-  const raw=preferences?.[DASHBOARD_KEY]||{};
-  const order=Array.isArray(raw.cardOrder)?[...raw.cardOrder.filter(id=>CARD_IDS.includes(id)),...CARD_IDS.filter(id=>!raw.cardOrder.includes(id))]:CARD_IDS;
-  return {rangeDays:[7,28,90].includes(raw.rangeDays)?raw.rangeDays:7,plannedDays:Math.max(1,Math.min(7,Number(raw.plannedDays)||5)),targets:{...DEFAULT_TARGETS,...(raw.targets||{})},hiddenCards:Array.isArray(raw.hiddenCards)?raw.hiddenCards.filter(id=>CARD_IDS.includes(id)):[],cardOrder:order};
-}
-
-export default function ProgressDashboard({ sessions, preferences={}, onSavePreferences, onAddExercise }) {
+export default function ProgressDashboard({ sessions, preferences={}, onAddExercise, embeddedGroup=null, settings:providedSettings, onSaveSettings }) {
   const list = Array.isArray(sessions) ? sessions : [];
   const chartTheme = useThemeTokens();
   const [historyPage, setHistoryPage] = useState(0);
@@ -42,14 +32,10 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   const [heatmapMode, setHeatmapMode] = useState("coverage");
   const [selectedMuscle, setSelectedMuscle] = useState(null);
   const [muscleSheetOpen, setMuscleSheetOpen] = useState(false);
-  const [customizing, setCustomizing] = useState(false);
-  const settings=dashboardSettings(preferences);
+  const settings=providedSettings||normalizeDashboardSettings(preferences);
   const rangeDays=settings.rangeDays;
-  const saveSettings=changes=>onSavePreferences?.({...preferences,[DASHBOARD_KEY]:{...settings,...changes}});
-  const setRangeDays=days=>saveSettings({rangeDays:days});
+  const saveSettings=changes=>onSaveSettings?.(changes);
   const cardStyle=id=>({...card,display:settings.hiddenCards.includes(id)?"none":undefined,order:settings.cardOrder.indexOf(id)});
-  const moveCard=(id,direction)=>{const order=[...settings.cardOrder],from=order.indexOf(id),to=from+direction;if(to<0||to>=order.length)return;[order[from],order[to]]=[order[to],order[from]];saveSettings({cardOrder:order});};
-  const toggleCard=id=>saveSettings({hiddenCards:settings.hiddenCards.includes(id)?settings.hiddenCards.filter(item=>item!==id):[...settings.hiddenCards,id]});
   const openMuscleDetails=muscle=>{setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
 
   if (list.length === 0) {
@@ -115,20 +101,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   );
 
   return (
-    <div className="progress-dashboard">
-      <div className="progress-dashboard__toolbar">
-        <SegmentedButtons ariaLabel="Progress range" value={rangeDays} onChange={setRangeDays} options={[{value:7,label:"Week"},{value:28,label:"Month"},{value:90,label:"3 months"}]} />
-        <Button variant="text" onClick={()=>setCustomizing(true)}>Customize</Button>
-      </div>
-      <Sheet open={customizing} title="Customize dashboard" onClose={()=>setCustomizing(false)}>
-        <p className="progress-sheet-copy">Choose which analytics appear and adjust their order.</p>
-        <div className="progress-customize-list">{settings.cardOrder.map((id,index)=><div key={id} className="progress-customize-row">
-          <button type="button" role="switch" aria-checked={!settings.hiddenCards.includes(id)} className="progress-switch" onClick={()=>toggleCard(id)}><span /></button>
-          <span>{CARD_LABELS[id]}</span>
-          <button type="button" disabled={index===0} aria-label={`Move ${CARD_LABELS[id]} up`} onClick={()=>moveCard(id,-1)}>↑</button>
-          <button type="button" disabled={index===settings.cardOrder.length-1} aria-label={`Move ${CARD_LABELS[id]} down`} onClick={()=>moveCard(id,1)}>↓</button>
-        </div>)}</div>
-      </Sheet>
+    <div className={`progress-dashboard${embeddedGroup ? ` progress-dashboard--${embeddedGroup}` : ""}`}>
       {priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:6}}>TODAY'S PRIORITIES</div>
         <div style={{display:"grid",gap:5}}>{priorities.slice(0,3).map(item=><div key={item.muscle} style={{fontSize:11,color:"#A1A1AA"}}><b style={{color:"#E5E7EB"}}>{MUSCLES[item.muscle]}</b> · {item.remaining.toFixed(1)} estimated sets below target{item.daysSince!=null?` · last trained ${item.daysSince} day${item.daysSince===1?"":"s"} ago`:" · no training in this range"}</div>)}</div>
@@ -152,7 +125,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
           <div style={{fontSize:9,color:"#555",marginTop:8}}>Custom exercises without a muscle guide cannot be classified yet.</div>
         </div>
       )}
-      <div style={cardStyle("heatmap")}>
+      <div className="progress-legacy-card progress-legacy-card--heatmap" style={cardStyle("heatmap")}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:10,flexWrap:"wrap"}}>
           <div><div style={{...sectionLabel,marginBottom:3}}>BODY MUSCLE HEATMAP</div><div style={{fontSize:10,color:"#555"}}>Coverage from {heatmap.start} through {heatmap.end}</div></div>
           <div style={{display:"flex",gap:4}}>{[["coverage","Coverage"],["sets","Set volume"]].map(([mode,label])=><button key={mode} onClick={()=>setHeatmapMode(mode)} style={{background:heatmapMode===mode?"#3B82F6":"#161723",border:"1px solid "+(heatmapMode===mode?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"5px 9px",color:heatmapMode===mode?"#fff":"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>)}</div>
@@ -180,7 +153,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
         </Sheet>
         <div style={{fontSize:9,color:"#444",marginTop:8}}>Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
       </div>
-      <div style={cardStyle("summary")}>
+      <div className="progress-legacy-card progress-legacy-card--summary" style={cardStyle("summary")}>
         <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>RANGE SUMMARY</div><label style={{fontSize:9,color:"#666"}}>Planned days <input type="number" min="1" max="7" value={settings.plannedDays} onChange={event=>saveSettings({plannedDays:Math.max(1,Math.min(7,Number(event.target.value)||1))})} style={{width:36,marginLeft:4,background:"#161723",border:"1px solid #2A2A3A",borderRadius:5,padding:"3px",color:"#E5E7EB",fontFamily:"inherit"}}/></label></div>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           <div>
@@ -204,7 +177,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
         </div>
       </div>
 
-      <div style={cardStyle("calendar")}>
+      <div className="progress-legacy-card progress-legacy-card--calendar" style={cardStyle("calendar")}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12,flexWrap:"wrap"}}>
           <div><div style={{...sectionLabel,marginBottom:3}}>TRAINING CALENDAR</div><div style={{fontSize:10,color:"#555"}}>{periodLabel} · darker squares mean more sessions</div></div>
           <div style={{display:"flex",gap:14}}>
@@ -236,7 +209,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
         )}
       </div>
 
-      <div style={cardStyle("trend")}>
+      <div className="progress-legacy-card progress-legacy-card--trend" style={cardStyle("trend")}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div>{historyControls}</div>
         <div className="progress-trend-controls">
           <label><span>Exercise</span><select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
@@ -255,7 +228,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
         </div>
       </div>
 
-      <div style={cardStyle("balance")}>
+      <div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
         <div style={sectionLabel}>MUSCLE BALANCE <span style={{ color: "var(--on-surface-dim)", fontWeight: 500 }}>({rangeDays}-day range)</span></div>
         <div className="progress-push-pull" aria-label={`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`}>
           <div className="progress-push-pull__labels"><span><strong>{pushPull.pushPct}%</strong> Push</span><span>Pull <strong>{pushPull.pullPct}%</strong></span></div>
@@ -281,4 +254,16 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
       </div>
     </div>
   );
+}
+
+export function DailyTrendGroup(props) {
+  return <Card className="progress-group progress-group--trend"><h2 className="progress-group-title">Daily trend</h2><ProgressDashboard {...props} embeddedGroup="trend" /></Card>;
+}
+
+export function BodyHeatmapGroup(props) {
+  return <Card className="progress-group progress-group--heatmap"><h2 className="progress-group-title">Body heatmap</h2><ProgressDashboard {...props} embeddedGroup="heatmap" /></Card>;
+}
+
+export function BalanceGroup(props) {
+  return <Card className="progress-group progress-group--balance"><h2 className="progress-group-title">Balance</h2><ProgressDashboard {...props} embeddedGroup="balance" /></Card>;
 }

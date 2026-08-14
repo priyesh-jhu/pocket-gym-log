@@ -1,4 +1,10 @@
 .progress-dashboard { display: flex; flex-direction: column; }
+.progress-dashboard--trend > :not(.progress-legacy-card--summary):not(.progress-legacy-card--calendar):not(.progress-legacy-card--trend),
+.progress-dashboard--heatmap > :not(.progress-legacy-card--heatmap),
+.progress-dashboard--balance > :not(.progress-legacy-card--balance) { display: none; }
+.progress-dashboard[class*="progress-dashboard--"] .progress-legacy-card { display: block; margin: 0; padding: var(--sp4) 0 0; border: 0; border-radius: 0; background: transparent; }
+.progress-dashboard--trend .progress-legacy-card + .progress-legacy-card { margin-top: var(--sp6); border-top: 1px solid var(--outline-variant); }
+.progress-group-title { margin: 0; color: var(--on-surface); font-size: var(--text-title-lg); font-weight: 600; }
 .progress-dashboard__toolbar { order: -20; display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp3); }
 .progress-dashboard__toolbar .m3-seg { flex: 1; }
 .progress-dashboard__toolbar .m3-btn { flex: 0 0 auto; }

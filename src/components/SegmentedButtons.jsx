@@ -8,6 +8,7 @@ export default function SegmentedButtons({ options, value, onChange, ariaLabel }
           key={String(option.value)}
           type="button"
           className="m3-seg__opt"
+          aria-label={option.ariaLabel || option.label}
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
         >
