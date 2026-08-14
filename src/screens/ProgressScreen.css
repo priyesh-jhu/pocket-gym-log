@@ -14,31 +14,180 @@
 .progress-insights p, .progress-insights small { color: var(--on-surface-variant); }
 .progress-insight-evidence { display: flex; flex-wrap: wrap; gap: var(--sp2); }
 .progress-insight-evidence span { padding: var(--sp1) var(--sp2); border-radius: var(--shape-sm); background: var(--surface-container-high); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
-.progress-empty { padding: var(--sp10) var(--sp5); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body); }
+.progress-empty { padding: var(--sp8) var(--sp4); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body); }
 .progress-e1rm { overflow: hidden; }
-.progress-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp4); }
-.progress-section-heading h2 { margin: 2px 0 0; font-size: var(--text-title-lg); font-weight: 650; }
-.progress-eyebrow { margin: 0; color: var(--primary); font-size: var(--text-label-sm); font-weight: 700; letter-spacing: .12em; }
-.progress-section-heading select { min-height: 48px; max-width: 48%; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; font-size: var(--text-body-sm); }
+.progress-section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp4); margin-bottom: var(--sp4); }
+.progress-section-heading h2 { margin: 2px 0 0; font-size: var(--text-title-lg); font-weight: 600; }
+.progress-eyebrow { margin: 0; color: var(--primary); font-size: var(--text-label-sm); font-weight: 600; letter-spacing: .12em; }
+.progress-section-heading select { min-height: 48px; max-width: 48%; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; font-size: var(--text-body); }
 .progress-chart { width: 100%; min-width: 0; min-height: 230px; height: 230px; }
-.progress-chart-empty { min-height: 120px; margin: 0; display: grid; align-content: center; gap: var(--sp2); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body-sm); }
+.progress-chart-empty { min-height: 120px; margin: 0; display: grid; align-content: center; gap: var(--sp2); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body); }
 .progress-chart-empty p { margin: 0; }
 .progress-e1rm-headline { display: flex; align-items: baseline; gap: var(--sp2); margin-bottom: var(--sp1); }
-.progress-e1rm-headline strong { color: var(--on-surface); font-size: var(--text-headline); font-weight: 650; }
-.progress-e1rm-headline span, .progress-e1rm-summary { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
-.progress-e1rm-summary { margin: 0 0 var(--sp3); }
-.progress-data-details { margin-top: var(--sp3); color: var(--on-surface-variant); }
-.progress-data-details summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 650; }
+.progress-e1rm-headline strong { color: var(--on-surface); font-size: var(--text-headline); font-weight: 600; font-variant-numeric: tabular-nums; }
+.progress-e1rm-headline span, .progress-e1rm-summary { color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-e1rm-summary { margin: 0 0 var(--sp4); }
+.progress-data-details { margin-top: var(--sp4); color: var(--on-surface-variant); }
+.progress-data-details summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 .progress-data-table-wrap { overflow-x: auto; }
-.progress-data-details table { width: 100%; border-collapse: collapse; font-size: var(--text-body-sm); }
+.progress-data-details table { width: 100%; border-collapse: collapse; font-size: var(--text-body); font-variant-numeric: tabular-nums; }
 .progress-data-details caption { padding: var(--sp2) 0; text-align: left; }
 .progress-data-details th, .progress-data-details td { padding: var(--sp2); border-bottom: 1px solid var(--outline-variant); text-align: left; }
 .progress-group-error { padding: var(--sp4); border-radius: var(--shape-md); background: var(--error-container); color: var(--on-error-container); overflow-wrap: anywhere; }
 .progress-group-error h2 { margin: 0; font-size: var(--text-title-lg); font-weight: 600; }
-.progress-group-error p { margin: var(--sp2) 0 var(--sp3); }
+.progress-group-error p { margin: var(--sp2) 0 var(--sp4); }
+@media (prefers-reduced-motion: reduce) {
+  .progress-screen *, .progress-screen *::before, .progress-screen *::after { animation-duration: 0s; transition-duration: 0s; scroll-behavior: auto; }
+}
 @media (max-width: 390px) {
   .progress-toolbar { align-items: stretch; flex-direction: column; }
   .progress-toolbar .m3-btn { align-self: flex-end; }
   .progress-section-heading { align-items: stretch; flex-direction: column; }
   .progress-section-heading select { max-width: none; width: 100%; }
 }
+.progress-dashboard { display: flex; flex-direction: column; }
+.progress-dashboard--trend > :not(.progress-legacy-card--summary):not(.progress-legacy-card--calendar):not(.progress-legacy-card--trend),
+.progress-dashboard--heatmap > :not(.progress-legacy-card--heatmap),
+.progress-dashboard--balance > :not(.progress-legacy-card--balance) { display: none; }
+.progress-dashboard[class*="progress-dashboard--"] .progress-legacy-card { display: block; margin: 0; padding: var(--sp4) 0 0; border: 0; border-radius: 0; background: transparent; }
+.progress-dashboard--trend .progress-legacy-card + .progress-legacy-card { margin-top: var(--sp6); border-top: 1px solid var(--outline-variant); }
+.progress-dashboard--trend .progress-legacy-card--trend { order: 1; }
+.progress-dashboard--trend .progress-legacy-card--summary { order: 2; }
+.progress-dashboard--trend .progress-legacy-card--calendar { order: 3; }
+.progress-group-title { margin: 0; color: var(--on-surface); font-size: var(--text-title-lg); font-weight: 600; }
+.progress-dashboard__toolbar { order: -20; display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); margin-bottom: var(--sp4); }
+.progress-dashboard__toolbar .m3-seg { flex: 1; }
+.progress-dashboard__toolbar .m3-btn { flex: 0 0 auto; }
+.progress-sheet-copy { margin: 0 0 var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-customize-list { display: grid; gap: var(--sp2); }
+.progress-customize-row { min-height: 56px; display: grid; grid-template-columns: 52px 1fr 48px 48px; align-items: center; gap: var(--sp1); padding: 0 var(--sp2); border-radius: var(--shape-md); background: var(--surface-container-highest); color: var(--on-surface); font-size: var(--text-body); }
+.progress-customize-row > button:not(.progress-switch) { width: 48px; height: 48px; border: 0; border-radius: var(--shape-full); background: transparent; color: var(--on-surface-variant); font: inherit; font-size: var(--text-title-lg); cursor: pointer; }
+.progress-customize-row > button:disabled { opacity: .3; cursor: default; }
+.progress-switch { position: relative; width: 48px; height: 48px; padding: 0; border: 2px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container); cursor: pointer; }
+.progress-switch span { position: absolute; top: 13px; left: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--on-surface-variant); transition: transform var(--dur-short) var(--ease-std), background var(--dur-short) var(--ease-std); }
+.progress-switch[aria-checked="true"] { border-color: var(--primary); background: var(--primary); }
+.progress-switch[aria-checked="true"] span { background: var(--on-primary); transform: translateX(16px); }
+.progress-coverage-action { margin-top: var(--sp4); padding-top: var(--sp4); border-top: 1px solid var(--outline-variant); display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); }
+.progress-coverage-action strong, .progress-coverage-action span { display: block; }
+.progress-coverage-action strong { color: var(--on-surface); font-size: var(--text-body); }
+.progress-coverage-action span { margin-top: 2px; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-body-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); margin-bottom: var(--sp4); }
+.progress-body-heading p { margin: 0; color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-body-heading .m3-seg { flex: 0 1 240px; }
+.progress-body-empty { min-height: 160px; display: grid; align-content: center; gap: var(--sp2); text-align: center; color: var(--on-surface); }
+.progress-body-empty p { margin: 0; color: var(--on-surface-variant); }
+.progress-body-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--sp2) var(--sp4); margin-top: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-body-legend span { display: inline-flex; align-items: center; gap: var(--sp1); }
+.progress-body-legend i { width: 12px; height: 12px; border: 1px solid var(--muscle-stroke); border-radius: 50%; background: var(--muscle-empty); }
+.progress-body-legend i.low { background: var(--muscle-low); }
+.progress-body-legend i.moderate { background: var(--muscle-moderate); }
+.progress-body-legend i.high { background: var(--muscle-high); }
+.progress-body-legend i.review { background: var(--muscle-review); }
+.progress-body-regions { margin-top: var(--sp2); color: var(--on-surface-variant); }
+.progress-body-regions summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.progress-body-regions > div { display: flex; flex-wrap: wrap; gap: var(--sp2); }
+.progress-body-regions button { min-height: 48px; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font: inherit; cursor: pointer; }
+.progress-body-regions button[aria-pressed="true"] { outline: 2px solid var(--primary); outline-offset: 2px; }
+.progress-muscle-chips { display: flex; flex-wrap: wrap; gap: var(--sp2); margin-bottom: var(--sp4); }
+.progress-muscle-chips button { min-height: 48px; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font: inherit; cursor: pointer; }
+.progress-muscle-chips button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+.progress-muscle-detail, .progress-suggestions { padding: var(--sp4); border-radius: var(--shape-lg); background: var(--surface-container); }
+.progress-muscle-detail h3, .progress-suggestions h3 { margin: 0; font-size: var(--text-title-lg); }
+.progress-muscle-detail p, .progress-suggestions p { color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-target-track { height: 8px; overflow: hidden; border-radius: var(--shape-full); background: var(--surface-container-highest); }
+.progress-target-track span { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+.progress-muscle-detail label { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-muscle-detail input { width: 72px; min-height: 48px; padding: 0 var(--sp2); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; }
+.progress-muscle-detail h4 { margin: var(--sp4) 0 var(--sp2); font-size: var(--text-label-lg); text-transform: uppercase; letter-spacing: .08em; }
+.progress-history-list { display: grid; gap: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-suggestions { display: grid; gap: var(--sp2); margin-top: var(--sp4); }
+.progress-caution { padding: var(--sp4); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--warn); font-size: var(--text-body); }
+.progress-suggestion { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); padding: var(--sp2) 0; border-top: 1px solid var(--outline-variant); }
+.progress-suggestion strong, .progress-suggestion span { display: block; }
+.progress-suggestion strong { font-size: var(--text-body); }
+.progress-suggestion span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-guidance-caveat { color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-trend-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .65fr); gap: var(--sp2); margin-bottom: var(--sp4); }
+.progress-trend-controls label { display: grid; gap: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-trend-controls select { width: 100%; min-width: 0; min-height: 48px; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; font-size: var(--text-body); }
+.progress-trend-chart { width: 100%; min-width: 0; min-height: 180px; height: 180px; }
+.progress-daily-empty { margin: var(--sp2) 0 0; color: var(--on-surface-dim); font-size: var(--text-body); }
+.progress-calendar-scroll { max-width: 100%; overflow-x: auto; padding-bottom: var(--sp2); overscroll-behavior-inline: contain; }
+.progress-calendar-grid { display: grid; grid-template-columns: repeat(12, 48px); gap: var(--sp1); width: max-content; }
+.progress-calendar-week { display: grid; grid-template-rows: repeat(7, 48px); gap: var(--sp1); }
+.progress-calendar-day { width: 48px; height: 48px; padding: 0; border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-high); cursor: default; }
+.progress-calendar-day[data-count="1"] { border-color: var(--primary); background: var(--primary-container); cursor: pointer; }
+.progress-calendar-day[data-count]:not([data-count="0"]):not([data-count="1"]) { border-color: var(--primary); background: var(--primary); cursor: pointer; }
+.progress-calendar-day.is-selected { outline: 3px solid var(--on-surface); outline-offset: -4px; }
+.progress-calendar-day.is-future { opacity: .35; }
+.progress-calendar-nav { min-width: 48px; min-height: 48px; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-high); color: var(--on-surface-variant); font: inherit; font-size: var(--text-label-sm); font-weight: 600; cursor: pointer; }
+.progress-calendar-nav:disabled { opacity: .38; cursor: default; }
+.progress-details-close { width: 48px; height: 48px; border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-high); color: var(--on-surface-variant); font: inherit; font-size: var(--text-title-lg); cursor: pointer; }
+.progress-balance-range { margin: 0 0 var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-push-pull { margin-bottom: var(--sp4); padding: var(--sp4); border-radius: var(--shape-lg); background: var(--surface-container-highest); }
+.progress-push-pull__labels { display: flex; justify-content: space-between; color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-push-pull__labels strong { color: var(--on-surface); font-size: var(--text-title-lg); }
+.progress-push-pull__track { display: flex; width: 100%; height: 10px; overflow: hidden; margin-top: var(--sp2); border-radius: var(--shape-full); background: var(--outline-variant); }
+.progress-push-pull__track span:first-child { background: var(--primary); }
+.progress-push-pull__track span:last-child { background: var(--warn); }
+.progress-push-pull p { margin: var(--sp2) 0 0; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-balance-empty { padding: var(--sp2) 0; color: var(--on-surface-dim); font-size: var(--text-body); }
+.progress-balance-list { display: grid; gap: var(--sp4); }
+.progress-balance-row > div:first-child { display: flex; justify-content: space-between; margin-bottom: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-balance-row > div:first-child span:first-child { color: var(--on-surface); font-weight: 600; }
+.progress-balance-track { width: 100%; height: 8px; overflow: hidden; border-radius: var(--shape-full); background: var(--surface-container-highest); }
+.progress-balance-fill { height: 100%; border-radius: inherit; background: var(--primary); }
+.progress-balance-fill--back, .progress-balance-fill--arms { background: var(--on-primary-container); }
+.progress-balance-fill--shoulders, .progress-balance-fill--core { background: var(--warn); }
+@media (max-width: 390px) {
+  .progress-body-heading { align-items: stretch; flex-direction: column; }
+  .progress-body-heading .m3-seg { flex-basis: auto; width: 100%; }
+  .progress-suggestion { align-items: stretch; flex-direction: column; }
+  .progress-dashboard__toolbar { align-items: stretch; flex-direction: column; }
+  .progress-dashboard__toolbar .m3-btn { align-self: flex-end; }
+  .progress-trend-controls { grid-template-columns: 1fr; }
+}
+
+.progress-dashboard-empty { padding: var(--sp8) var(--sp4); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body); }
+.progress-calendar-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); }
+.progress-method-note, .progress-section-note { margin-top: var(--sp2); color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-section-label { color: var(--on-surface-variant); font-size: var(--text-label-sm); font-weight: 600; letter-spacing: .08em; }
+.progress-section-label span { font-weight: 400; letter-spacing: 0; }
+.progress-summary-heading, .progress-calendar-heading, .progress-workout-details-heading, .progress-workout-item-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp2); margin-bottom: var(--sp4); }
+.progress-summary-heading label { color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-summary-heading input { width: 64px; min-height: 48px; margin-left: var(--sp2); padding: 0 var(--sp2); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; }
+.progress-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp4); }
+.progress-summary-value { color: var(--on-surface); font-size: var(--text-headline); font-weight: 600; font-variant-numeric: tabular-nums; }
+.progress-summary-value span { color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.is-primary { color: var(--primary); } .is-success { color: var(--success); } .is-warn { color: var(--warn); } .is-secondary { color: var(--secondary); }
+.progress-summary-label { color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-calendar-stats { display: flex; gap: var(--sp4); }
+.progress-calendar-stats > div { text-align: center; }
+.progress-calendar-stats strong, .progress-calendar-stats span { display: block; font-variant-numeric: tabular-nums; }
+.progress-calendar-stats strong { font-size: var(--text-title-lg); font-weight: 600; }
+.progress-calendar-stats span { color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-calendar-actions { margin-bottom: var(--sp4); }
+.progress-calendar-layout { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: stretch; gap: var(--sp2); }
+.progress-calendar-days { display: grid; grid-template-rows: repeat(7, 1fr); align-items: center; gap: var(--sp1); color: var(--on-surface-dim); font-size: var(--text-label-sm); text-align: right; }
+.progress-consistency-track { height: 4px; overflow: hidden; margin-top: var(--sp4); border-radius: var(--shape-full); background: var(--surface-container-highest); }
+.progress-consistency-track > div { height: 100%; border-radius: inherit; background: var(--primary); }
+.progress-consistency-track > div.is-success { background: var(--success); }
+.progress-workout-details { margin-top: var(--sp4); padding: var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-md); background: var(--surface-container); }
+.progress-workout-details-heading strong, .progress-workout-details-heading span { display: block; }
+.progress-workout-details-heading strong { font-size: var(--text-body); font-weight: 600; }
+.progress-workout-details-heading span, .progress-workout-item-heading span, .progress-workout-notes { color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-workout-list { display: grid; gap: var(--sp2); }
+.progress-workout-item { padding: var(--sp2) var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-high); }
+.progress-workout-item-heading { margin-bottom: var(--sp2); }
+.progress-workout-item-heading strong { color: var(--secondary); font-size: var(--text-body); font-weight: 600; }
+.progress-workout-exercises { display: flex; flex-wrap: wrap; gap: var(--sp1); }
+.progress-workout-exercises span { padding: var(--sp1) var(--sp2); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-workout-notes { margin-top: var(--sp2); overflow-wrap: anywhere; }
+.progress-trend-heading { margin-bottom: var(--sp4); }
+.progress-muscle-map { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp4); max-width: 330px; margin: 0 auto; }
+.progress-muscle-map svg { width: 100%; }
+.progress-muscle-map__label { margin-bottom: var(--sp1); color: var(--on-surface-dim); font-size: var(--text-label-sm); text-align: center; }
+.progress-screen .m3-card, .progress-screen .m3-btn, .progress-screen .m3-seg, .progress-screen .m3-sheet { font-weight: 400; }
+.progress-screen .m3-card { padding: var(--sp4); }
+.progress-screen .m3-btn, .progress-screen .m3-seg button { min-height: 48px; font-size: var(--text-label-sm); font-weight: 600; }
+.progress-screen .m3-sheet { padding: var(--sp2) var(--sp4) var(--sp6); font-size: var(--text-body); }

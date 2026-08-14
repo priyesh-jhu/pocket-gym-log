@@ -8,6 +8,18 @@ import { DASHBOARD_KEY, PROGRESS_GROUP_IDS, PROGRESS_GROUP_LABELS, normalizeDash
 import { BalanceGroup, BodyHeatmapGroup, DailyTrendGroup } from "../ProgressDashboard.jsx";
 import "./ProgressScreen.css";
 
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+  useEffect(() => {
+    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!query) return undefined;
+    const update = () => setReduced(query.matches);
+    query.addEventListener?.("change", update);
+    return () => query.removeEventListener?.("change", update);
+  }, []);
+  return reduced;
+}
+
 class ProgressGroupBoundary extends Component {
   state = { failed: false, retryKey: 0 };
 
@@ -40,7 +52,7 @@ function ProgressToolbar({ settings, onChange, onCustomize }) {
   </div>;
 }
 
-function E1RMGroup({ sessions }) {
+function E1RMGroup({ sessions, reducedMotion }) {
   const chartTheme = useThemeTokens();
   const exercises = useMemo(() => [...new Set(sessions.flatMap(session =>
     (session.exercises || []).map(item => item.name)).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [sessions]);
@@ -83,7 +95,7 @@ function E1RMGroup({ sessions }) {
         <XAxis dataKey="date" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={24} />
         <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={` ${unit}`} domain={[0, "auto"]} />
         <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={value => [`${value} ${unit}`, "Estimated 1RM"]} />
-        <Line type="monotone" dataKey="value" stroke={chartTheme.primary} strokeWidth={3} dot={{ r: 3, fill: chartTheme.primary, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false} />
+        <Line type="monotone" dataKey="value" stroke={chartTheme.primary} strokeWidth={3} dot={{ r: 3, fill: chartTheme.primary, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={!reducedMotion} />
       </LineChart></ResponsiveContainer>
       </div>
       <details className="progress-data-details"><summary>View e1RM data</summary><div className="progress-data-table-wrap"><table><caption>Estimated one-rep max history for {selected}</caption><thead><tr><th scope="col">Date</th><th scope="col">Estimated 1RM</th></tr></thead><tbody>{series.map(point => <tr key={point.date}><td>{point.date}</td><td>{point.value} {unit}</td></tr>)}</tbody></table></div></details>
@@ -100,6 +112,7 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
   const saveErrorRef = useRef(null);
   const [customizing, setCustomizing] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const reducedMotion = useReducedMotion();
 
   const settings = normalized;
   useEffect(() => { confirmedRef.current = normalized; }, [normalized]);
@@ -125,10 +138,10 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
     saveChanges({ cardOrder: order });
   };
   const groups = {
-    e1rm: <E1RMGroup sessions={sessions} />,
-    trend: <DailyTrendGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} />,
-    heatmap: <BodyHeatmapGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} onAddExercise={onAddExercise} />,
-    balance: <BalanceGroup sessions={sessions} settings={settings} />,
+    e1rm: <E1RMGroup sessions={sessions} reducedMotion={reducedMotion} />,
+    trend: <DailyTrendGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} reducedMotion={reducedMotion} />,
+    heatmap: <BodyHeatmapGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} onAddExercise={onAddExercise} reducedMotion={reducedMotion} />,
+    balance: <BalanceGroup sessions={sessions} settings={settings} reducedMotion={reducedMotion} />,
   };
 
   return <section className="progress-screen" aria-labelledby="progress-title">

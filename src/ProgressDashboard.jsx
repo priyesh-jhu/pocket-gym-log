@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, muscleBalance, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, pushPullRatio, sessionVolume, toLb, weekStartISO } from "./stats.js";
-import { trainingInsights } from "./trainingInsights.js";
+import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, muscleBalance, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, pushPullRatio, sessionVolume, toLb, weekStartISO } from "./stats.js";
 import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import MuscleHeatmap from "./MuscleHeatmap.jsx";
 import { Button, Card, SegmentedButtons, Sheet } from "./components/index.js";
 import { normalizeDashboardSettings } from "./progressDashboardSettings.js";
 import useThemeTokens from "./charts/useThemeTokens.js";
-import "./ProgressDashboard.css";
 
 const KG_PER_LB = 1 / 2.20462;
 
@@ -20,9 +18,7 @@ function fmtVolume(lb, unit) {
   return Math.round(toDisplay(lb, unit)).toLocaleString();
 }
 
-const card = { background: "#0F1018", border: "1px solid #16172A", borderRadius: 14, padding: "16px", marginBottom: 16 };
-const sectionLabel = { fontSize: 12, color: "#666", fontWeight: 700, marginBottom: 10 };
-export default function ProgressDashboard({ sessions, preferences={}, onAddExercise, embeddedGroup=null, settings:providedSettings, onSaveSettings }) {
+export default function ProgressDashboard({ sessions, preferences={}, onAddExercise, embeddedGroup=null, settings:providedSettings, onSaveSettings, reducedMotion=false }) {
   const list = Array.isArray(sessions) ? sessions : [];
   const chartTheme = useThemeTokens();
   const [historyPage, setHistoryPage] = useState(0);
@@ -38,13 +34,12 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const settings=providedSettings||normalizeDashboardSettings(preferences);
   const rangeDays=settings.rangeDays;
   const saveSettings=changes=>onSaveSettings?.(changes);
-  const cardStyle=id=>({...card,display:settings.hiddenCards.includes(id)?"none":undefined,order:settings.cardOrder.indexOf(id)});
   const rendersGroup = id => !embeddedGroup || embeddedGroup === id;
   const openMuscleDetails=(muscle, invoker)=>{guidanceReturnRef.current=invoker||document.activeElement;setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
 
   if (list.length === 0) {
     return (
-      <div style={{ textAlign: "center", padding: "40px 20px", color: "#444", fontSize: 13 }}>
+      <div className="progress-dashboard-empty">
         Log a few sessions first to see your training overview.
       </div>
     );
@@ -68,14 +63,11 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   }
   const calendar = activityCalendar(list, 12, periodEnd);
   const consistency = consistencySummary(list);
-  const insights = trainingInsights(list);
-  const coverageGaps = muscleCoverageGaps(list);
   const heatmap = muscleHeatmapCoverage(list,rangeDays);
   const setVolume=muscleSetVolume(list,rangeDays);
   const rangeSummary=dashboardRangeSummary(list,rangeDays);
   const scaledTargets=Object.fromEntries(Object.entries(settings.targets).map(([muscle,target])=>[muscle,Math.max(1,Math.round(target*rangeDays/7))]));
   const allPriorities=musclePriorities(setVolume,scaledTargets,settings.plannedDays);
-  const priorities=allPriorities.filter(item=>item.remaining>0);
   const recentCutoff=addDaysISO(todayISO(),-3);
   const recentExercises=list.filter(session=>session?.date>=recentCutoff).flatMap(session=>(session.exercises||[]).map(exercise=>exercise.name));
   const equipmentCounts=list.slice(-8).flatMap(session=>session.exercises||[]).reduce((counts,exercise)=>({...counts,[exercise.equipment||"free"]:(counts[exercise.equipment||"free"]||0)+1}),{});
@@ -111,7 +103,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const chartHasResults = chartData.some(point => point.value > 0);
   const periodLabel = `${weeks[0].label} – ${new Date(addDaysISO(weeks[11].weekStart, 6) + "T12:00:00").toLocaleDateString([], {month:"numeric",day:"numeric",year:"numeric"})}`;
   const historyControls = (
-    <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
+    <div className="progress-calendar-controls">
       <button className="progress-calendar-nav" onClick={()=>setHistoryPage(page=>Math.min(maxHistoryPage,page+1))} disabled={historyPage>=maxHistoryPage}>← Earlier</button>
       {historyPage>0&&<button className="progress-calendar-nav" onClick={()=>setHistoryPage(page=>Math.max(0,page-1))}>Later →</button>}
       {historyPage>0&&<button className="progress-calendar-nav" onClick={()=>setHistoryPage(0)}>Current</button>}
@@ -120,30 +112,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
 
   return (
     <div className={`progress-dashboard${embeddedGroup ? ` progress-dashboard--${embeddedGroup}` : ""}`}>
-      {!embeddedGroup&&rendersGroup("heatmap")&&priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
-        <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:6}}>TODAY'S PRIORITIES</div>
-        <div style={{display:"grid",gap:5}}>{priorities.slice(0,3).map(item=><div key={item.muscle} style={{fontSize:11,color:"#A1A1AA"}}><b style={{color:"#E5E7EB"}}>{MUSCLES[item.muscle]}</b> · {item.remaining.toFixed(1)} estimated sets below target{item.daysSince!=null?` · last trained ${item.daysSince} day${item.daysSince===1?"":"s"} ago`:" · no training in this range"}</div>)}</div>
-      </div>}
-      {!embeddedGroup&&insights.length>0&&(
-        <div role="status" style={{order:-17,background:"linear-gradient(135deg,rgba(59,130,246,0.14),rgba(251,191,36,0.08))",border:"1px solid #3B82F645",borderRadius:14,padding:"13px 14px",marginBottom:16,boxShadow:"0 8px 24px rgba(0,0,0,0.18)"}}>
-          <div style={{minWidth:0}}>
-              <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:7}}>TRAINING INSIGHT</div>
-              <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                {insights.map(item=><div key={item.type+item.name}><div style={{fontSize:12,fontWeight:800,color:item.type==="deload"?"#FBBF24":"#60A5FA",marginBottom:2}}>{item.type==="deload"?"Recovery signal":"Possible plateau"} · {item.name}</div><div style={{fontSize:11,color:"#A1A1AA",lineHeight:1.45}}>{item.message}</div><div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>{item.evidence?.map(point=><span key={point.date} title="Estimated one-rep max" style={{fontSize:9,color:"#9CA3AF",background:"rgba(8,9,14,0.5)",borderRadius:5,padding:"2px 6px"}}>{point.date.slice(5)} · {point.estimated1RMlb} lb e1RM</span>)}</div><div style={{fontSize:10,fontWeight:700,color:"#D4D4D8",marginTop:5}}>Next step: {item.action}</div></div>)}
-              </div>
-              <div style={{fontSize:9,color:"#555",marginTop:8}}>Trend-based guidance, not medical advice.</div>
-          </div>
-        </div>
-      )}
-      {!embeddedGroup&&rendersGroup("heatmap")&&coverageGaps.length>0&&(
-        <div style={{order:-16,background:"rgba(245,158,11,0.07)",border:"1px solid #F59E0B35",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
-          <div style={{fontSize:11,fontWeight:900,color:"#FBBF24",letterSpacing:"0.08em",marginBottom:4}}>MUSCLE COVERAGE</div>
-          <div style={{fontSize:10,color:"#777",lineHeight:1.45,marginBottom:9}}>These groups appeared in one or fewer of your last four completed training weeks.</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{coverageGaps.map(item=><div key={item.group} style={{background:"rgba(8,9,14,0.45)",border:"1px solid #F59E0B25",borderRadius:7,padding:"6px 8px"}}><div style={{fontSize:11,fontWeight:800,color:"#FCD34D"}}>{item.group}</div><div style={{fontSize:9,color:"#777",marginTop:1}}>trained {item.activeWeeks} of {item.weeks} weeks</div></div>)}</div>
-          <div style={{fontSize:9,color:"#555",marginTop:8}}>Custom exercises without a muscle guide cannot be classified yet.</div>
-        </div>
-      )}
-      {rendersGroup("heatmap")&&<div className="progress-legacy-card progress-legacy-card--heatmap" style={cardStyle("heatmap")}>
+      {rendersGroup("heatmap")&&<div className="progress-legacy-card progress-legacy-card--heatmap">
         <div className="progress-body-heading">
           <p>Coverage from {heatmap.start} through {heatmap.end}</p>
           <SegmentedButtons ariaLabel="Body heatmap mode" value={heatmapMode} onChange={setHeatmapMode} options={[{value:"coverage",label:"Coverage"},{value:"sets",label:"Set volume"}]} />
@@ -170,68 +139,68 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           </div>:<p>No verified suggestions are available for this gap yet.</p>}
           <p className="progress-guidance-caveat">Custom exercises without a muscle guide cannot be classified yet. Guidance is trend-based and not medical advice.</p>
         </Sheet>
-        <div style={{fontSize:9,color:"#444",marginTop:8}}>Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
+        <div className="progress-method-note">Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
       </div>}
-      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--summary" style={cardStyle("summary")}>
-        <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>RANGE SUMMARY</div><label style={{fontSize:9,color:"#666"}}>Planned days <input type="number" min="1" max="7" value={settings.plannedDays} onChange={event=>saveSettings({plannedDays:Math.max(1,Math.min(7,Number(event.target.value)||1))})} style={{width:36,marginLeft:4,background:"#161723",border:"1px solid #2A2A3A",borderRadius:5,padding:"3px",color:"#E5E7EB",fontFamily:"inherit"}}/></label></div>
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--summary">
+        <div className="progress-summary-heading"><div className="progress-section-label">RANGE SUMMARY</div><label>Planned days <input type="number" min="1" max="7" value={settings.plannedDays} onChange={event=>saveSettings({plannedDays:Math.max(1,Math.min(7,Number(event.target.value)||1))})}/></label></div>
+        <div className="progress-summary-grid">
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#3B82F6" }}>{rangeSummary.sessions}</div>
-            <div style={{ fontSize: 11, color: "#555" }}>Session{rangeSummary.sessions !== 1 ? "s" : ""} logged</div>
+            <div className="progress-summary-value is-primary">{rangeSummary.sessions}</div>
+            <div className="progress-summary-label">Session{rangeSummary.sessions !== 1 ? "s" : ""} logged</div>
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#22C55E" }}>
-              {fmtVolume(rangeSummary.volume, unit)}<span style={{ fontSize: 12, color: "#666", fontWeight: 600 }}> {unit}</span>
+            <div className="progress-summary-value is-success">
+              {fmtVolume(rangeSummary.volume, unit)}<span> {unit}</span>
             </div>
-            <div style={{ fontSize: 11, color: "#555" }}>Total volume</div>
+            <div className="progress-summary-label">Total volume</div>
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#F59E0B" }}>{rangeSummary.sets}</div>
-            <div style={{ fontSize: 11, color: "#555" }}>Working sets</div>
+            <div className="progress-summary-value is-warn">{rangeSummary.sets}</div>
+            <div className="progress-summary-label">Working sets</div>
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: rangeSummary.workoutDays>=Math.ceil(settings.plannedDays*rangeDays/7)?"#22C55E":"#8B5CF6" }}>{rangeSummary.workoutDays}<span style={{fontSize:12,color:"#666"}}> / {Math.ceil(settings.plannedDays*rangeDays/7)}</span></div>
-            <div style={{ fontSize: 11, color: "#555" }}>Planned workout days</div>
+            <div className={`progress-summary-value ${rangeSummary.workoutDays>=Math.ceil(settings.plannedDays*rangeDays/7)?"is-success":"is-secondary"}`}>{rangeSummary.workoutDays}<span> / {Math.ceil(settings.plannedDays*rangeDays/7)}</span></div>
+            <div className="progress-summary-label">Planned workout days</div>
           </div>
         </div>
       </div>}
 
-      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--calendar" style={cardStyle("calendar")}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12,flexWrap:"wrap"}}>
-          <div><div style={{...sectionLabel,marginBottom:3}}>TRAINING CALENDAR</div><div style={{fontSize:10,color:"#555"}}>{periodLabel} · darker squares mean more sessions</div></div>
-          <div style={{display:"flex",gap:14}}>
-            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:"#3B82F6"}}>{consistency.workouts}</div><div style={{fontSize:9,color:"#555"}}>days / 28</div></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:"#22C55E"}}>{consistency.activeWeeks}</div><div style={{fontSize:9,color:"#555"}}>active weeks</div></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:900,color:consistency.goalPct>=80?"#22C55E":consistency.goalPct>=50?"#F59E0B":"#9CA3AF"}}>{consistency.goalPct}%</div><div style={{fontSize:9,color:"#555"}}>5-day goal</div></div>
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--calendar">
+        <div className="progress-calendar-heading">
+          <div><div className="progress-section-label">TRAINING CALENDAR</div><div className="progress-section-note">{periodLabel} · darker squares mean more sessions</div></div>
+          <div className="progress-calendar-stats">
+            <div><strong className="is-primary">{consistency.workouts}</strong><span>days / 28</span></div>
+            <div><strong className="is-success">{consistency.activeWeeks}</strong><span>active weeks</span></div>
+            <div><strong className={consistency.goalPct>=80?"is-success":consistency.goalPct>=50?"is-warn":""}>{consistency.goalPct}%</strong><span>5-day goal</span></div>
           </div>
         </div>
-        <div style={{marginBottom:10}}>{historyControls}</div>
-        <div style={{display:"grid",gridTemplateColumns:"18px minmax(0,1fr)",gap:6,alignItems:"stretch"}}>
-          <div style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4,fontSize:8,color:"#555",textAlign:"right",alignItems:"center"}}>{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
+        <div className="progress-calendar-actions">{historyControls}</div>
+        <div className="progress-calendar-layout">
+          <div className="progress-calendar-days">{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
           <div className="progress-calendar-scroll" role="region" aria-label="Scrollable 12-week training calendar" tabIndex="0">
           <div aria-label="12-week training calendar" className="progress-calendar-grid">
             {calendar.map((week,wi)=><div key={wi} className="progress-calendar-week">{week.map(day=><button ref={node => { if (node) dateButtonRefs.current.set(day.date, node); else dateButtonRefs.current.delete(day.date); }} key={day.date} onClick={()=>day.count&&setSelectedDate(day.date)} disabled={!day.count} aria-label={`${day.date}: ${day.count} session${day.count===1?"":"s"}${day.count?". View details.":""}`} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} className={`progress-calendar-day${selectedDate===day.date?" is-selected":""}${day.future?" is-future":""}`} data-count={day.count} />)}</div>)}
           </div>
           </div>
         </div>
-        <div style={{height:5,borderRadius:4,background:"#161723",overflow:"hidden",marginTop:12}}><div style={{height:"100%",width:consistency.goalPct+"%",background:consistency.goalPct>=80?"#22C55E":"#3B82F6",borderRadius:4}} /></div>
+        <div className="progress-consistency-track"><div className={consistency.goalPct>=80?"is-success":""} style={{width:consistency.goalPct+"%"}} /></div>
         {selectedSessions.length>0&&(
-          <div style={{marginTop:12,background:"#0B0C14",border:"1px solid #2A2C45",borderRadius:10,padding:"11px 12px"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
-              <div><div style={{fontSize:12,fontWeight:800,color:"#E5E7EB"}}>{new Date(selectedDate+"T12:00:00").toLocaleDateString([], {weekday:"long",month:"short",day:"numeric",year:"numeric"})}</div><div style={{fontSize:9,color:"#555",marginTop:1}}>{selectedSessions.length} saved workout{selectedSessions.length===1?"":"s"}</div></div>
+          <div className="progress-workout-details">
+            <div className="progress-workout-details-heading">
+              <div><strong>{new Date(selectedDate+"T12:00:00").toLocaleDateString([], {weekday:"long",month:"short",day:"numeric",year:"numeric"})}</strong><span>{selectedSessions.length} saved workout{selectedSessions.length===1?"":"s"}</span></div>
               <button onClick={closeSelectedDate} aria-label="Close workout details" className="progress-details-close">×</button>
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:7}}>{selectedSessions.map((session,index)=><div key={session.id||index} style={{background:"#10111A",border:"1px solid #1C1E30",borderRadius:8,padding:"8px 10px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"baseline",marginBottom:5}}><span style={{fontSize:11,fontWeight:800,color:"#60A5FA"}}>{session.day||"Workout"}</span><span style={{fontSize:9,color:"#666"}}>{fmtVolume(sessionVolume(session),unit)} {unit} volume</span></div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>{(session.exercises||[]).map((exercise,exerciseIndex)=><span key={(exercise.name||"exercise")+exerciseIndex} style={{fontSize:9,color:"#A1A1AA",background:"#171824",borderRadius:5,padding:"2px 6px"}}>{exercise.name} · {(exercise.sets||[]).length} set{(exercise.sets||[]).length===1?"":"s"}</span>)}</div>
-              {session.notes&&<div style={{fontSize:9,color:"#777",lineHeight:1.4,marginTop:6}}>“{session.notes}”</div>}
+            <div className="progress-workout-list">{selectedSessions.map((session,index)=><div key={session.id||index} className="progress-workout-item">
+              <div className="progress-workout-item-heading"><strong>{session.day||"Workout"}</strong><span>{fmtVolume(sessionVolume(session),unit)} {unit} volume</span></div>
+              <div className="progress-workout-exercises">{(session.exercises||[]).map((exercise,exerciseIndex)=><span key={(exercise.name||"exercise")+exerciseIndex}>{exercise.name} · {(exercise.sets||[]).length} set{(exercise.sets||[]).length===1?"":"s"}</span>)}</div>
+              {session.notes&&<div className="progress-workout-notes">“{session.notes}”</div>}
             </div>)}</div>
           </div>
         )}
       </div>}
 
-      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--trend" style={cardStyle("trend")}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div></div>
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--trend">
+        <div className="progress-trend-heading"><div className="progress-section-label">TRAINING TREND <span>· {metricLabels[chartMetric]}</span></div></div>
         <div className="progress-trend-controls">
           <label><span>Exercise</span><select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
           <label><span>Metric</span><select aria-label="Chart metric" value={chartMetric} onChange={event=>setChartMetric(event.target.value)}><option value="volume">Volume</option><option value="maxWeight">Max weight</option><option value="estimated1RM">Estimated 1RM</option><option value="sessions">Sessions</option></select></label>
@@ -243,7 +212,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
               <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} interval={rangeDays===7?0:rangeDays===28?3:9} minTickGap={5} />
               <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} />
               <Tooltip labelFormatter={(_,payload)=>payload?.[0]?.payload?.date||""} formatter={value => [`${value}${chartMetric === "sessions" ? "" : ` ${unit}`}`, metricLabels[chartMetric]]} contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12, fontSize: 12 }} />
-              <Bar dataKey="value" name={metricLabels[chartMetric]} fill={chartTheme.primary} radius={[5, 5, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="value" name={metricLabels[chartMetric]} fill={chartTheme.primary} radius={[5, 5, 0, 0]} isAnimationActive={!reducedMotion} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -251,7 +220,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
         <details className="progress-data-details"><summary>View daily trend data</summary><div className="progress-data-table-wrap"><table><caption>{metricLabels[chartMetric]} by day</caption><thead><tr><th scope="col">Date</th><th scope="col">Value</th></tr></thead><tbody>{chartData.map(point=><tr key={point.date}><td>{point.date}</td><td>{point.value}{chartMetric === "sessions" ? "" : ` ${unit}`}</td></tr>)}</tbody></table></div></details>
       </div>}
 
-      {rendersGroup("balance")&&<div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
+      {rendersGroup("balance")&&<div className="progress-legacy-card progress-legacy-card--balance">
         {balanceError?<div className="progress-group-error" role="alert"><strong>Balance couldn’t be calculated.</strong><p>Your other progress analytics are still available.</p><Button variant="tonal" onClick={() => window.location.reload()}>Try again</Button></div>:<>
         <p className="progress-balance-range">Mapped working sets in the last {rangeDays} days</p>
         <div className="progress-push-pull" aria-label={pushPull.push+pushPull.pull>0?`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`:"No mapped push or pull sets"}>
