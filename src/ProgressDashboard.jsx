@@ -5,6 +5,8 @@ import { trainingInsights } from "./trainingInsights.js";
 import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import MuscleHeatmap from "./MuscleHeatmap.jsx";
+import { Button, SegmentedButtons, Sheet } from "./components/index.js";
+import "./ProgressDashboard.css";
 
 const GROUP_COLORS = {
   Chest: "#3B82F6",
@@ -117,15 +119,20 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   );
 
   return (
-    <div style={{display:"flex",flexDirection:"column"}}>
-      <div style={{order:-20,display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:12}}>
-        <div style={{display:"flex",gap:4}}>{[[7,"Week"],[28,"Month"],[90,"3 months"]].map(([days,label])=><button key={days} onClick={()=>setRangeDays(days)} style={{background:rangeDays===days?"#3B82F6":"#161723",border:"1px solid "+(rangeDays===days?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"6px 10px",color:rangeDays===days?"#fff":"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>)}</div>
-        <button onClick={()=>setCustomizing(value=>!value)} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px 10px",color:"#9CA3AF",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{customizing?"Done":"Customize"}</button>
+    <div className="progress-dashboard">
+      <div className="progress-dashboard__toolbar">
+        <SegmentedButtons ariaLabel="Progress range" value={rangeDays} onChange={setRangeDays} options={[{value:7,label:"Week"},{value:28,label:"Month"},{value:90,label:"3 months"}]} />
+        <Button variant="text" onClick={()=>setCustomizing(true)}>Customize</Button>
       </div>
-      {customizing&&<div style={{...card,order:-19,borderColor:"#3B82F645"}}>
-        <div style={{...sectionLabel,color:"#93C5FD"}}>CUSTOMIZE DASHBOARD</div>
-        <div style={{display:"grid",gap:6}}>{settings.cardOrder.map((id,index)=><div key={id} style={{display:"flex",alignItems:"center",gap:6,background:"#151621",borderRadius:8,padding:"7px 9px"}}><button onClick={()=>toggleCard(id)} style={{background:"none",border:"none",color:settings.hiddenCards.includes(id)?"#555":"#4ADE80",cursor:"pointer",fontFamily:"inherit",fontSize:11,width:48,textAlign:"left"}}>{settings.hiddenCards.includes(id)?"Hidden":"Shown"}</button><span style={{fontSize:11,color:"#D4D4D8",flex:1}}>{CARD_LABELS[id]}</span><button disabled={index===0} onClick={()=>moveCard(id,-1)} style={{background:"none",border:"none",color:index===0?"#333":"#888",cursor:index===0?"default":"pointer"}}>↑</button><button disabled={index===settings.cardOrder.length-1} onClick={()=>moveCard(id,1)} style={{background:"none",border:"none",color:index===settings.cardOrder.length-1?"#333":"#888",cursor:index===settings.cardOrder.length-1?"default":"pointer"}}>↓</button></div>)}</div>
-      </div>}
+      <Sheet open={customizing} title="Customize dashboard" onClose={()=>setCustomizing(false)}>
+        <p className="progress-sheet-copy">Choose which analytics appear and adjust their order.</p>
+        <div className="progress-customize-list">{settings.cardOrder.map((id,index)=><div key={id} className="progress-customize-row">
+          <button type="button" role="switch" aria-checked={!settings.hiddenCards.includes(id)} className="progress-switch" onClick={()=>toggleCard(id)}><span /></button>
+          <span>{CARD_LABELS[id]}</span>
+          <button type="button" disabled={index===0} aria-label={`Move ${CARD_LABELS[id]} up`} onClick={()=>moveCard(id,-1)}>↑</button>
+          <button type="button" disabled={index===settings.cardOrder.length-1} aria-label={`Move ${CARD_LABELS[id]} down`} onClick={()=>moveCard(id,1)}>↓</button>
+        </div>)}</div>
+      </Sheet>
       {priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:6}}>TODAY'S PRIORITIES</div>
         <div style={{display:"grid",gap:5}}>{priorities.slice(0,3).map(item=><div key={item.muscle} style={{fontSize:11,color:"#A1A1AA"}}><b style={{color:"#E5E7EB"}}>{MUSCLES[item.muscle]}</b> · {item.remaining.toFixed(1)} estimated sets below target{item.daysSince!=null?` · last trained ${item.daysSince} day${item.daysSince===1?"":"s"} ago`:" · no training in this range"}</div>)}</div>

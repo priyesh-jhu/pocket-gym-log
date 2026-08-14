@@ -291,3 +291,9 @@ standalone Progress module now renders beneath that screen boundary while its
 remaining heatmap, trend, insight, and balance groups are migrated incrementally.
 Verification: build clean; 164/164 tests; lint unchanged at the single baselined
 guest-loading effect finding.
+
+Progress rebuild slice 2: complete. Replaced the compact legacy range buttons with
+the shared 48dp `SegmentedButtons` primitive. Dashboard customization now opens in
+the shared `Sheet` component and uses accessible switches plus 48dp reorder actions,
+instead of adding another full card to the analytics scroll. Build clean; 164/164
+tests; no data or analytics behavior changed.

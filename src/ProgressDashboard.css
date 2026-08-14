@@ -1,0 +1,17 @@
+.progress-dashboard { display: flex; flex-direction: column; }
+.progress-dashboard__toolbar { order: -20; display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp3); }
+.progress-dashboard__toolbar .m3-seg { flex: 1; }
+.progress-dashboard__toolbar .m3-btn { flex: 0 0 auto; }
+.progress-sheet-copy { margin: 0 0 var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.progress-customize-list { display: grid; gap: var(--sp2); }
+.progress-customize-row { min-height: 56px; display: grid; grid-template-columns: 52px 1fr 48px 48px; align-items: center; gap: var(--sp1); padding: 0 var(--sp2); border-radius: var(--shape-md); background: var(--surface-container-highest); color: var(--on-surface); font-size: var(--text-body); }
+.progress-customize-row > button:not(.progress-switch) { width: 48px; height: 48px; border: 0; border-radius: var(--shape-full); background: transparent; color: var(--on-surface-variant); font: inherit; font-size: var(--text-title-lg); cursor: pointer; }
+.progress-customize-row > button:disabled { opacity: .3; cursor: default; }
+.progress-switch { position: relative; width: 48px; height: 32px; padding: 0; border: 2px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container); cursor: pointer; }
+.progress-switch span { position: absolute; top: 5px; left: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--on-surface-variant); transition: transform var(--dur-short) var(--ease-std), background var(--dur-short) var(--ease-std); }
+.progress-switch[aria-checked="true"] { border-color: var(--primary); background: var(--primary); }
+.progress-switch[aria-checked="true"] span { background: var(--on-primary); transform: translateX(16px); }
+@media (max-width: 390px) {
+  .progress-dashboard__toolbar { align-items: stretch; flex-direction: column; }
+  .progress-dashboard__toolbar .m3-btn { align-self: flex-end; }
+}
