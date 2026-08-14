@@ -17,14 +17,15 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BarChart3, Cloud, Download, Dumbbell, History, Scale, Settings, Upload, X } from "lucide-react";
+import { BarChart3, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
 import { AppBar, Button, NavBar } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
+import HomeScreen from "./screens/HomeScreen.jsx";
 
 const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
 const NAV_ITEMS = [
-  { id: "log",      label: "Workout",  Icon: Dumbbell },
+  { id: "log",      label: "Home",     Icon: Home },
   { id: "history",  label: "History",  Icon: History },
   { id: "progress", label: "Progress", Icon: BarChart3 },
   { id: "weight",   label: "Weight",   Icon: Scale },
@@ -314,6 +315,7 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
+  const [sessionActive, setSessionActive] = useState(false);
 
   // Internal storage namespace: Firebase UID when signed in, isolated guest
   // storage otherwise. This value is never used as the displayed username.
@@ -564,6 +566,11 @@ export default function App() {
     setDraft(fresh); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setPlateFor(null);
   }
 
+  function startSession() {
+    setDraft(previous => ({ ...previous, startedAt: previous.startedAt || new Date().toISOString() }));
+    setSessionActive(true);
+  }
+
   function requestEquipmentSwitch(ei, equipment) {
     const ex = draft.exercises[ei];
     if (!ex || ex.equipment === equipment) return;
@@ -729,6 +736,7 @@ export default function App() {
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
     setDraft(newSession(currentDay, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setRestRunning(false); setRestComplete(false); setRestSeconds(0);
+    setSessionActive(false);
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
@@ -911,7 +919,7 @@ export default function App() {
     <div className="app-shell">
       <AppBar
         overline={new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
-        title="Pocket Gym Log"
+        title={sessionActive ? dayMeta.label : "Pocket Gym Log"}
         actions={
           <>
             {firebaseConfigured && (firebaseUser
@@ -981,8 +989,21 @@ export default function App() {
           </div>
         )}
 
-        {/* ── LOG TAB ── */}
-        {activeTab==="log" && (
+        {/* ── HOME TAB ── */}
+        {activeTab === "log" && !sessionActive && (
+          <HomeScreen
+            sessions={sessions}
+            dayMeta={dayMeta}
+            displayName={firebaseUser?.displayName}
+            hasDraft={draftHasContent(draft)}
+            draftSavedAt={draftSavedAt}
+            onStart={startSession}
+            onProgress={() => switchTab("progress")}
+          />
+        )}
+
+        {/* ── ACTIVE SESSION ── */}
+        {activeTab==="log" && sessionActive && (
           <div>
             <div className="day-switcher" style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {dayOrder.map(k => {
@@ -1389,7 +1410,7 @@ export default function App() {
 
       </main>
 
-      <NavBar items={NAV_ITEMS} active={activeTab} onChange={switchTab} />
+      {!sessionActive && <NavBar items={NAV_ITEMS} active={activeTab} onChange={switchTab} />}
 
       {/* Rest timer */}
       {(restRunning||restComplete)&&(

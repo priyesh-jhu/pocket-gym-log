@@ -1,0 +1,23 @@
+.home-screen { display: grid; gap: var(--sp3); }
+.home-screen__intro { display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); }
+.home-screen__eyebrow, .home-hero p, .home-plan p, .home-insight p { margin: 0; color: var(--on-surface-dim); font-size: var(--text-label-sm); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.home-screen__intro h2 { margin: var(--sp1) 0 0; font-size: var(--text-headline); }
+.home-hero { background-image: var(--hero-glow); }
+.home-hero strong { display: inline-block; margin-top: var(--sp2); color: var(--on-surface); font-size: var(--text-display); line-height: 1; font-variant-numeric: tabular-nums; }
+.home-hero > span { margin-left: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body-lg); }
+.home-hero .m3-chip { display: flex; width: fit-content; margin-top: var(--sp3); }
+.home-plan__head { display: flex; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp4); }
+.home-plan h3 { margin: var(--sp1) 0; font-size: var(--text-title-lg); }
+.home-plan__head span { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.home-plan__dot { width: 10px; height: 10px; margin-top: var(--sp1); border-radius: var(--shape-full); }
+.home-plan small { display: block; margin-top: var(--sp2); text-align: center; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.home-heatmap { width: 100%; padding: var(--sp5); border: 0; border-radius: var(--shape-xxl); background: var(--surface-container); color: var(--on-surface); text-align: left; cursor: pointer; box-shadow: var(--elev-1); }
+.home-section-title { display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); }
+.home-section-title h3 { margin: 0; font-size: var(--text-title); }
+.home-section-title p { margin: var(--sp1) 0 0; color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.home-insight strong, .home-insight span { display: block; }
+.home-insight strong { margin-top: var(--sp2); font-size: var(--text-title); }
+.home-insight span { margin-top: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-body-sm); line-height: 1.5; }
+.home-records { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp2); }
+.home-empty { color: var(--on-surface-variant); font-size: var(--text-body-sm); text-align: center; }
+@media (max-width: 370px) { .home-records { grid-template-columns: 1fr; } }
