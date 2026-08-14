@@ -4,48 +4,10 @@
 ::view-transition-new(root) { animation: enter .18s ease both; }
 @keyframes fade-out { to { opacity: .35; } }
 
-.app-header {
-  position: relative;
-  overflow: hidden;
-  padding: 26px max(20px, env(safe-area-inset-left)) 20px !important;
-  background: linear-gradient(145deg, rgba(24,31,54,.92), rgba(9,10,17,.96) 70%) !important;
-}
-.app-header::after {
-  content: '';
-  position: absolute;
-  width: 280px;
-  height: 280px;
-  right: -130px;
-  top: -190px;
-  border-radius: 50%;
-  background: #3b82f6;
-  filter: blur(70px);
-  opacity: .18;
-  pointer-events: none;
-}
-.app-header-row, .account-chip { position: relative; z-index: 1; }
-.account-chip { backdrop-filter: blur(16px); background: rgba(18,20,31,.72) !important; border-color: var(--line) !important; }
-.app-header-actions button { min-height: 42px; border-color: var(--line) !important; backdrop-filter: blur(12px); display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-
-.app-nav {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  width: 100%;
-  max-width: 760px !important;
-  justify-content: center;
-  background: rgba(8,9,14,.82);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  scrollbar-width: none;
-}
-.app-nav::-webkit-scrollbar, .day-switcher::-webkit-scrollbar { display: none; }
-.app-nav button { flex: 1; min-width: 106px; min-height: 52px; }
+.day-switcher::-webkit-scrollbar { display: none; }
 .nav-icon { display: none; }
 
 @media (hover: hover) {
-  .app-header-actions button:hover { border-color: rgba(91,140,255,.42) !important; background: rgba(35,40,58,.9) !important; }
-  .app-nav button:hover { color: #aeb7ca !important; }
   .workout-card:hover { border-color: rgba(91,140,255,.22) !important; transform: translateY(-1px); }
 }
 
@@ -67,7 +29,7 @@
 .day-switcher > button { scroll-snap-align: start; min-height: 56px; border-radius: 14px !important; }
 
 .rest-dock {
-  bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  bottom: calc(88px + env(safe-area-inset-bottom)) !important;
   width: min(calc(100% - 28px), 620px);
   justify-content: center;
   background: rgba(19,20,31,.92) !important;
@@ -76,49 +38,9 @@
   border-radius: 18px !important;
 }
 
-.app-footer { padding-bottom: calc(26px + env(safe-area-inset-bottom)) !important; }
-
 @media (max-width: 640px) {
   body { background: #08090e; }
   .app-shell { width: 100%; box-shadow: none; padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
-  .app-header { padding: calc(16px + env(safe-area-inset-top)) 16px 14px !important; border-bottom: 0 !important; }
-  .app-header-row { align-items: center !important; }
-  .app-header h1 { font-size: 24px !important; }
-  .app-header p { font-size: 11px !important; }
-  .app-header-row > div:first-child > div:first-child { display: none !important; }
-  .account-chip { margin-top: 12px !important; }
-  .app-header-actions { gap: 5px !important; }
-  .app-header-actions button { width: 42px; height: 42px; min-height: 42px; padding: 0 !important; border-radius: 12px !important; overflow: hidden; font-size: 0 !important; }
-  .app-header-actions button::first-letter { font-size: 15px; }
-  .app-header-actions button { font-size: 13px !important; }
-  .app-header-actions button:not(.header-tool) { width: auto; max-width: 90px; padding: 0 10px !important; font-size: 10px !important; }
-  .header-tool span { display: none; }
-
-  .app-nav {
-    position: fixed;
-    inset: auto 0 0 0;
-    max-width: none !important;
-    height: calc(66px + env(safe-area-inset-bottom));
-    padding: 5px 5px env(safe-area-inset-bottom);
-    border-top: 1px solid rgba(148,163,184,.14);
-    border-bottom: 0 !important;
-    background: rgba(10,11,18,.94);
-  }
-  .app-nav button {
-    min-width: 0;
-    min-height: 56px;
-    padding: 5px 2px !important;
-    border: 0 !important;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-size: 9px !important;
-    color: #666979 !important;
-  }
-  .app-nav button.active { color: #8eb2ff !important; background: rgba(59,130,246,.1) !important; }
   .nav-icon { display: block; }
   .app-content { padding: 14px 12px 0 !important; }
   .workout-card { border-radius: 16px !important; padding: 14px !important; }
@@ -129,15 +51,13 @@
   .set-row { display: grid !important; grid-template-columns: 54px minmax(72px,1fr) 38px 50px minmax(62px,.8fr) 22px; gap: 5px !important; }
   .set-row input { padding: 8px 7px !important; font-size: 12px !important; }
   .set-row select { padding: 6px 3px !important; font-size: 10px !important; }
-  .rest-dock { bottom: calc(74px + env(safe-area-inset-bottom)) !important; padding: 9px 10px !important; gap: 8px !important; overflow-x: auto; justify-content: flex-start; }
+  .rest-dock { padding: 9px 10px !important; gap: 8px !important; overflow-x: auto; justify-content: flex-start; }
   .rest-dock > div:nth-child(3) { display: flex; }
-  .app-footer { margin-top: 8px !important; border-top: 0 !important; padding-bottom: 16px !important; }
 }
 
 @media (max-width: 390px) {
   .set-row { grid-template-columns: 50px minmax(60px,1fr) 34px 44px minmax(54px,.72fr) 18px; }
   .workout-card { padding: 12px !important; }
-  .app-header-actions button:not(.header-tool) { max-width: 72px; padding-inline: 7px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

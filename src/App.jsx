@@ -18,15 +18,15 @@ import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, re
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, Cloud, Download, Dumbbell, History, Scale, Settings, Upload, X } from "lucide-react";
-import packageInfo from "../package.json";
+import { AppBar, Button, NavBar } from "./components/index.js";
 
 const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
-const NAV_ITEMS=[
-  ["log","Workout",Dumbbell],
-  ["history","History",History],
-  ["progress","Progress",BarChart3],
-  ["weight","Weight",Scale],
-  ["settings","Settings",Settings],
+const NAV_ITEMS = [
+  { id: "log",      label: "Workout",  Icon: Dumbbell },
+  { id: "history",  label: "History",  Icon: History },
+  { id: "progress", label: "Progress", Icon: BarChart3 },
+  { id: "weight",   label: "Weight",   Icon: Scale },
+  { id: "settings", label: "Settings", Icon: Settings },
 ];
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
@@ -906,46 +906,32 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell" style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#08090E",minHeight:"100vh",color:"#ECEAF4",paddingBottom:80}}>
-
-      {/* ── HERO ── */}
-      <div className="app-header" style={{padding:"32px 20px 24px",background:"linear-gradient(160deg,#0F101A 0%,#08090E 70%)",borderBottom:"1px solid #16172A"}}>
-        <div className="app-header-row" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-          <div>
-            <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:100,padding:"4px 14px",marginBottom:12,fontSize:11,fontWeight:700,color:"#60A5FA",letterSpacing:"0.12em"}}>TRAINING LOG</div>
-            <h1 style={{fontSize:"clamp(22px,5vw,32px)",fontWeight:900,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Pocket Gym</h1>
-            <p style={{color:"#666",fontSize:13,margin:0}}>12-week training · {sessions.length} session{sessions.length!==1?"s":""}{getStreak()>1?"  ·  🔥 "+getStreak()+"-day streak":""}</p>
-          </div>
-          <div className="app-header-actions" style={{display:"flex",gap:8,flexShrink:0}}>
-            {firebaseConfigured && (firebaseUser ? (
-              <button className="header-sync" onClick={disconnectFirebase} title={(firebaseUser.email||"Signed in")+" — click to sign out"} style={{background:cloudStatus==="error"?"#2A1717":"#13251B",border:`1px solid ${cloudStatus==="error"?"#7F1D1D":"#245C37"}`,borderRadius:10,padding:"10px 14px",color:cloudStatus==="error"?"#F87171":"#4ADE80",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><Cloud size={15}/><span>{cloudStatus==="syncing"?"Syncing…":cloudStatus==="error"?"Sync error":"Synced"}</span></button>
-            ) : (
-              <button className="header-sync" onClick={connectFirebase} disabled={cloudStatus==="syncing"} style={{background:"#13141F",border:"1px solid #3B82F6",borderRadius:10,padding:"10px 14px",color:"#60A5FA",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><Cloud size={15}/><span>{cloudStatus==="syncing"?"Connecting…":"Sign in"}</span></button>
-            ))}
-            <button className="header-tool" onClick={exportData} aria-label="Export workout data" style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}><Download size={16}/><span>Export</span></button>
-            <button className="header-tool" onClick={triggerImport} aria-label="Import workout data" style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}><Upload size={16}/><span>Import</span></button>
+    <div className="app-shell">
+      <AppBar
+        overline={new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
+        title="Pocket Gym Log"
+        actions={
+          <>
+            {firebaseConfigured && (firebaseUser
+              ? <Button variant="text" onClick={disconnectFirebase}
+                        title={(firebaseUser.email || "Signed in") + " — click to sign out"}>
+                  <Cloud size={16} />
+                  {cloudStatus === "syncing" ? "Syncing…" : cloudStatus === "error" ? "Sync error" : "Synced"}
+                </Button>
+              : <Button variant="text" onClick={connectFirebase} disabled={cloudStatus === "syncing"}>
+                  <Cloud size={16} />
+                  {cloudStatus === "syncing" ? "Connecting…" : "Sign in"}
+                </Button>)}
+            <Button variant="text" onClick={exportData} aria-label="Export workout data">
+              <Download size={16} />
+            </Button>
+            <Button variant="text" onClick={triggerImport} aria-label="Import workout data">
+              <Upload size={16} />
+            </Button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
-          </div>
-        </div>
-
-        {/* Account identity */}
-        <div className="account-chip" style={{marginTop:18,display:"inline-flex",alignItems:"center",gap:10,background:"#13141F",border:"1px solid #2A2A3A",borderRadius:100,padding:"6px 12px 6px 6px"}}>
-          {firebaseUser?.photoURL ? (
-            <img src={firebaseUser.photoURL} alt="" referrerPolicy="no-referrer" style={{width:28,height:28,borderRadius:"50%"}}/>
-          ) : (
-            <span style={{width:28,height:28,borderRadius:"50%",background:"linear-gradient(135deg,#3B82F6,#8B5CF6)",color:"#fff",fontSize:13,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",textTransform:"uppercase"}}>{(firebaseUser?.displayName||firebaseUser?.email||"Guest").slice(0,1)}</span>
-          )}
-          <div>
-            <div style={{fontSize:13,fontWeight:700,color:"#ECEAF4",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{firebaseUser?.displayName||firebaseUser?.email||"Guest mode"}</div>
-            <div style={{fontSize:9,color:firebaseUser?"#4ADE80":"#666",fontWeight:700,letterSpacing:"0.08em"}}>{firebaseUser?"PRIVATE ACCOUNT":"DEVICE ONLY"}</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── TABS ── */}
-      <div className="app-nav" style={{display:"flex",borderBottom:"1px solid #16172A",maxWidth:720,margin:"0 auto",overflowX:"auto"}}>
-        {NAV_ITEMS.map(([id,label,Icon])=><button className={activeTab===id?"active":""} key={id} onClick={()=>switchTab(id)} style={{background:"none",border:"none",color:activeTab===id?"#ECEAF4":"#444",fontWeight:700,fontSize:13,padding:"14px 18px",cursor:"pointer",borderBottom:activeTab===id?"2px solid #3B82F6":"2px solid transparent",transition:"all 0.15s",fontFamily:"inherit",whiteSpace:"nowrap"}}><Icon className="nav-icon" size={20} strokeWidth={activeTab===id?2.5:1.8}/><span>{label}</span></button>)}
-      </div>
+          </>
+        }
+      />
 
       <main className="app-content" style={{maxWidth:720,margin:"0 auto",padding:"20px 16px 0"}}>
 
@@ -1413,9 +1399,7 @@ export default function App() {
 
       </main>
 
-      <footer className="app-footer" style={{maxWidth:720,margin:"18px auto 0",padding:"16px 20px 22px",borderTop:"1px solid #12131E",textAlign:"center",fontSize:9,color:"#414354",letterSpacing:"0.08em"}}>
-        POCKET GYM LOG · v{packageInfo.version}
-      </footer>
+      <NavBar items={NAV_ITEMS} active={activeTab} onChange={switchTab} />
 
       {/* Rest timer */}
       {(restRunning||restComplete)&&(
