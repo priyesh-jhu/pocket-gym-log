@@ -57,8 +57,15 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const oldestWeeksAgo = Math.max(0, Math.round((new Date(currentWeek + "T12:00:00") - new Date(oldestWeek + "T12:00:00")) / 604800000));
   const maxHistoryPage = Math.floor(oldestWeeksAgo / 12);
   const weeks = weeklyVolume(list, 12, periodEnd);
-  const balance = muscleBalance(list, Math.max(1,Math.ceil(rangeDays/7)));
-  const pushPull = pushPullRatio(list, rangeDays);
+  let balance = [];
+  let pushPull = { push: 0, pull: 0, pushPct: 0, pullPct: 0 };
+  let balanceError = false;
+  try {
+    balance = muscleBalance(list, Math.max(1,Math.ceil(rangeDays/7)));
+    pushPull = pushPullRatio(list, rangeDays);
+  } catch {
+    balanceError = true;
+  }
   const calendar = activityCalendar(list, 12, periodEnd);
   const consistency = consistencySummary(list);
   const insights = trainingInsights(list);
@@ -245,14 +252,15 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
       </div>}
 
       {rendersGroup("balance")&&<div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
-        <div style={sectionLabel}>MUSCLE BALANCE <span style={{ color: "var(--on-surface-dim)", fontWeight: 500 }}>({rangeDays}-day range)</span></div>
-        <div className="progress-push-pull" aria-label={`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`}>
+        {balanceError?<div className="progress-group-error" role="alert"><strong>Balance couldn’t be calculated.</strong><p>Your other progress analytics are still available.</p><Button variant="tonal" onClick={() => window.location.reload()}>Try again</Button></div>:<>
+        <p className="progress-balance-range">Mapped working sets in the last {rangeDays} days</p>
+        <div className="progress-push-pull" aria-label={pushPull.push+pushPull.pull>0?`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`:"No mapped push or pull sets"}>
           <div className="progress-push-pull__labels"><span><strong>{pushPull.pushPct}%</strong> Push</span><span>Pull <strong>{pushPull.pullPct}%</strong></span></div>
-          <div className="progress-push-pull__track"><span style={{width:`${pushPull.pushPct}%`}} /><span style={{width:`${pushPull.pullPct}%`}} /></div>
+          {pushPull.push+pushPull.pull>0&&<div className="progress-push-pull__track" aria-hidden="true"><span style={{width:`${pushPull.pushPct}%`}} /><span style={{width:`${pushPull.pullPct}%`}} /></div>}
           <p>{pushPull.push+pushPull.pull>0?"Based on mapped working sets in this range.":"Log mapped push and pull exercises to see your ratio."}</p>
         </div>
         {balance.length === 0
-          ? <div className="progress-balance-empty">Not enough logged exercises to attribute volume to muscle groups yet.</div>
+          ? <div className="progress-balance-empty">Not enough mapped exercises to show muscle-group balance yet.</div>
           : (
             <div className="progress-balance-list">
               {balance.map(b => (
@@ -267,6 +275,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
               ))}
             </div>
           )}
+        </>}
       </div>}
     </div>
   );
