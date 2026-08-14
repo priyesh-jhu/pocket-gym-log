@@ -39,9 +39,7 @@
 }
 
 @media (max-width: 640px) {
-  body { background: #08090e; }
-  .app-shell { width: 100%; box-shadow: none; padding-bottom: calc(76px + env(safe-area-inset-bottom)) !important; }
-  .nav-icon { display: block; }
+  .app-shell { width: 100%; box-shadow: none; }
   .app-content { padding: 14px 12px 0 !important; }
   .workout-card { border-radius: 16px !important; padding: 14px !important; }
   .exercise-head { flex-wrap: wrap; gap: 5px !important; }
