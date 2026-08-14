@@ -1,0 +1,11 @@
+.m3-stat {
+  min-width: 0;
+  padding: var(--sp4);
+  border-radius: var(--shape-lg);
+  background: var(--surface-container-highest);
+  color: var(--on-surface);
+}
+.m3-stat strong { display: block; overflow: hidden; text-overflow: ellipsis; font-size: var(--text-headline); font-variant-numeric: tabular-nums; }
+.m3-stat span { display: block; margin-top: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-label); font-weight: 600; }
+.m3-stat small { display: block; margin-top: var(--sp2); color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.m3-stat--accent strong { color: var(--primary); }

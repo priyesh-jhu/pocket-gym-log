@@ -1,0 +1,26 @@
+.m3-sheet__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--scrim);
+}
+.m3-sheet {
+  width: min(100%, 420px);
+  max-height: 88svh;
+  overflow: auto;
+  padding: var(--sp2) var(--sp5) calc(var(--sp6) + env(safe-area-inset-bottom));
+  border-radius: var(--shape-xxl) var(--shape-xxl) 0 0;
+  background: var(--surface-container-high);
+  color: var(--on-surface);
+  box-shadow: var(--elev-2);
+  animation: m3-sheet-enter var(--dur-med) var(--ease-emph);
+}
+.m3-sheet__handle { width: 32px; height: 4px; margin: 0 auto var(--sp3); border-radius: var(--shape-full); background: var(--outline-variant); }
+.m3-sheet__header { display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); }
+.m3-sheet__header h2 { margin: 0; font-size: var(--text-title-lg); }
+.m3-sheet__header button { display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: var(--shape-full); background: transparent; color: var(--on-surface-variant); cursor: pointer; }
+.m3-sheet__body { padding-top: var(--sp3); }
+@keyframes m3-sheet-enter { from { transform: translateY(24px); opacity: 0; } }

@@ -1,0 +1,22 @@
+.m3-fab {
+  position: fixed;
+  right: max(var(--sp4), calc((100vw - 420px) / 2 + var(--sp4)));
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 44;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp2);
+  min-height: 56px;
+  padding: 0 var(--sp5);
+  border: 0;
+  border-radius: var(--shape-lg);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  box-shadow: var(--elev-2);
+  font-size: var(--text-label-lg);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--dur-short) var(--ease-std);
+}
+.m3-fab:active { transform: scale(.97); }

@@ -6,3 +6,6 @@ export { default as ListItem } from "./ListItem.jsx";
 export { default as SegmentedButtons } from "./SegmentedButtons.jsx";
 export { default as AppBar } from "./AppBar.jsx";
 export { default as NavBar } from "./NavBar.jsx";
+export { default as FAB } from "./FAB.jsx";
+export { default as Sheet } from "./Sheet.jsx";
+export { default as StatTile } from "./StatTile.jsx";
