@@ -1,35 +1,8 @@
-:root {
-  color-scheme: dark;
-  font-family: 'DM Sans', system-ui, sans-serif;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  --app-bg: #07080d;
-  --surface: rgba(17, 19, 29, .86);
-  --surface-raised: rgba(23, 25, 38, .92);
-  --line: rgba(148, 163, 184, .12);
-  --blue: #5b8cff;
-  background: var(--app-bg);
-}
+@import "./design/base.css";
 
-* { box-sizing: border-box; }
-html { background: var(--app-bg); overscroll-behavior-y: none; }
-body { margin: 0; min-width: 320px; background: radial-gradient(circle at 50% -10%, #17213a 0, #090a11 38%, #07080d 70%); }
-button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-button { touch-action: manipulation; }
-button:not(:disabled) { transition: transform .16s ease, border-color .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease; }
-button:not(:disabled):active { transform: scale(.97); }
-#root { min-height: 100svh; }
 ::view-transition-old(root) { animation: fade-out .12s ease both; }
 ::view-transition-new(root) { animation: enter .18s ease both; }
 @keyframes fade-out { to { opacity: .35; } }
-
-.app-shell {
-  width: min(100%, 920px);
-  margin: 0 auto;
-  background: linear-gradient(180deg, rgba(12,13,21,.96), #08090e 32%);
-  box-shadow: 0 0 80px rgba(0,0,0,.32);
-}
 
 .app-header {
   position: relative;

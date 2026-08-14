@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════
+   Design tokens — the ONLY place a colour literal may appear.
+   Role names follow Material 3; values are ours.
+   Light lives on :root. Dark redefines the same names below.
+   theme.js always writes an explicit data-theme, so there is exactly
+   one dark block — no prefers-color-scheme duplicate to keep in sync.
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── colour · light ── */
+  --surface:                   #FCFCF8;
+  --surface-container:         #F2F2EA;
+  --surface-container-high:    #EAEADF;
+  --surface-container-highest: #E2E2D5;
+  --on-surface:                #1A1A16;
+  --on-surface-variant:        #4C4C44;
+  --on-surface-dim:            #7C7C71;
+  --outline-variant:           #CBCBBF;
+
+  --primary:                   #3F5210;
+  --on-primary:                #FFFFFF;
+  --primary-container:         #C8F065;
+  --on-primary-container:      #1D2600;
+
+  /* Filled controls draw from different roles per theme (volt is the
+     FILL in light, the TEXT colour in dark). Resolving that here means
+     Button never needs a [data-theme] rule of its own. */
+  --filled-bg:                 var(--primary-container);
+  --filled-fg:                 var(--on-primary-container);
+
+  --warn:                      #8A6300;
+  --error:                     #B3261E;
+  --on-error:                  #FFFFFF;
+  --success:                   #2E6B2E;
+
+  --muscle-empty:              #DEDED2;
+  --muscle-stroke:             #BFBFB2;
+
+  --scrim:                     rgba(0,0,0,.32);
+  --state-layer:               #1A1A16;
+
+  --elev-1: 0 1px 2px rgba(30,30,20,.10), 0 2px 8px rgba(30,30,20,.06);
+  --elev-2: 0 2px 6px rgba(30,30,20,.10), 0 8px 28px rgba(30,30,20,.08);
+  --hero-glow: radial-gradient(120% 90% at 18% -10%,
+                 rgba(120,160,20,.13) 0%, rgba(120,160,20,0) 62%);
+
+  /* ── shape ── */
+  --shape-sm: 8px;  --shape-md: 12px; --shape-lg: 16px;
+  --shape-xl: 20px; --shape-xxl: 28px; --shape-full: 999px;
+
+  /* ── spacing · 4dp grid ── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px; --sp4: 16px;
+  --sp5: 20px; --sp6: 24px; --sp8: 32px; --sp10: 40px;
+
+  /* ── motion ── */
+  --ease-emph: cubic-bezier(.2, 0, 0, 1);
+  --ease-std:  cubic-bezier(.2, 0, 0, 1);
+  --dur-short: 100ms; --dur-med: 300ms; --dur-long: 500ms;
+
+  /* ── type ── */
+  --font-sans: "Manrope Variable", "Manrope", system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --surface:                   #0B0B0F;
+  --surface-container:         #16161D;
+  --surface-container-high:    #1E1E27;
+  --surface-container-highest: #262631;
+  --on-surface:                #E8E6EE;
+  --on-surface-variant:        #A5A2B0;
+  --on-surface-dim:            #6E6B79;
+  --outline-variant:           #35343D;
+
+  --primary:                   #C8F065;
+  --on-primary:                #1D2600;
+  --primary-container:         #2C3A0F;
+  --on-primary-container:      #D9FF87;
+
+  --filled-bg:                 var(--primary);
+  --filled-fg:                 var(--on-primary);
+
+  --warn:                      #F5C860;
+  --error:                     #F2B8B5;
+  --on-error:                  #601410;
+  --success:                   #7EDB8A;
+
+  --muscle-empty:              #22222B;
+  --muscle-stroke:             #3A3944;
+
+  --scrim:                     rgba(0,0,0,.55);
+  --state-layer:               #E8E6EE;
+
+  --elev-1: 0 1px 2px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.28);
+  --elev-2: 0 2px 6px rgba(0,0,0,.5), 0 8px 28px rgba(0,0,0,.36);
+  --hero-glow: radial-gradient(120% 90% at 18% -10%,
+                 rgba(200,240,101,.16) 0%, rgba(200,240,101,0) 62%);
+}

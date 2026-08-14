@@ -4,10 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#08090E" />
+    <meta name="theme-color" content="#0B0B0F" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Pocket Gym Log</title>
+    <script>
+      /* Sets the theme before first paint to avoid a flash. Colours here
+         duplicate META_LIGHT/META_DARK in src/design/theme.js by necessity —
+         inline script cannot import. Keep all three in step. */
+      (function () {
+        try {
+          var pref = window.localStorage.getItem("workout-theme");
+          var dark = pref === "dark"
+            || (pref !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", dark ? "#0B0B0F" : "#FCFCF8");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

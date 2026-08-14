@@ -1,0 +1,48 @@
+@import "./tokens.css";
+
+* { box-sizing: border-box; }
+
+html {
+  background: var(--surface);
+  overscroll-behavior-y: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { min-height: 100svh; }
+
+button, input, select, textarea {
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button { touch-action: manipulation; }
+
+/* Phone-width column, centred on desktop. Bottom padding clears the nav bar. */
+.app-shell {
+  width: min(100%, 420px);
+  margin: 0 auto;
+  min-height: 100svh;
+  background: var(--surface);
+  padding-bottom: calc(80px + env(safe-area-inset-bottom));
+}
+
+/* This !important is an accessibility override and is intentionally kept —
+   it is NOT one of the inline-style-fighting rules being deleted. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
