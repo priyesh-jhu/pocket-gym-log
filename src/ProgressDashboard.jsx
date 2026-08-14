@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, muscleBalance, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, sessionVolume, toLb, weekStartISO } from "./stats.js";
+import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, muscleBalance, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, pushPullRatio, sessionVolume, toLb, weekStartISO } from "./stats.js";
 import { trainingInsights } from "./trainingInsights.js";
 import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
@@ -8,15 +8,6 @@ import MuscleHeatmap from "./MuscleHeatmap.jsx";
 import { Button, SegmentedButtons, Sheet } from "./components/index.js";
 import useThemeTokens from "./charts/useThemeTokens.js";
 import "./ProgressDashboard.css";
-
-const GROUP_COLORS = {
-  Chest: "#3B82F6",
-  Back: "#22C55E",
-  Shoulders: "#F59E0B",
-  Arms: "#8B5CF6",
-  Legs: "#EC4899",
-  Core: "#9CA3AF",
-};
 
 const KG_PER_LB = 1 / 2.20462;
 
@@ -77,6 +68,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   const maxHistoryPage = Math.floor(oldestWeeksAgo / 12);
   const weeks = weeklyVolume(list, 12, periodEnd);
   const balance = muscleBalance(list, Math.max(1,Math.ceil(rangeDays/7)));
+  const pushPull = pushPullRatio(list, rangeDays);
   const calendar = activityCalendar(list, 12, periodEnd);
   const consistency = consistencySummary(list);
   const insights = trainingInsights(list);
@@ -264,19 +256,23 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
       </div>
 
       <div style={cardStyle("balance")}>
-        <div style={sectionLabel}>MUSCLE BALANCE <span style={{ color: "#444", fontWeight: 500 }}>({rangeDays}-day range)</span></div>
+        <div style={sectionLabel}>MUSCLE BALANCE <span style={{ color: "var(--on-surface-dim)", fontWeight: 500 }}>({rangeDays}-day range)</span></div>
+        <div className="progress-push-pull" aria-label={`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`}>
+          <div className="progress-push-pull__labels"><span><strong>{pushPull.pushPct}%</strong> Push</span><span>Pull <strong>{pushPull.pullPct}%</strong></span></div>
+          <div className="progress-push-pull__track"><span style={{width:`${pushPull.pushPct}%`}} /><span style={{width:`${pushPull.pullPct}%`}} /></div>
+          <p>{pushPull.push+pushPull.pull>0?"Based on mapped working sets in this range.":"Log mapped push and pull exercises to see your ratio."}</p>
+        </div>
         {balance.length === 0
-          ? <div style={{ fontSize: 12, color: "#555", padding: "8px 0" }}>Not enough logged exercises to attribute volume to muscle groups yet.</div>
+          ? <div className="progress-balance-empty">Not enough logged exercises to attribute volume to muscle groups yet.</div>
           : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="progress-balance-list">
               {balance.map(b => (
-                <div key={b.group}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: "#ECEAF4", fontWeight: 600 }}>{b.group}</span>
-                    <span style={{ color: "#888" }}>{b.pct}%</span>
+                <div key={b.group} className="progress-balance-row">
+                  <div>
+                    <span>{b.group}</span><span>{b.pct}%</span>
                   </div>
-                  <div style={{ width: "100%", height: 8, background: "#161723", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: b.pct + "%", height: "100%", background: GROUP_COLORS[b.group] || "#9CA3AF", borderRadius: 4 }} />
+                  <div className="progress-balance-track">
+                    <div className={`progress-balance-fill progress-balance-fill--${b.group.toLowerCase()}`} style={{ width: b.pct + "%" }} />
                   </div>
                 </div>
               ))}

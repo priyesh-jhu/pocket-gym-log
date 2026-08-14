@@ -310,3 +310,8 @@ light/dark chart palette, replaced its legacy selectors with tokenized 48dp cont
 raised axis text to the design floor, and added explicit minimum dimensions to all
 responsive chart containers to prevent their zero-size measurement warning. Build
 clean; 164/164 tests; lint unchanged at the single baselined guest-loading finding.
+
+Progress rebuild slice 5: complete. Added the design-specified push/pull ratio to
+the Balance group using the existing tested `pushPullRatio` statistic. Replaced the
+legacy fixed group colors and inline bar styling with theme-role CSS, including a
+clear no-data explanation. Build clean; 164/164 tests; server remains stopped.
