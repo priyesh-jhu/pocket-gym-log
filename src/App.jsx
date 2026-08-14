@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
@@ -22,8 +22,8 @@ import { AppBar, Button, NavBar, Sheet } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
+import ProgressScreen from "./screens/ProgressScreen.jsx";
 
-const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
 const NAV_ITEMS = [
   { id: "log",      label: "Home",     Icon: Home },
   { id: "history",  label: "History",  Icon: History },
@@ -1373,7 +1373,7 @@ export default function App() {
             {sessions.length===0
               ? <div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>Log a few sessions first to see progress charts.</div>
               : <>
-                  <Suspense fallback={<div style={{padding:24,textAlign:"center",color:"#666",fontSize:12}}>Loading training analytics…</div>}><ProgressDashboard sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/></Suspense>
+                  <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/>
                   <div style={{marginBottom:16}}>
                     <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Select an exercise</div>
                     <select value={progressExercise||""} onChange={e=>setProgressExercise(e.target.value)}

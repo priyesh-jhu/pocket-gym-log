@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    // Hooks must always use the exact React instance owned by react-dom. This
+    // also protects linked/local packages and Vite's optimized dependency graph.
+    dedupe: ['react', 'react-dom'],
+  },
   build: {
     rolldownOptions: {
       output: {
