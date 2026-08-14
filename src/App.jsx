@@ -204,7 +204,7 @@ function WeightTab({ bodyweights, weightInput, setWeightInput, weightUnit, setWe
       const avgLb = win.reduce((s,p)=>s+toLb(p),0) / (win.length||1);
       return { date:e.date.slice(5), weight:Math.round(conv(toLb(e))*10)/10, trend:Math.round(conv(avgLb)*10)/10 };
     });
-  } catch { chartData = []; }
+  } catch { /* Leave the chart empty when a stored date cannot be parsed. */ }
 
   const sortedW = [...safe].sort((a,b)=>b.date.localeCompare(a.date));
   const latest = sortedW[0];
@@ -366,7 +366,7 @@ export default function App() {
     const change=()=>setActiveTab(t);
     if(document.startViewTransition) document.startViewTransition(change); else change();
     try { if(navigator.vibrate) navigator.vibrate(8); } catch { /* Haptics are optional. */ }
-    try { storage.set(TAB_KEY, t); } catch {}
+    try { storage.set(TAB_KEY, t); } catch { /* Tab choice is not persisted when storage is unavailable. */ }
   }
 
   function restoreDraft(namespace, prefs) {
@@ -1450,7 +1450,7 @@ export default function App() {
                         {g.primary.map(m=><span key={m} style={{fontSize:9,fontWeight:700,color:"#fff",background:dayMeta.color,borderRadius:100,padding:"2px 8px"}}>{MUSCLES[m]}</span>)}
                         {g.secondary.map(m=><span key={m} style={{fontSize:9,fontWeight:600,color:dayMeta.color,background:dayMeta.color+"1A",border:"1px solid "+dayMeta.color+"40",borderRadius:100,padding:"2px 8px"}}>{MUSCLES[m]}</span>)}
                       </div>
-                      <div style={{fontSize:8.5,color:"#555",marginTop:6,textAlign:"center"}}>● primary　○ secondary</div>
+                      <div style={{fontSize:8.5,color:"#555",marginTop:6,textAlign:"center"}}>● primary ○ secondary</div>
                     </div>
                   </div>
                   <div>
