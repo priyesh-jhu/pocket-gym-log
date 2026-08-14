@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { todayISO, todaysDayKey, addDaysISO } from "./dateUtils.js";
+import { todayISO, todaysDayKey } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
@@ -331,7 +331,6 @@ export default function App() {
   const [confirmDiscardDraft, setConfirmDiscardDraft] = useState(false);
   const draftNamespaceRef = useRef("guest");
   const [expandedHistory, setExpandedHistory] = useState(null);
-  const [progressExercise, setProgressExercise] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showCoach, setShowCoach] = useState(true);
@@ -919,36 +918,6 @@ export default function App() {
     setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets:last.sets.map(s=>({weight:String(s.weight??""),reps:"",unit:s.unit||"lb",done:false})) }) }));
   }
 
-  function getProgressData(name) {
-    return sessions.filter(s=>s.exercises.some(e=>e.name===name)).map(s => {
-      const ex = s.exercises.find(e=>e.name===name);
-      const weights = ex.sets.map(s=>parseFloat(s.weight)).filter(w=>!isNaN(w));
-      if (!weights.length) return null;
-      return { date:s.date, maxWeight:Math.max(...weights), volume:ex.sets.reduce((sum,s)=>(parseFloat(s.weight)||0)*(parseFloat(s.reps)||0)+sum,0) };
-    }).filter(Boolean);
-  }
-
-  function getBest1RM(name) {
-    let best = 0;
-    sessions.forEach(s => s.exercises.find(e=>e.name===name)?.sets.forEach(set => {
-      const w=parseFloat(set.weight), r=parseFloat(set.reps);
-      if (!isNaN(w)&&!isNaN(r)&&r>0) best=Math.max(best,w*(1+r/30));
-    }));
-    return best>0?Math.round(best):null;
-  }
-
-  function getStreak() {
-    if (!sessions.length) return 0;
-    const dates = Array.from(new Set(sessions.map(s=>s.date))).sort((a,b)=>b.localeCompare(a));
-    const today = todayISO();
-    if (dates[0]!==today&&dates[0]!==addDaysISO(today,-1)) return 0;
-    let streak=0; let cursor=dates[0];
-    for (const d of dates) {
-      if (d===cursor) { streak++; cursor=addDaysISO(cursor,-1); } else break;
-    }
-    return streak;
-  }
-
   const customExercises = getCustomExercises(equipmentPrefs);
   const workoutTemplates = getWorkoutTemplates(equipmentPrefs);
   const trainingGoals = getGoals(equipmentPrefs);
@@ -1369,80 +1338,7 @@ export default function App() {
 
         {/* ── PROGRESS TAB ── */}
         {activeTab==="progress" && (
-          <div>
-            {sessions.length===0
-              ? <div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>Log a few sessions first to see progress charts.</div>
-              : <>
-                  <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/>
-                  <div style={{marginBottom:16}}>
-                    <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Select an exercise</div>
-                    <select value={progressExercise||""} onChange={e=>setProgressExercise(e.target.value)}
-                      style={{width:"100%",background:"#0F1018",border:"1px solid #16172A",borderRadius:10,padding:"10px 12px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",boxSizing:"border-box"}}>
-                      <option value="">Choose an exercise...</option>
-                      {allExNames.map(n=><option key={n} value={n}>{n}</option>)}
-                    </select>
-                  </div>
-                  {progressExercise&&(()=>{
-                    const data=getProgressData(progressExercise);
-                    const est1RM=getBest1RM(progressExercise);
-                    if (!data.length) return <div style={{textAlign:"center",padding:"30px 20px",color:"#444",fontSize:13}}>No logged data yet.</div>;
-                    if (data.length===1) return (
-                      <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px"}}>
-                        <div style={{fontSize:24,fontWeight:900,color:"#3B82F6"}}>{data[0].maxWeight}</div>
-                        <div style={{fontSize:11,color:"#555"}}>max weight on {data[0].date}</div>
-                        {est1RM&&<div style={{fontSize:12,color:"#FBBF24",marginTop:8}}>Est. 1RM: {est1RM}</div>}
-                      </div>
-                    );
-                    const delta=data[data.length-1].maxWeight-data[0].maxWeight;
-                    return (
-                      <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
-                          <div style={{fontSize:13,fontWeight:700}}>{progressExercise}</div>
-                          <div style={{display:"flex",gap:12}}>
-                            {est1RM&&<div style={{fontSize:11,color:"#FBBF24"}}>Est. 1RM <b>{est1RM}</b></div>}
-                            <div style={{fontSize:11,color:delta>=0?"#4ADE80":"#F87171"}}>{delta>=0?"▲ +":"▼ "}{delta} since start</div>
-                          </div>
-                        </div>
-                        <div style={{width:"100%",height:220}}>
-                          <ResponsiveContainer>
-                            <LineChart data={data} margin={{top:5,right:10,left:-20,bottom:5}}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#1E2035"/>
-                              <XAxis dataKey="date" stroke="#444" tick={{fontSize:10}}/>
-                              <YAxis stroke="#444" tick={{fontSize:10}}/>
-                              <Tooltip contentStyle={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:8,fontSize:12}}/>
-                              <Legend wrapperStyle={{fontSize:11}}/>
-                              <Line type="monotone" dataKey="maxWeight" name="Max Weight" stroke="#3B82F6" strokeWidth={2} dot={{r:3}}/>
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                        <div style={{marginTop:16}}>
-                          <div style={{fontSize:11,color:"#666",marginBottom:8,fontWeight:700}}>TOTAL VOLUME (weight × reps)</div>
-                          <div style={{width:"100%",height:180}}>
-                            <ResponsiveContainer>
-                              <LineChart data={data} margin={{top:5,right:10,left:-20,bottom:5}}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1E2035"/>
-                                <XAxis dataKey="date" stroke="#444" tick={{fontSize:10}}/>
-                                <YAxis stroke="#444" tick={{fontSize:10}}/>
-                                <Tooltip contentStyle={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:8,fontSize:12}}/>
-                                <Line type="monotone" dataKey="volume" name="Volume" stroke="#22C55E" strokeWidth={2} dot={{r:3}}/>
-                              </LineChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  <div style={{marginTop:20,background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px"}}>
-                    <div style={{fontSize:12,color:"#666",fontWeight:700,marginBottom:10}}>OVERVIEW</div>
-                    <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                      <div><div style={{fontSize:22,fontWeight:900,color:"#3B82F6"}}>{sessions.length}</div><div style={{fontSize:11,color:"#555"}}>Total sessions</div></div>
-                      <div><div style={{fontSize:22,fontWeight:900,color:"#F59E0B"}}>{getStreak()}</div><div style={{fontSize:11,color:"#555"}}>Day streak</div></div>
-                      <div><div style={{fontSize:22,fontWeight:900,color:"#22C55E"}}>{sessions.length>0?sessions[sessions.length-1].date:"-"}</div><div style={{fontSize:11,color:"#555"}}>Last session</div></div>
-                    </div>
-                  </div>
-                </>
-            }
-          </div>
+          <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveAccountPrefs} onAddExercise={addDashboardExercise}/>
         )}
 
         {/* ── WEIGHT TAB ── */}

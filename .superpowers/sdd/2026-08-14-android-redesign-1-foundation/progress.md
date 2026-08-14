@@ -315,3 +315,10 @@ Progress rebuild slice 5: complete. Added the design-specified push/pull ratio t
 the Balance group using the existing tested `pushPullRatio` statistic. Replaced the
 legacy fixed group colors and inline bar styling with theme-role CSS, including a
 clear no-data explanation. Build clean; 164/164 tests; server remains stopped.
+
+Progress rebuild slice 6: complete. Removed the obsolete Progress selector, two
+legacy line charts, overview card, component state, streak helper, and duplicate
+progress/1RM calculations from `App.jsx` (105 lines). `ProgressScreen` is now the
+single owner of Progress rendering and delegates pure analytics to `stats.js`, as
+specified by the target architecture. Build clean; 164/164 tests; lint returns to
+the single baselined guest-loading finding.
