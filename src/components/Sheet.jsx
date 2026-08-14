@@ -8,6 +8,10 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
   const headingRef = useRef(null);
   const historyKey = useRef(null);
   const previousFocus = useRef(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!open) return undefined;
     previousFocus.current = document.activeElement;
@@ -17,7 +21,7 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
     const focusable = () => [...(sheetRef.current?.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])];
     const closeFromUi = () => {
       if (dismissOnHistory && historyKey.current && window.history.state?.sheetKey === historyKey.current) window.history.back();
-      else onClose();
+      else onCloseRef.current();
     };
     const onKeyDown = event => {
       if (event.key === "Escape") { event.preventDefault(); closeFromUi(); return; }
@@ -29,7 +33,7 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     const onPopState = event => {
-      if (historyKey.current && event.state?.sheetKey !== historyKey.current) onClose();
+      if (historyKey.current && event.state?.sheetKey !== historyKey.current) onCloseRef.current();
     };
     sheetNode?.addEventListener("keydown", onKeyDown);
     if (dismissOnHistory) {
@@ -44,7 +48,7 @@ export default function Sheet({ open, title, onClose, children, closeLabel = "Cl
       requestAnimationFrame(() => returnTarget?.isConnected && returnTarget.focus?.());
       historyKey.current = null;
     };
-  }, [dismissOnHistory, initialFocusRef, onClose, open, returnFocusRef, titleId]);
+  }, [dismissOnHistory, initialFocusRef, open, returnFocusRef, titleId]);
   if (!open) return null;
   const requestClose = () => {
     if (dismissOnHistory && historyKey.current && window.history.state?.sheetKey === historyKey.current) window.history.back();
