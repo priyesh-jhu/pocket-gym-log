@@ -26,11 +26,24 @@ function E1RMGroup({ sessions }) {
   const [exercise, setExercise] = useState(() => exercises[0] || "");
   const selected = exercises.includes(exercise) ? exercise : exercises[0] || "";
   const unit = dominantUnit(sessions);
-  const series = useMemo(() => exerciseE1RMSeries(sessions, selected).map(point => ({
-    ...point,
-    value: unit === "kg" ? Math.round((point.value / 2.20462) * 10) / 10 : point.value,
-  })), [selected, sessions, unit]);
-  const insights = useMemo(() => trainingInsights(sessions), [sessions]);
+  const analytics = useMemo(() => {
+    try {
+      return {
+        error: false,
+        series: exerciseE1RMSeries(sessions, selected).map(point => ({
+          ...point,
+          value: unit === "kg" ? Math.round((point.value / 2.20462) * 10) / 10 : point.value,
+        })),
+        insights: trainingInsights(sessions),
+      };
+    } catch {
+      return { error: true, series: [], insights: [] };
+    }
+  }, [selected, sessions, unit]);
+  const { error, series, insights } = analytics;
+  const first = series[0];
+  const latest = series.at(-1);
+  const change = first && latest ? Math.round((latest.value - first.value) * 10) / 10 : 0;
 
   return <Card variant="raised" className="progress-group progress-e1rm">
     <div className="progress-section-heading">
@@ -39,16 +52,22 @@ function E1RMGroup({ sessions }) {
         {exercises.map(name => <option key={name} value={name}>{name}</option>)}
       </select>
     </div>
-    {series.length ? <div className="progress-chart" role="img" aria-label={`Estimated one-rep max history for ${selected}`}>
+    {error ? <div className="progress-group-error" role="alert"><strong>Strength trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : series.length ? <>
+      <div className="progress-e1rm-headline"><strong>{latest.value} {unit}</strong><span>Latest estimated 1RM</span></div>
+      <p className="progress-e1rm-summary">From {first.value} {unit} on {first.date} to {latest.value} {unit} on {latest.date} · {change >= 0 ? "+" : ""}{change} {unit}</p>
+      <div className="progress-chart" role="img" aria-label={`Estimated one-rep max history for ${selected}`}>
       <ResponsiveContainer minWidth={0} minHeight={0}><LineChart data={series} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
         <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
         <XAxis dataKey="date" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={24} />
-        <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={` ${unit}`} />
+        <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={` ${unit}`} domain={[0, "auto"]} />
         <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={value => [`${value} ${unit}`, "Estimated 1RM"]} />
-        <Line type="monotone" dataKey="value" stroke={chartTheme.primary} strokeWidth={3} dot={{ r: 3, fill: chartTheme.primary, strokeWidth: 0 }} activeDot={{ r: 5 }} />
+        <Line type="monotone" dataKey="value" stroke={chartTheme.primary} strokeWidth={3} dot={{ r: 3, fill: chartTheme.primary, strokeWidth: 0 }} activeDot={{ r: 5 }} connectNulls={false} isAnimationActive={false} />
       </LineChart></ResponsiveContainer>
-    </div> : <p className="progress-chart-empty">Log a weighted set for this exercise to begin its strength trend.</p>}
-    {insights.length > 0 && <div className="progress-insights"><h3>Training insight</h3>{insights.map(item => <div key={item.type + item.name}><strong>{item.type === "deload" ? "Recovery signal" : "Possible plateau"} · {item.name}</strong><p>{item.message}</p><p>Next step: {item.action}</p></div>)}<small>Trend-based guidance, not medical advice.</small></div>}
+      </div>
+      <details className="progress-data-details"><summary>View e1RM data</summary><div className="progress-data-table-wrap"><table><caption>Estimated one-rep max history for {selected}</caption><thead><tr><th scope="col">Date</th><th scope="col">Estimated 1RM</th></tr></thead><tbody>{series.map(point => <tr key={point.date}><td>{point.date}</td><td>{point.value} {unit}</td></tr>)}</tbody></table></div></details>
+    </> : <div className="progress-chart-empty"><strong>No weighted sets for {selected || "this exercise"} yet.</strong><p>Log weight and reps to start this strength trend.</p></div>}
+    {!error && insights.length > 0 && <div className="progress-insights"><h3>Training {insights.length === 1 ? "insight" : "insights"}</h3>{insights.map(item => <div key={item.type + item.name}><strong>{item.type === "deload" ? "Recovery signal" : "Possible plateau"} · {item.name}</strong><p>{item.message}</p><div className="progress-insight-evidence">{item.evidence?.map(point => <span key={point.date}>{point.date} · {point.estimated1RMlb} lb e1RM</span>)}</div><p>Next step: {item.action}</p></div>)}<small>Trend-based guidance, not medical advice.</small></div>}
   </Card>;
 }
 
