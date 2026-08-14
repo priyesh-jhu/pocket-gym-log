@@ -1,4 +1,5 @@
-/* 42px option + 3px container padding top and bottom = 48dp target */
+/* Each option is a 48dp tap target; the container's 3px padding insets the
+   selected pill from the track edge, making the widget 54px overall. */
 .m3-seg {
   display: inline-flex;
   gap: 2px;
@@ -7,7 +8,7 @@
   border-radius: var(--shape-full);
 }
 .m3-seg__opt {
-  min-height: 42px;
+  min-height: 48px;
   padding: 0 var(--sp4);
   border: 0;
   border-radius: var(--shape-full);
