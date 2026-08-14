@@ -19,10 +19,10 @@ Users can reliably log and review workouts through a sleek, coherent, phone-firs
 - ✓ The application runs as a browser app, installable PWA, Firebase-hosted SPA, and Capacitor Android application — existing
 - ✓ The redesign foundation provides theme tokens, self-hosted Manrope, light/dark themes, Material-inspired primitives, AppBar, NavBar, and Settings — existing redesign work
 - ✓ Home and focused workout-session experiences substantially use the new Android-first design system — existing redesign work
+- ✓ Users can review the complete Progress dashboard through accessible Material controls, responsive phone layouts, and live light/dark visualizations — validated in Phase 1: Progress Completion
 
 ### Active
 
-- [ ] Finish the Progress screen migration to the shared design tokens and Material primitives
 - [ ] Extract and restyle History and Weight as dedicated screen components while preserving behavior
 - [ ] Remove hidden duplicate session UI, obsolete inline styles, dead CSS, and legacy `!important` overrides after parity checks
 - [ ] Keep `App.jsx` focused on state, persistence, routing, and callback wiring rather than substantial screen rendering
@@ -42,7 +42,7 @@ Users can reliably log and review workouts through a sleek, coherent, phone-firs
 ## Context
 
 - The redesign contract is `../docs/superpowers/specs/2026-08-14-android-redesign-design.md`; its sequencing and architectural decisions remain authoritative.
-- Foundation, Home, Session, Settings, and much of Progress are already implemented. Progress still contains significant inline and hard-coded legacy styling; History and Weight remain embedded in `src/App.jsx`.
+- Foundation, Home, Session, Settings, and Progress now use the Android-first design system. History and Weight remain embedded in `src/App.jsx` for Phase 2.
 - `src/App.jsx` remains the stateful composition root and is still oversized. Durable mutations must continue through its existing persistence callbacks and adapters.
 - The app is offline-first: local writes must work independently of Firebase availability, with cloud synchronization remaining an optional mirror.
 - Exercise names, local-storage namespaces, Firestore paths, and local calendar dates are persisted contracts and must not change during visual migration.
@@ -87,4 +87,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-14 after initialization*
+*Last updated: 2026-08-14 after Phase 1 completion*

@@ -41,7 +41,7 @@ coverage:
         ref: npm test && npm run test:tz && npm run build
         status: pass
       - kind: other
-        ref: node scripts/verify-lint-baseline.mjs
+        ref: scripts/verify-lint-baseline.mjs
         status: pass
     human_judgment: true
     rationale: User approved the final 360px/390px light/dark visual and interaction checkpoint.

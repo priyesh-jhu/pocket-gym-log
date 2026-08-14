@@ -6,7 +6,7 @@ This milestone finishes the approved Android-first redesign from its current bro
 
 ## Phases
 
-- [ ] **Phase 1: Progress Completion** - Finish the deep-dive analytics experience on the shared Material design system.
+- [x] **Phase 1: Progress Completion** - Finish the deep-dive analytics experience on the shared Material design system. (completed 2026-08-14)
 - [ ] **Phase 2: History and Weight Screens** - Deliver dedicated History and Weight destinations with existing edit, delete, offline, and sync behavior intact.
 - [ ] **Phase 3: Redesign Cleanup and Android Verification** - Remove replaced legacy presentation code and prove the complete redesigned experience across supported phone and Android scenarios.
 
@@ -14,7 +14,7 @@ This milestone finishes the approved Android-first redesign from its current bro
 
 ### Phase 1: Progress Completion
 
-**Goal**: Users can use the complete Progress dashboard through coherent, accessible Material controls and correctly themed visualizations.
+**Goal**: As a workout tracker user, I want to review complete Progress analytics through accessible Material controls and correctly themed visualizations, so that I can understand my training trends and gaps across supported phone layouts.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: [PROG-01, PROG-02, PROG-03]
@@ -70,7 +70,7 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Progress Completion | 3/3 | In Progress|  |
+| 1. Progress Completion | 3/3 | Complete    | 2026-08-14 |
 | 2. History and Weight Screens | 0/TBD | Not started | - |
 | 3. Redesign Cleanup and Android Verification | 0/TBD | Not started | - |
 

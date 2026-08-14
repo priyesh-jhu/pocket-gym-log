@@ -20,7 +20,7 @@ tech-stack:
   patterns: [screen-owned composition, group-local analytics surfaces, accessible chart data tables]
 key-files:
   created: [src/progressDashboardSettings.js, src/progressDashboardSettings.test.js]
-  modified: [src/App.jsx, src/components/SegmentedButtons.jsx, src/screens/ProgressScreen.jsx, src/screens/ProgressScreen.css, src/ProgressDashboard.jsx, src/ProgressDashboard.css]
+  modified: [src/App.jsx, src/components/SegmentedButtons.jsx, src/screens/ProgressScreen.jsx, src/screens/ProgressScreen.css, src/ProgressDashboard.jsx]
 key-decisions:
   - "ProgressScreen owns the four-group order and persistence boundary; ProgressDashboard renders only the requested subordinate group."
   - "Daily records always end at todayISO(), while calendar paging retains its independent periodEnd."
@@ -95,7 +95,7 @@ status: complete
 - `src/screens/ProgressScreen.jsx` - Four-group composition, toolbar, customization, e1RM surface, and hydration states.
 - `src/screens/ProgressScreen.css` - Phone-first e1RM, toolbar, accessible data, and state styling.
 - `src/ProgressDashboard.jsx` - Group-scoped rendering, exact daily records, accessible trend data, and independent calendar behavior.
-- `src/ProgressDashboard.css` - Group hierarchy, 48px calendar targets, and contained horizontal calendar scrolling.
+- `src/screens/ProgressScreen.css` - Group hierarchy, 48px calendar targets, and contained horizontal calendar scrolling.
 - `src/App.jsx` - Progress-only confirmed preference adapter.
 - `src/components/SegmentedButtons.jsx` - Additive option-level accessible labels.
 

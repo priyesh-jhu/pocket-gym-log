@@ -21,7 +21,7 @@ tech-stack:
   patterns: [opt-in shared modal behavior, confirmed-reference preference updates, group-local calculation failures]
 key-files:
   created: []
-  modified: [src/screens/ProgressScreen.jsx, src/ProgressDashboard.jsx, src/ProgressDashboard.css, src/MuscleHeatmap.jsx, src/components/Sheet.jsx, src/design/tokens.css]
+  modified: [src/screens/ProgressScreen.jsx, src/screens/ProgressScreen.css, src/ProgressDashboard.jsx, src/MuscleHeatmap.jsx, src/components/Sheet.jsx, src/design/tokens.css]
 key-decisions:
   - "Body priorities and gap guidance stay inside the single Body group boundary rather than mounting as separate dashboard surfaces."
   - "Shared Sheet focus, history, close-label, and focus-return behavior is opt-in so completed Session callers preserve their defaults."
@@ -99,7 +99,7 @@ status: complete
 
 - `src/screens/ProgressScreen.jsx` - Confirmed-reference customization updates, save errors, and modal focus behavior.
 - `src/ProgressDashboard.jsx` - Consolidated Body guidance and honest Balance group slices.
-- `src/ProgressDashboard.css` - Responsive body legends, controls, guidance, and balance styling.
+- `src/screens/ProgressScreen.css` - Responsive body legends, controls, guidance, and balance styling.
 - `src/MuscleHeatmap.jsx` - Token-only anatomy paint and selected-region emphasis.
 - `src/components/Sheet.jsx` - Backward-compatible focus trap, focus return, close label, and history dismissal props.
 - `src/design/tokens.css` - Light and dark anatomy visualization roles.
