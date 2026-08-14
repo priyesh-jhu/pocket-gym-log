@@ -17,9 +17,17 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, removeGoal } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { BarChart3, Cloud, Download, Dumbbell, History, Scale, Settings, Upload, X } from "lucide-react";
 import packageInfo from "../package.json";
 
 const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
+const NAV_ITEMS=[
+  ["log","Workout",Dumbbell],
+  ["history","History",History],
+  ["progress","Progress",BarChart3],
+  ["weight","Weight",Scale],
+  ["settings","Settings",Settings],
+];
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
 const SESSION_PREFIX  = "workout-sessions:";
@@ -354,7 +362,12 @@ export default function App() {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [cloudStatus, setCloudStatus] = useState(firebaseConfigured ? "signed-out" : "unconfigured");
 
-  function switchTab(t) { setActiveTab(t); try { storage.set(TAB_KEY, t); } catch {} }
+  function switchTab(t) {
+    const change=()=>setActiveTab(t);
+    if(document.startViewTransition) document.startViewTransition(change); else change();
+    try { if(navigator.vibrate) navigator.vibrate(8); } catch { /* Haptics are optional. */ }
+    try { storage.set(TAB_KEY, t); } catch {}
+  }
 
   function restoreDraft(namespace, prefs) {
     const saved = loadDraft(storage, namespace);
@@ -893,30 +906,30 @@ export default function App() {
   );
 
   return (
-    <div style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#08090E",minHeight:"100vh",color:"#ECEAF4",paddingBottom:80}}>
+    <div className="app-shell" style={{fontFamily:"'DM Sans','Segoe UI',sans-serif",background:"#08090E",minHeight:"100vh",color:"#ECEAF4",paddingBottom:80}}>
 
       {/* ── HERO ── */}
-      <div style={{padding:"32px 20px 24px",background:"linear-gradient(160deg,#0F101A 0%,#08090E 70%)",borderBottom:"1px solid #16172A"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+      <div className="app-header" style={{padding:"32px 20px 24px",background:"linear-gradient(160deg,#0F101A 0%,#08090E 70%)",borderBottom:"1px solid #16172A"}}>
+        <div className="app-header-row" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
           <div>
             <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(59,130,246,0.1)",border:"1px solid rgba(59,130,246,0.25)",borderRadius:100,padding:"4px 14px",marginBottom:12,fontSize:11,fontWeight:700,color:"#60A5FA",letterSpacing:"0.12em"}}>TRAINING LOG</div>
-            <h1 style={{fontSize:"clamp(22px,5vw,32px)",fontWeight:900,margin:"0 0 4px",letterSpacing:"-0.02em"}}>12-Week Tracker</h1>
-            <p style={{color:"#666",fontSize:13,margin:0}}>{sessions.length} session{sessions.length!==1?"s":""} logged · auto-saved{getStreak()>1?"  ·  🔥 "+getStreak()+"-day streak":""}</p>
+            <h1 style={{fontSize:"clamp(22px,5vw,32px)",fontWeight:900,margin:"0 0 4px",letterSpacing:"-0.02em"}}>Pocket Gym</h1>
+            <p style={{color:"#666",fontSize:13,margin:0}}>12-week training · {sessions.length} session{sessions.length!==1?"s":""}{getStreak()>1?"  ·  🔥 "+getStreak()+"-day streak":""}</p>
           </div>
-          <div style={{display:"flex",gap:8,flexShrink:0}}>
+          <div className="app-header-actions" style={{display:"flex",gap:8,flexShrink:0}}>
             {firebaseConfigured && (firebaseUser ? (
-              <button onClick={disconnectFirebase} title={(firebaseUser.email||"Signed in")+" — click to sign out"} style={{background:cloudStatus==="error"?"#2A1717":"#13251B",border:`1px solid ${cloudStatus==="error"?"#7F1D1D":"#245C37"}`,borderRadius:10,padding:"10px 14px",color:cloudStatus==="error"?"#F87171":"#4ADE80",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>☁ {cloudStatus==="syncing"?"Syncing…":cloudStatus==="error"?"Sync error":"Synced"}</button>
+              <button className="header-sync" onClick={disconnectFirebase} title={(firebaseUser.email||"Signed in")+" — click to sign out"} style={{background:cloudStatus==="error"?"#2A1717":"#13251B",border:`1px solid ${cloudStatus==="error"?"#7F1D1D":"#245C37"}`,borderRadius:10,padding:"10px 14px",color:cloudStatus==="error"?"#F87171":"#4ADE80",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><Cloud size={15}/><span>{cloudStatus==="syncing"?"Syncing…":cloudStatus==="error"?"Sync error":"Synced"}</span></button>
             ) : (
-              <button onClick={connectFirebase} disabled={cloudStatus==="syncing"} style={{background:"#13141F",border:"1px solid #3B82F6",borderRadius:10,padding:"10px 14px",color:"#60A5FA",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>☁ {cloudStatus==="syncing"?"Connecting…":"Google Sign-in"}</button>
+              <button className="header-sync" onClick={connectFirebase} disabled={cloudStatus==="syncing"} style={{background:"#13141F",border:"1px solid #3B82F6",borderRadius:10,padding:"10px 14px",color:"#60A5FA",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}><Cloud size={15}/><span>{cloudStatus==="syncing"?"Connecting…":"Sign in"}</span></button>
             ))}
-            <button onClick={exportData} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬇ Export</button>
-            <button onClick={triggerImport} style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}>⬆ Import</button>
+            <button className="header-tool" onClick={exportData} aria-label="Export workout data" style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}><Download size={16}/><span>Export</span></button>
+            <button className="header-tool" onClick={triggerImport} aria-label="Import workout data" style={{background:"#13141F",border:"1px solid #2A2A3A",borderRadius:10,padding:"10px 14px",color:"#9CA3AF",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0,whiteSpace:"nowrap"}}><Upload size={16}/><span>Import</span></button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
           </div>
         </div>
 
         {/* Account identity */}
-        <div style={{marginTop:18,display:"inline-flex",alignItems:"center",gap:10,background:"#13141F",border:"1px solid #2A2A3A",borderRadius:100,padding:"6px 12px 6px 6px"}}>
+        <div className="account-chip" style={{marginTop:18,display:"inline-flex",alignItems:"center",gap:10,background:"#13141F",border:"1px solid #2A2A3A",borderRadius:100,padding:"6px 12px 6px 6px"}}>
           {firebaseUser?.photoURL ? (
             <img src={firebaseUser.photoURL} alt="" referrerPolicy="no-referrer" style={{width:28,height:28,borderRadius:"50%"}}/>
           ) : (
@@ -930,13 +943,11 @@ export default function App() {
       </div>
 
       {/* ── TABS ── */}
-      <div style={{display:"flex",borderBottom:"1px solid #16172A",maxWidth:720,margin:"0 auto",overflowX:"auto"}}>
-        {[["log","Log Workout"],["history","History"],["progress","Progress"],["weight","Weight"],["settings","Settings"]].map(([id,label])=>(
-          <button key={id} onClick={()=>switchTab(id)} style={{background:"none",border:"none",color:activeTab===id?"#ECEAF4":"#444",fontWeight:700,fontSize:13,padding:"14px 18px",cursor:"pointer",borderBottom:activeTab===id?"2px solid #3B82F6":"2px solid transparent",transition:"all 0.15s",fontFamily:"inherit",whiteSpace:"nowrap"}}>{label}</button>
-        ))}
+      <div className="app-nav" style={{display:"flex",borderBottom:"1px solid #16172A",maxWidth:720,margin:"0 auto",overflowX:"auto"}}>
+        {NAV_ITEMS.map(([id,label,Icon])=><button className={activeTab===id?"active":""} key={id} onClick={()=>switchTab(id)} style={{background:"none",border:"none",color:activeTab===id?"#ECEAF4":"#444",fontWeight:700,fontSize:13,padding:"14px 18px",cursor:"pointer",borderBottom:activeTab===id?"2px solid #3B82F6":"2px solid transparent",transition:"all 0.15s",fontFamily:"inherit",whiteSpace:"nowrap"}}><Icon className="nav-icon" size={20} strokeWidth={activeTab===id?2.5:1.8}/><span>{label}</span></button>)}
       </div>
 
-      <div style={{maxWidth:720,margin:"0 auto",padding:"20px 16px 0"}}>
+      <main className="app-content" style={{maxWidth:720,margin:"0 auto",padding:"20px 16px 0"}}>
 
         {/* Status banners */}
         {saveStatus==="saving"&&<div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#60A5FA"}}>Saving...</div>}
@@ -985,7 +996,7 @@ export default function App() {
         {/* ── LOG TAB ── */}
         {activeTab==="log" && (
           <div>
-            <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+            <div className="day-switcher" style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {dayOrder.map(k => {
                 const t=dayTemplates[k]; const active=currentDay===k;
                 return <button key={k} onClick={()=>switchDay(k)} style={{flex:"0 0 auto",background:active?t.color:"#13141F",color:active?"#fff":"#666",border:"1px solid "+(active?t.color:"#1E2035"),borderRadius:10,padding:"8px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",transition:"all 0.2s"}}>
@@ -1079,13 +1090,13 @@ export default function App() {
               const last=getLastTime(ex.name);
               const progression=last&&getProgressionRecommendation(last.sets,planEx.target,progressionIncrements);
               return (
-                <div key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
+                <div className="workout-card" key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+                  <div className="exercise-head" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
                     <button onClick={()=>formGuide[ex.name]&&setGuideExercise(ex.name)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,cursor:formGuide[ex.name]?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
                       <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
                       {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
                     </button>
-                    <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
+                    <div className="exercise-actions" style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
                   </div>
 
                   {variants.length>1&&(
@@ -1141,7 +1152,7 @@ export default function App() {
                     const pData=pOpen?calcPlates(parseFloat(set.weight),set.unit):null;
                     return (
                       <div key={si} style={{position:"relative",marginBottom:8}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <div className="set-row" style={{display:"flex",gap:8,alignItems:"center"}}>
                           <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1}${set.done?"":" and start rest timer"}`} title={set.done?"Mark this set incomplete":"Mark this set done and start the rest timer"} style={{width:58,height:28,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"#161723",color:set.done?"#fff":"#9CA3AF",fontSize:10,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
                             {set.done?"✓ Done":`Set ${si+1}`}
                           </button>
@@ -1400,22 +1411,22 @@ export default function App() {
           </div>
         )}
 
-      </div>
+      </main>
 
-      <footer style={{maxWidth:720,margin:"18px auto 0",padding:"16px 20px 22px",borderTop:"1px solid #12131E",textAlign:"center",fontSize:9,color:"#414354",letterSpacing:"0.08em"}}>
+      <footer className="app-footer" style={{maxWidth:720,margin:"18px auto 0",padding:"16px 20px 22px",borderTop:"1px solid #12131E",textAlign:"center",fontSize:9,color:"#414354",letterSpacing:"0.08em"}}>
         POCKET GYM LOG · v{packageInfo.version}
       </footer>
 
       {/* Rest timer */}
       {(restRunning||restComplete)&&(
-        <div style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#13141F",border:"1px solid "+(restComplete?"#34D39970":dayMeta.color+"40"),borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.5)",zIndex:50}}>
+        <div className="rest-dock" style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#13141F",border:"1px solid "+(restComplete?"#34D39970":dayMeta.color+"40"),borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.5)",zIndex:50}}>
           <div style={{fontSize:11,color:restComplete?"#34D399":"#888",fontWeight:700}}>{restComplete?"REST COMPLETE":"REST"}</div>
           <div style={{fontSize:22,fontWeight:900,color:restComplete?"#34D399":dayMeta.color,fontVariantNumeric:"tabular-nums",minWidth:56,textAlign:"center"}}>{fmtRest(Math.max(0,restTarget-restSeconds))}</div>
           <div style={{display:"flex",gap:4}}>
             {REST_TIMER_OPTIONS.map(t=><button key={t} onClick={()=>{setRestTarget(t);setRestSeconds(0);setRestComplete(false);setRestRunning(true);}} style={{background:restTarget===t&&!restComplete?dayMeta.color:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:restTarget===t&&!restComplete?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t}s</button>)}
             <button onClick={()=>addRestTime(30)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#9CA3AF",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+30s</button>
           </div>
-          <button onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}>×</button>
+          <button aria-label="Close rest timer" onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}><X size={18}/></button>
         </div>
       )}
 
