@@ -945,7 +945,7 @@ export default function App() {
     <div className="app-shell">
       <AppBar
         overline={sessionActive ? `Workout · ${fmtRest(sessionElapsed)}` : new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
-        title={sessionActive ? dayMeta.label : "Pocket Gym Log"}
+        title={sessionActive ? dayMeta.label : <>Pocket Gym Log <sup>v{packageInfo.version}</sup></>}
         actions={sessionActive
           ? <Button variant="text" onClick={requestSessionExit} aria-label="Exit workout"><X size={20} /></Button>
           : <>
