@@ -14,11 +14,13 @@ import { announceRestComplete, getRestTimerSeconds, REST_TIMER_OPTIONS, setRestT
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
-import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, removeGoal } from "./userFeatures.js";
+import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, Cloud, Download, Dumbbell, History, Scale, Settings, Upload, X } from "lucide-react";
 import { AppBar, Button, NavBar } from "./components/index.js";
+import SettingsScreen from "./screens/SettingsScreen.jsx";
+import packageInfo from "../package.json";
 
 const ProgressDashboard=lazy(()=>import("./ProgressDashboard.jsx"));
 const NAV_ITEMS = [
@@ -1361,40 +1363,28 @@ export default function App() {
         />}
 
         {/* ── SETTINGS TAB ── */}
-        {activeTab==="settings"&&(
-          <div>
-            <div style={{fontSize:18,fontWeight:900,marginBottom:4}}>Settings</div>
-            <div style={{fontSize:12,color:"#666",marginBottom:16}}>Preferences are saved for {firebaseUser?"your Google account":"guest mode on this device"}.</div>
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Progression increments</div>
-              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:14}}>When you complete the top of an exercise's rep range, recommendations use these steps. Reductions use the same amount.</div>
-              {[["lb","Pounds",[2.5,5,10]],["kg","Kilograms",[1,2.5,5]]].map(([unit,label,options])=>(
-                <div key={unit} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 0",borderTop:"1px solid #16172A"}}>
-                  <div><div style={{fontSize:12,fontWeight:700}}>{label}</div><div style={{fontSize:10,color:"#555"}}>Current step: {progressionIncrements[unit]} {unit}</div></div>
-                  <div style={{display:"flex",gap:5}}>
-                    {options.map(value=><button key={value} onClick={()=>updateProgressionIncrement(unit,value)} style={{background:progressionIncrements[unit]===value?"#3B82F6":"#161723",border:"1px solid "+(progressionIncrements[unit]===value?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"6px 10px",color:progressionIncrements[unit]===value?"#fff":"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}</button>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Rest timer</div>
-              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:14}}>The timer starts automatically whenever you check off a set. A supported phone will vibrate when rest is complete.</div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,paddingTop:10,borderTop:"1px solid #16172A"}}>
-                <div><div style={{fontSize:12,fontWeight:700}}>Default duration</div><div style={{fontSize:10,color:"#555"}}>{restTimerDefault} seconds after each set</div></div>
-                <div style={{display:"flex",gap:5}}>
-                  {REST_TIMER_OPTIONS.map(value=><button key={value} onClick={()=>updateRestTimerDefault(value)} style={{background:restTimerDefault===value?"#3B82F6":"#161723",border:"1px solid "+(restTimerDefault===value?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"6px 10px",color:restTimerDefault===value?"#fff":"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}s</button>)}
-                </div>
-              </div>
-            </div>
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:800,marginBottom:5}}>Strength goals</div>
-              <div style={{fontSize:11,color:"#777",lineHeight:1.5,marginBottom:10}}>Set a target weight for any exercise. Progress updates from saved sessions.</div>
-              <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) 80px 60px auto",gap:6}}><select value={goalExercise} onChange={event=>setGoalExercise(event.target.value)} style={{minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px",color:"#9CA3AF",fontSize:10}}><option value="">Exercise…</option>{allExNames.map(name=><option key={name}>{name}</option>)}</select><input type="number" placeholder="Target" value={goalTarget} onChange={event=>setGoalTarget(event.target.value)} style={{minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px",color:"#E5E7EB",fontSize:10}}/><select value={goalUnit} onChange={event=>setGoalUnit(event.target.value)} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,color:"#9CA3AF",fontSize:10}}><option>lb</option><option>kg</option></select><button onClick={createTrainingGoal} style={{background:"#3B82F6",border:"none",borderRadius:7,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer"}}>Add</button></div>
-              {goalMsg&&<div style={{fontSize:9,color:goalMsg==="Goal added."?"#4ADE80":"#F87171",marginTop:6}}>{goalMsg}</div>}
-              <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:trainingGoals.length?10:0}}>{trainingGoals.map(goal=>{const progress=goalProgress(goal,sessions);return <div key={goal.id} style={{borderTop:"1px solid #1A1A28",paddingTop:7}}><div style={{display:"flex",justifyContent:"space-between",fontSize:10,marginBottom:4,gap:6}}><span style={{fontWeight:700,color:progress.complete?"#4ADE80":"#D4D4D8"}}>{progress.complete?"✓ ":""}{goal.exercise}</span><span style={{color:"#777",marginLeft:"auto"}}>{progress.best}/{goal.target} {goal.unit} · {progress.pct}%</span><button onClick={()=>saveAccountPrefs(removeGoal(equipmentPrefs,goal.id))} aria-label={`Remove ${goal.exercise} goal`} style={{background:"none",border:"none",color:"#666",cursor:"pointer",padding:0}}>×</button></div><div style={{height:5,background:"#161723",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:progress.pct+"%",background:progress.complete?"#22C55E":"#3B82F6"}}/></div></div>;})}</div>
-            </div>
-          </div>
+        {activeTab === "settings" && (
+          <SettingsScreen
+            firebaseUser={firebaseUser}
+            version={packageInfo.version}
+            progressionIncrements={progressionIncrements}
+            updateProgressionIncrement={updateProgressionIncrement}
+            restTimerDefault={restTimerDefault}
+            updateRestTimerDefault={updateRestTimerDefault}
+            allExNames={allExNames}
+            goalExercise={goalExercise}
+            setGoalExercise={setGoalExercise}
+            goalTarget={goalTarget}
+            setGoalTarget={setGoalTarget}
+            goalUnit={goalUnit}
+            setGoalUnit={setGoalUnit}
+            goalMsg={goalMsg}
+            createTrainingGoal={createTrainingGoal}
+            trainingGoals={trainingGoals}
+            sessions={sessions}
+            equipmentPrefs={equipmentPrefs}
+            saveAccountPrefs={saveAccountPrefs}
+          />
         )}
 
       </main>
