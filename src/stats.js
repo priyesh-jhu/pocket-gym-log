@@ -112,6 +112,114 @@ export function weekSummary(sessions, todayIso = todayISO()) {
   return { sessions: sessionsCount, volume, prevVolume, deltaPct };
 }
 
+/** Home hero data: current-week volume and its change from the previous week. */
+export function weekVolumeDelta(sessions, todayIso = todayISO()) {
+  const summary = weekSummary(sessions, todayIso);
+  const direction = summary.deltaPct === null || summary.deltaPct === 0
+    ? "flat"
+    : summary.deltaPct > 0 ? "up" : "down";
+  return { ...summary, direction };
+}
+
+/** Consecutive unique training days ending today or yesterday, plus the all-time best. */
+export function currentStreak(sessions, todayIso = todayISO()) {
+  const dates = [...new Set((Array.isArray(sessions) ? sessions : [])
+    .map(session => session?.date)
+    .filter(date => date && date <= todayIso))].sort();
+  if (dates.length === 0) return { current: 0, longest: 0 };
+
+  let longest = 1, run = 1;
+  for (let index = 1; index < dates.length; index++) {
+    if (dates[index] === addDaysISO(dates[index - 1], 1)) run += 1;
+    else run = 1;
+    longest = Math.max(longest, run);
+  }
+
+  const latest = dates.at(-1);
+  if (latest !== todayIso && latest !== addDaysISO(todayIso, -1)) return { current: 0, longest };
+  let current = 1;
+  for (let index = dates.length - 1; index > 0; index--) {
+    if (dates[index - 1] !== addDaysISO(dates[index], -1)) break;
+    current += 1;
+  }
+  return { current, longest };
+}
+
+/** Epley estimated one-rep max in the same unit as the input weight. */
+export function estimated1RM(weight, reps) {
+  const load = Number(weight), count = Number(reps);
+  if (!Number.isFinite(load) || !Number.isFinite(count) || load <= 0 || count <= 0) return 0;
+  return count === 1 ? load : load * (1 + count / 30);
+}
+
+/** Best estimated 1RM per training date for an exercise, oldest first, in lb. */
+export function exerciseE1RMSeries(sessions, name) {
+  const byDate = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date) continue;
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      if (exercise?.name !== name) continue;
+      for (const set of Array.isArray(exercise.sets) ? exercise.sets : []) {
+        const value = estimated1RM(toLb(set?.weight, set?.unit), set?.reps);
+        if (value > (byDate.get(session.date) || 0)) byDate.set(session.date, value);
+      }
+    }
+  }
+  return [...byDate].sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, value]) => ({ date, value: Math.round(value * 10) / 10 }));
+}
+
+/** Recent all-time load records, newest first. Equal loads do not create another record. */
+export function personalRecords(sessions, limit = 5) {
+  const best = new Map(), records = [];
+  const ordered = [...(Array.isArray(sessions) ? sessions : [])]
+    .filter(session => session?.date)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  for (const session of ordered) {
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      let candidate = null;
+      for (const set of Array.isArray(exercise?.sets) ? exercise.sets : []) {
+        const weightLb = toLb(set?.weight, set?.unit);
+        if (weightLb > 0 && (!candidate || weightLb > candidate.weightLb)) candidate = { weightLb, set };
+      }
+      if (!candidate || candidate.weightLb <= (best.get(exercise.name) || 0)) continue;
+      best.set(exercise.name, candidate.weightLb);
+      records.push({ date: session.date, name: exercise.name, weight: Number(candidate.set.weight), unit: candidate.set.unit === "kg" ? "kg" : "lb", reps: Number(candidate.set.reps) || 0 });
+    }
+  }
+  return records.sort((a, b) => b.date.localeCompare(a.date)).slice(0, Math.max(0, limit));
+}
+
+/** Readiness heuristic: 100 after 4+ rest days, falling with recent hard-set exposure. */
+export function muscleFreshness(sessions, todayIso = todayISO()) {
+  const recent = muscleSetVolume(sessions, 14, todayIso);
+  return Object.fromEntries(Object.keys(MUSCLES).map(muscle => {
+    const last = recent.lastTrained[muscle];
+    if (!last) return [muscle, 100];
+    const days = Math.round((parseLocalDate(todayIso) - parseLocalDate(last)) / 86400000);
+    const recovery = Math.min(100, Math.max(0, days * 30));
+    const loadPenalty = Math.min(25, Math.max(0, recent.sets[muscle] - 6) * 2.5);
+    return [muscle, Math.round(Math.max(0, recovery - loadPenalty))];
+  }));
+}
+
+/** Push vs pull hard-set share across a rolling day window. */
+export function pushPullRatio(sessions, days = 28, todayIso = todayISO()) {
+  const start = addDaysISO(todayIso, -Math.max(1, days) + 1);
+  let push = 0, pull = 0;
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date || session.date < start || session.date > todayIso) continue;
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      const count = Array.isArray(exercise?.sets) ? exercise.sets.length : 0;
+      const primary = formGuide[exercise?.name]?.primary || [];
+      if (primary.some(muscle => ["chest", "frontDelts", "sideDelts", "triceps", "quads"].includes(muscle))) push += count;
+      if (primary.some(muscle => ["lats", "traps", "midBack", "lowerBack", "rearDelts", "biceps", "hamstrings"].includes(muscle))) pull += count;
+    }
+  }
+  const total = push + pull;
+  return { push, pull, pushPct: total ? Math.round(push / total * 100) : 0, pullPct: total ? Math.round(pull / total * 100) : 0 };
+}
+
 /**
  * Muscle-group share of volume over the last `weeks` weeks, sorted descending.
  * Exercises without a formGuide entry are skipped for attribution (but still

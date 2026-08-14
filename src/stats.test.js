@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities,
+  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -74,6 +74,37 @@ describe("weekSummary", () => {
     const summary = weekSummary(sessions, "2026-08-13");
     assert.equal(summary.prevVolume, 0);
     assert.equal(summary.deltaPct, null);
+  });
+});
+
+describe("home dashboard analytics", () => {
+  test("reports weekly direction and consecutive-day streaks", () => {
+    const sessions = ["2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13"].map(date =>
+      mkSession(date, [{ name: "Incline DB Press", sets: [mkSet(50, 10)] }])
+    );
+    assert.equal(weekVolumeDelta(sessions, "2026-08-13").direction, "flat");
+    assert.deepEqual(currentStreak(sessions, "2026-08-13"), { current: 4, longest: 4 });
+  });
+
+  test("calculates e1RM series and returns recent load records", () => {
+    const sessions = [
+      mkSession("2026-08-10", [{ name: "Incline DB Press", sets: [mkSet(50, 10)] }]),
+      mkSession("2026-08-12", [{ name: "Incline DB Press", sets: [mkSet(60, 5)] }]),
+    ];
+    assert.equal(Math.round(estimated1RM(50, 10)), 67);
+    assert.deepEqual(exerciseE1RMSeries(sessions, "Incline DB Press").map(item => item.date), ["2026-08-10", "2026-08-12"]);
+    assert.equal(personalRecords(sessions, 1)[0].weight, 60);
+  });
+
+  test("scores freshness and push/pull balance without UTC date drift", () => {
+    const sessions = [mkSession("2026-08-12", [
+      { name: "Incline DB Press", sets: [mkSet(50, 10)] },
+      { name: "Bent-Over Barbell Row", sets: [mkSet(50, 10)] },
+    ])];
+    const freshness = muscleFreshness(sessions, "2026-08-13");
+    assert.equal(freshness.chest, 30);
+    assert.equal(freshness.calves, 100);
+    assert.deepEqual(pushPullRatio(sessions, 7, "2026-08-13"), { push: 1, pull: 1, pushPct: 50, pullPct: 50 });
   });
 });
 
