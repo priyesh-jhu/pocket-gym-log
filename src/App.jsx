@@ -17,8 +17,8 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BarChart3, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
-import { AppBar, Button, NavBar } from "./components/index.js";
+import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
+import { AppBar, Button, NavBar, Sheet } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
@@ -336,6 +336,7 @@ export default function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [showCoach, setShowCoach] = useState(true);
   const [showWarmup, setShowWarmup] = useState(true);
+  const [sessionSheet, setSessionSheet] = useState(null);
 
   const [restSeconds, setRestSeconds] = useState(0);
   const [restRunning, setRestRunning] = useState(false);
@@ -1065,6 +1066,10 @@ export default function App() {
                 }}>Keep training</Button>
               </div>
             )}
+            <div className="session-toolbar">
+              <Button variant="text" icon={<CalendarDays size={17} />} onClick={() => setSessionSheet("details")}>Workout details</Button>
+              <Button variant="text" icon={<SlidersHorizontal size={17} />} onClick={() => setSessionSheet("options")}>Session options</Button>
+            </div>
             <div className="day-switcher" style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {dayOrder.map(k => {
                 const t=dayTemplates[k]; const active=currentDay===k;
@@ -1091,6 +1096,7 @@ export default function App() {
               </div>
             )}
 
+            <div className="session-legacy-details" aria-hidden="true">
             {/* Coach note */}
             <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"25",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
@@ -1147,6 +1153,7 @@ export default function App() {
                 </div>}
               </div>
             )}
+            </div>
 
             {/* Exercises */}
             <div className="session-exercise-nav" aria-label="Exercise navigation">
@@ -1476,6 +1483,19 @@ export default function App() {
       </main>
 
       {!sessionActive && <NavBar items={NAV_ITEMS} active={activeTab} onChange={switchTab} />}
+
+      <Sheet open={sessionSheet === "details"} title="Workout details" onClose={() => setSessionSheet(null)}>
+        <div className="session-sheet-section">
+          <label className="session-sheet-date"><span>Training date</span><input type="date" value={draft.date} onChange={event => setDraft(previous => ({ ...previous, date: event.target.value }))} /></label>
+        </div>
+        <div className="session-sheet-section"><h3>{dayMeta.emoji} {dayMeta.label}</h3><p>{dayMeta.focus}</p><p>{dayMeta.coachNote}</p><small>Cardio: {dayMeta.cardio}</small></div>
+        {dayMeta.warmup && <div className="session-sheet-section"><h3>Warm-up</h3><p>{dayMeta.warmup.general}</p><ol>{dayMeta.warmup.drills.map(drill => <li key={drill.name}><strong>{drill.name}</strong><span>{drill.detail}</span></li>)}</ol></div>}
+      </Sheet>
+
+      <Sheet open={sessionSheet === "options"} title="Session options" onClose={() => setSessionSheet(null)}>
+        <div className="session-sheet-section"><h3>Rest timer</h3><p>Choose the default used after completing a set.</p><div className="session-sheet-actions">{REST_TIMER_OPTIONS.map(value => <Button key={value} variant={restTarget === value ? "filled" : "text"} onClick={() => { setRestTarget(value); updateRestTimerDefault(value); }}>{value}s</Button>)}</div></div>
+        <div className="session-sheet-section"><h3>Draft</h3><p>Your workout is saved automatically on this device.</p><Button variant="text" onClick={() => { setSessionSheet(null); setConfirmDiscardDraft(true); }}>Discard workout</Button></div>
+      </Sheet>
 
       {/* Rest timer */}
       {(restRunning||restComplete)&&(

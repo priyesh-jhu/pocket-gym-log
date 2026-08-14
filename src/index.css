@@ -54,6 +54,20 @@
 .session-exit-confirm span { display: block; }
 .session-exit-confirm strong { color: var(--on-surface); font-size: var(--text-body); }
 .session-exit-confirm span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.session-toolbar { display: flex; justify-content: space-between; gap: var(--sp2); margin-bottom: var(--sp3); }
+.session-legacy-details { display: none; }
+.session-sheet-section + .session-sheet-section { margin-top: var(--sp5); padding-top: var(--sp5); border-top: 1px solid var(--outline-variant); }
+.session-sheet-section h3 { margin: 0; color: var(--on-surface); font-size: var(--text-title); }
+.session-sheet-section p { margin: var(--sp2) 0 0; color: var(--on-surface-variant); font-size: var(--text-body-sm); line-height: 1.55; }
+.session-sheet-section small { display: block; margin-top: var(--sp2); color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.session-sheet-date span { display: block; margin-bottom: var(--sp2); color: var(--on-surface-dim); font-size: var(--text-label-sm); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+.session-sheet-date input { width: 100%; min-height: 48px; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-md); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; }
+.session-sheet-section ol { margin: var(--sp3) 0 0; padding-left: var(--sp5); color: var(--on-surface-variant); }
+.session-sheet-section li + li { margin-top: var(--sp3); }
+.session-sheet-section li strong,
+.session-sheet-section li span { display: block; font-size: var(--text-body-sm); }
+.session-sheet-section li span { margin-top: 2px; color: var(--on-surface-dim); }
+.session-sheet-actions { display: flex; flex-wrap: wrap; gap: var(--sp2); margin-top: var(--sp3); }
 
 .session-exercise-nav {
   position: sticky;
