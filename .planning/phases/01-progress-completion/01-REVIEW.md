@@ -24,10 +24,10 @@ files_reviewed_list:
   - public/sw.js
 findings:
   critical: 0
-  warning: 1
+  warning: 0
   info: 0
-  total: 1
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 1: Code Review Report
@@ -35,23 +35,17 @@ status: issues_found
 **Reviewed:** 2026-08-14T21:40:00Z
 **Depth:** quick
 **Files Reviewed:** 18
-**Status:** issues_found
+**Status:** clean
 
 ## Summary
 
-The quick release scan found no hardcoded secrets, dangerous HTML/evaluation APIs, invalid conditional hook calls, debug breakpoints, or recurrence of the development service-worker caching hazard. One modal-history correctness warning remains. The requested `src/ProgressDashboard.css` path does not exist; the Progress dashboard rules are currently housed in `src/screens/ProgressScreen.css`, which was reviewed.
+The quick release scan found no hardcoded secrets, dangerous HTML/evaluation APIs, invalid conditional hook calls, debug breakpoints, or recurrence of the development service-worker caching hazard. The requested `src/ProgressDashboard.css` path does not exist; the Progress dashboard rules are currently housed in `src/screens/ProgressScreen.css`, which was reviewed.
+
+WR-01 was resolved by commit `8376f9a`: the history-registration effect no longer depends on the unstable `onClose` identity, while an effect-synchronized ref ensures Escape and `popstate` handlers invoke the latest callback. The targeted fix introduces no release blocker.
 
 ## Narrative Findings (AI reviewer)
 
-## Warnings
-
-### WR-01: An unstable `onClose` callback can repeatedly push Sheet history entries
-
-**File:** `src/components/Sheet.jsx:11-47`
-
-**Issue:** The open-sheet effect depends on `onClose` and pushes a browser-history entry whenever it runs. Current Progress callers pass inline `onClose` functions, so any parent render while the sheet remains open tears down and reruns the effect, restores focus, and pushes another identical sheet entry. A preference update inside Customize can therefore leave multiple synthetic entries, making Back/Escape behavior inconsistent and potentially requiring repeated navigation to leave the sheet state.
-
-**Fix:** Keep the latest close callback in a ref and remove callback identity from the history-registration effect, or memoize every caller and split focus/history registration so history is pushed only on the `open: false -> true` transition. Add a regression test that rerenders an open history-aware Sheet and asserts that exactly one history entry is created.
+All reviewed files meet the quick release quality gate. No issues remain.
 
 ---
 
