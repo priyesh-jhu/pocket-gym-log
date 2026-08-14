@@ -33,7 +33,8 @@
 .progress-data-details table { width: 100%; border-collapse: collapse; font-size: var(--text-body-sm); }
 .progress-data-details caption { padding: var(--sp2) 0; text-align: left; }
 .progress-data-details th, .progress-data-details td { padding: var(--sp2); border-bottom: 1px solid var(--outline-variant); text-align: left; }
-.progress-group-error { padding: var(--sp4); border-radius: var(--shape-md); background: var(--error-container); color: var(--on-error-container); }
+.progress-group-error { padding: var(--sp4); border-radius: var(--shape-md); background: var(--error-container); color: var(--on-error-container); overflow-wrap: anywhere; }
+.progress-group-error h2 { margin: 0; font-size: var(--text-title-lg); font-weight: 600; }
 .progress-group-error p { margin: var(--sp2) 0 var(--sp3); }
 @media (max-width: 390px) {
   .progress-toolbar { align-items: stretch; flex-direction: column; }

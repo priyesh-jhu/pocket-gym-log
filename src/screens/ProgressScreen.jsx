@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, SegmentedButtons, Sheet } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
@@ -7,6 +7,27 @@ import { trainingInsights } from "../trainingInsights.js";
 import { DASHBOARD_KEY, PROGRESS_GROUP_IDS, PROGRESS_GROUP_LABELS, normalizeDashboardSettings, updateDashboardSettings } from "../progressDashboardSettings.js";
 import { BalanceGroup, BodyHeatmapGroup, DailyTrendGroup } from "../ProgressDashboard.jsx";
 import "./ProgressScreen.css";
+
+class ProgressGroupBoundary extends Component {
+  state = { failed: false, retryKey: 0 };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  retry = () => this.setState(({ retryKey }) => ({ failed: false, retryKey: retryKey + 1 }));
+
+  render() {
+    if (this.state.failed) {
+      return <Card className="progress-group progress-group-error" role="alert">
+        <h2>Progress couldn’t be calculated</h2>
+        <p>Your workouts are still saved. Try again, or review the affected workout data.</p>
+        <Button variant="tonal" onClick={this.retry}>Try again</Button>
+      </Card>;
+    }
+    return <div key={this.state.retryKey}>{this.props.children}</div>;
+  }
+}
 
 function ProgressToolbar({ settings, onChange, onCustomize }) {
   return <div className="progress-toolbar">
@@ -71,7 +92,7 @@ function E1RMGroup({ sessions }) {
   </Card>;
 }
 
-export default function ProgressScreen({ sessions = [], preferences = {}, onSavePreferences, onAddExercise, loading = false }) {
+export default function ProgressScreen({ sessions = [], preferences = {}, onSavePreferences, onAddExercise, onGoHome, loading = false }) {
   const normalized = useMemo(() => normalizeDashboardSettings(preferences), [preferences]);
   const confirmedRef = useRef(normalized);
   const customizeInitialRef = useRef(null);
@@ -124,8 +145,8 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
       </div>)}</div>
     </Sheet>
     {loading ? <div className="progress-loading" aria-live="polite"><span>Loading progress…</span>{PROGRESS_GROUP_IDS.map(id => <div className="progress-skeleton" key={id} />)}</div>
-      : sessions.length === 0 ? <div className="progress-empty"><h2>No progress yet</h2><p>Log your first workout to see strength, trends, body coverage, and balance.</p></div>
+      : sessions.length === 0 ? <div className="progress-empty"><h2>No progress yet</h2><p>Log your first workout to see strength, trends, body coverage, and balance.</p>{onGoHome && <Button variant="tonal" onClick={onGoHome}>Go to Home</Button>}</div>
       : settings.cardOrder.every(id => settings.hiddenCards.includes(id)) ? <Card className="progress-all-hidden"><h2>All analytics groups are hidden</h2><p>Open Customize to choose what appears here.</p><Button onClick={() => setCustomizing(true)}>Customize dashboard</Button></Card>
-      : settings.cardOrder.filter(id => !settings.hiddenCards.includes(id)).map(id => <div className="progress-group-slot" key={id}>{groups[id]}</div>)}
+      : settings.cardOrder.filter(id => !settings.hiddenCards.includes(id)).map(id => <div className="progress-group-slot" key={id}><ProgressGroupBoundary>{groups[id]}</ProgressGroupBoundary></div>)}
   </section>;
 }
