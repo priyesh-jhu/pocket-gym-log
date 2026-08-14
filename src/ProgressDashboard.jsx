@@ -36,6 +36,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const rangeDays=settings.rangeDays;
   const saveSettings=changes=>onSaveSettings?.(changes);
   const cardStyle=id=>({...card,display:settings.hiddenCards.includes(id)?"none":undefined,order:settings.cardOrder.indexOf(id)});
+  const rendersGroup = id => !embeddedGroup || embeddedGroup === id;
   const openMuscleDetails=muscle=>{setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
 
   if (list.length === 0) {
@@ -102,11 +103,11 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
 
   return (
     <div className={`progress-dashboard${embeddedGroup ? ` progress-dashboard--${embeddedGroup}` : ""}`}>
-      {priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
+      {rendersGroup("heatmap")&&priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:6}}>TODAY'S PRIORITIES</div>
         <div style={{display:"grid",gap:5}}>{priorities.slice(0,3).map(item=><div key={item.muscle} style={{fontSize:11,color:"#A1A1AA"}}><b style={{color:"#E5E7EB"}}>{MUSCLES[item.muscle]}</b> · {item.remaining.toFixed(1)} estimated sets below target{item.daysSince!=null?` · last trained ${item.daysSince} day${item.daysSince===1?"":"s"} ago`:" · no training in this range"}</div>)}</div>
       </div>}
-      {insights.length>0&&(
+      {!embeddedGroup&&insights.length>0&&(
         <div role="status" style={{order:-17,background:"linear-gradient(135deg,rgba(59,130,246,0.14),rgba(251,191,36,0.08))",border:"1px solid #3B82F645",borderRadius:14,padding:"13px 14px",marginBottom:16,boxShadow:"0 8px 24px rgba(0,0,0,0.18)"}}>
           <div style={{minWidth:0}}>
               <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:7}}>TRAINING INSIGHT</div>
@@ -117,7 +118,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           </div>
         </div>
       )}
-      {coverageGaps.length>0&&(
+      {rendersGroup("heatmap")&&coverageGaps.length>0&&(
         <div style={{order:-16,background:"rgba(245,158,11,0.07)",border:"1px solid #F59E0B35",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:900,color:"#FBBF24",letterSpacing:"0.08em",marginBottom:4}}>MUSCLE COVERAGE</div>
           <div style={{fontSize:10,color:"#777",lineHeight:1.45,marginBottom:9}}>These groups appeared in one or fewer of your last four completed training weeks.</div>
@@ -125,7 +126,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           <div style={{fontSize:9,color:"#555",marginTop:8}}>Custom exercises without a muscle guide cannot be classified yet.</div>
         </div>
       )}
-      <div className="progress-legacy-card progress-legacy-card--heatmap" style={cardStyle("heatmap")}>
+      {rendersGroup("heatmap")&&<div className="progress-legacy-card progress-legacy-card--heatmap" style={cardStyle("heatmap")}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:10,flexWrap:"wrap"}}>
           <div><div style={{...sectionLabel,marginBottom:3}}>BODY MUSCLE HEATMAP</div><div style={{fontSize:10,color:"#555"}}>Coverage from {heatmap.start} through {heatmap.end}</div></div>
           <div style={{display:"flex",gap:4}}>{[["coverage","Coverage"],["sets","Set volume"]].map(([mode,label])=><button key={mode} onClick={()=>setHeatmapMode(mode)} style={{background:heatmapMode===mode?"#3B82F6":"#161723",border:"1px solid "+(heatmapMode===mode?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"5px 9px",color:heatmapMode===mode?"#fff":"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>)}</div>
@@ -152,8 +153,8 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           </div>}
         </Sheet>
         <div style={{fontSize:9,color:"#444",marginTop:8}}>Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
-      </div>
-      <div className="progress-legacy-card progress-legacy-card--summary" style={cardStyle("summary")}>
+      </div>}
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--summary" style={cardStyle("summary")}>
         <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>RANGE SUMMARY</div><label style={{fontSize:9,color:"#666"}}>Planned days <input type="number" min="1" max="7" value={settings.plannedDays} onChange={event=>saveSettings({plannedDays:Math.max(1,Math.min(7,Number(event.target.value)||1))})} style={{width:36,marginLeft:4,background:"#161723",border:"1px solid #2A2A3A",borderRadius:5,padding:"3px",color:"#E5E7EB",fontFamily:"inherit"}}/></label></div>
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
           <div>
@@ -175,9 +176,9 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
             <div style={{ fontSize: 11, color: "#555" }}>Planned workout days</div>
           </div>
         </div>
-      </div>
+      </div>}
 
-      <div className="progress-legacy-card progress-legacy-card--calendar" style={cardStyle("calendar")}>
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--calendar" style={cardStyle("calendar")}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12,flexWrap:"wrap"}}>
           <div><div style={{...sectionLabel,marginBottom:3}}>TRAINING CALENDAR</div><div style={{fontSize:10,color:"#555"}}>{periodLabel} · darker squares mean more sessions</div></div>
           <div style={{display:"flex",gap:14}}>
@@ -207,9 +208,9 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
             </div>)}</div>
           </div>
         )}
-      </div>
+      </div>}
 
-      <div className="progress-legacy-card progress-legacy-card--trend" style={cardStyle("trend")}>
+      {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--trend" style={cardStyle("trend")}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div>{historyControls}</div>
         <div className="progress-trend-controls">
           <label><span>Exercise</span><select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
@@ -226,9 +227,9 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div>}
 
-      <div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
+      {rendersGroup("balance")&&<div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
         <div style={sectionLabel}>MUSCLE BALANCE <span style={{ color: "var(--on-surface-dim)", fontWeight: 500 }}>({rangeDays}-day range)</span></div>
         <div className="progress-push-pull" aria-label={`${pushPull.pushPct}% push and ${pushPull.pullPct}% pull`}>
           <div className="progress-push-pull__labels"><span><strong>{pushPull.pushPct}%</strong> Push</span><span>Pull <strong>{pushPull.pullPct}%</strong></span></div>
@@ -251,7 +252,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
               ))}
             </div>
           )}
-      </div>
+      </div>}
     </div>
   );
 }
