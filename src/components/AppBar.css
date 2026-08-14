@@ -29,6 +29,16 @@
   letter-spacing: -.02em;
   transition: font-size var(--dur-med) var(--ease-emph);
 }
+.m3-appbar__title sup {
+  position: relative;
+  top: -.5em;
+  margin-left: .25em;
+  color: var(--on-surface-dim);
+  font-size: .38em;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1;
+}
 .m3-appbar__actions { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 
 .m3-appbar.is-collapsed {
