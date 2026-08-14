@@ -22,7 +22,7 @@ This milestone finishes the approved Android-first redesign from its current bro
   1. Users can review e1RM progression, daily workout trends, body heatmaps, muscle guidance, group balance, and push/pull ratio in the Progress destination.
   2. Users can change analytics ranges and dashboard customization through accessible Material controls and sheets.
   3. Progress charts, labels, states, and controls remain legible and coherent when switching between light and dark themes.
-**Plans**: TBD
+**Plans**: 3
 
 ### Phase 2: History and Weight Screens
 **Goal**: Users can manage workout history and weigh-ins through dedicated Material-styled destinations with all existing data behavior preserved.
@@ -57,7 +57,7 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Progress Completion | 0/TBD | Not started | - |
+| 1. Progress Completion | 0/3 | Ready to execute | - |
 | 2. History and Weight Screens | 0/TBD | Not started | - |
 | 3. Redesign Cleanup and Android Verification | 0/TBD | Not started | - |
 
