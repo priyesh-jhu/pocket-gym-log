@@ -33,7 +33,12 @@
 .progress-suggestion strong, .progress-suggestion span { display: block; }
 .progress-suggestion strong { font-size: var(--text-body); }
 .progress-suggestion span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-trend-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .65fr); gap: var(--sp2); margin-bottom: var(--sp3); }
+.progress-trend-controls label { display: grid; gap: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-trend-controls select { width: 100%; min-width: 0; min-height: 48px; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; font-size: var(--text-body-sm); }
+.progress-trend-chart { width: 100%; min-width: 0; min-height: 180px; height: 180px; }
 @media (max-width: 390px) {
   .progress-dashboard__toolbar { align-items: stretch; flex-direction: column; }
   .progress-dashboard__toolbar .m3-btn { align-self: flex-end; }
+  .progress-trend-controls { grid-template-columns: 1fr; }
 }

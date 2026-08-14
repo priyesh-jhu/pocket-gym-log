@@ -6,6 +6,7 @@ import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import MuscleHeatmap from "./MuscleHeatmap.jsx";
 import { Button, SegmentedButtons, Sheet } from "./components/index.js";
+import useThemeTokens from "./charts/useThemeTokens.js";
 import "./ProgressDashboard.css";
 
 const GROUP_COLORS = {
@@ -42,6 +43,7 @@ function dashboardSettings(preferences) {
 
 export default function ProgressDashboard({ sessions, preferences={}, onSavePreferences, onAddExercise }) {
   const list = Array.isArray(sessions) ? sessions : [];
+  const chartTheme = useThemeTokens();
   const [historyPage, setHistoryPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
   const [chartExercise, setChartExercise] = useState("all");
@@ -244,19 +246,18 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
 
       <div style={cardStyle("trend")}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div>{historyControls}</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12}}>
-          <select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)} style={{flex:"1 1 160px",minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px 8px",color:"#9CA3AF",fontSize:10,fontFamily:"inherit"}}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select>
-          <select aria-label="Chart metric" value={chartMetric} onChange={event=>setChartMetric(event.target.value)} style={{flex:"1 1 130px",minWidth:0,background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,padding:"6px 8px",color:"#9CA3AF",fontSize:10,fontFamily:"inherit"}}><option value="volume">Volume</option><option value="maxWeight">Max weight</option><option value="estimated1RM">Estimated 1RM</option><option value="sessions">Sessions</option></select>
-          <div style={{fontSize:9,color:"#666",padding:"6px 4px"}}>Shared {rangeDays}-day range</div>
+        <div className="progress-trend-controls">
+          <label><span>Exercise</span><select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
+          <label><span>Metric</span><select aria-label="Chart metric" value={chartMetric} onChange={event=>setChartMetric(event.target.value)}><option value="volume">Volume</option><option value="maxWeight">Max weight</option><option value="estimated1RM">Estimated 1RM</option><option value="sessions">Sessions</option></select></label>
         </div>
-        <div style={{ width: "100%", height: 180 }}>
-          <ResponsiveContainer>
+        <div className="progress-trend-chart">
+          <ResponsiveContainer minWidth={0} minHeight={0}>
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <CartesianGrid stroke="#1E2035" strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke="#444" tick={{ fontSize: 9 }} interval={rangeDays===7?0:rangeDays===28?3:9} minTickGap={5} />
-              <YAxis stroke="#444" tick={{ fontSize: 10 }} />
-              <Tooltip labelFormatter={(_,payload)=>payload?.[0]?.payload?.date||""} contentStyle={{ background: "#161723", border: "1px solid #2A2A3A", borderRadius: 8, fontSize: 12 }} />
-              <Bar dataKey="value" name={metricLabels[chartMetric]} fill="#3B82F6" radius={[3, 3, 0, 0]} />
+              <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+              <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} interval={rangeDays===7?0:rangeDays===28?3:9} minTickGap={5} />
+              <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} />
+              <Tooltip labelFormatter={(_,payload)=>payload?.[0]?.payload?.date||""} contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12, fontSize: 12 }} />
+              <Bar dataKey="value" name={metricLabels[chartMetric]} fill={chartTheme.primary} radius={[5, 5, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

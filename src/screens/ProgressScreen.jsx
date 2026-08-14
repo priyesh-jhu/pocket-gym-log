@@ -29,7 +29,7 @@ export default function ProgressScreen({ sessions, preferences, onSavePreference
           </select>
         </div>
         {series.length ? <div className="progress-chart" role="img" aria-label={`Estimated one-rep max history for ${exercise}`}>
-          <ResponsiveContainer><LineChart data={series} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+          <ResponsiveContainer minWidth={0} minHeight={0}><LineChart data={series} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
             <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
             <XAxis dataKey="date" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={24} />
             <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={` ${unit}`} />

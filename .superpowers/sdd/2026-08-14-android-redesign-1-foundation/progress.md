@@ -304,3 +304,9 @@ recent exercise history, readiness cautions, and verified exercise suggestions w
 an Add action. Removed the long inline recommendation/detail stack from the primary
 dashboard scroll. Build clean; 164/164 tests; local server intentionally stopped at
 the user's request.
+
+Progress rebuild slice 4: complete. Migrated the daily trend chart to the shared
+light/dark chart palette, replaced its legacy selectors with tokenized 48dp controls,
+raised axis text to the design floor, and added explicit minimum dimensions to all
+responsive chart containers to prevent their zero-size measurement warning. Build
+clean; 164/164 tests; lint unchanged at the single baselined guest-loading finding.
