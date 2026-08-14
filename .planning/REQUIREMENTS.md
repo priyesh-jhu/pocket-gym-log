@@ -50,29 +50,27 @@ No product expansion is deferred from this milestone. Future features and harden
 
 ## Traceability
 
-Roadmap phase mappings will be populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROG-01 | TBD | Pending |
-| PROG-02 | TBD | Pending |
-| PROG-03 | TBD | Pending |
-| HIST-01 | TBD | Pending |
-| HIST-02 | TBD | Pending |
-| WGHT-01 | TBD | Pending |
-| WGHT-02 | TBD | Pending |
-| ARCH-01 | TBD | Pending |
-| ARCH-02 | TBD | Pending |
-| ARCH-03 | TBD | Pending |
-| VERI-01 | TBD | Pending |
-| VERI-02 | TBD | Pending |
-| VERI-03 | TBD | Pending |
+| PROG-01 | Phase 1 | Pending |
+| PROG-02 | Phase 1 | Pending |
+| PROG-03 | Phase 1 | Pending |
+| HIST-01 | Phase 2 | Pending |
+| HIST-02 | Phase 2 | Pending |
+| WGHT-01 | Phase 2 | Pending |
+| WGHT-02 | Phase 2 | Pending |
+| ARCH-01 | Phase 2 | Pending |
+| ARCH-02 | Phase 3 | Pending |
+| ARCH-03 | Phase 3 | Pending |
+| VERI-01 | Phase 3 | Pending |
+| VERI-02 | Phase 3 | Pending |
+| VERI-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-14*
-*Last updated: 2026-08-14 after initial definition*
+*Last updated: 2026-08-14 after roadmap creation*
