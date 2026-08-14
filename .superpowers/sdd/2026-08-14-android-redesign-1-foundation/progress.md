@@ -297,3 +297,10 @@ the shared 48dp `SegmentedButtons` primitive. Dashboard customization now opens 
 the shared `Sheet` component and uses accessible switches plus 48dp reorder actions,
 instead of adding another full card to the analytics scroll. Build clean; 164/164
 tests; no data or analytics behavior changed.
+
+Progress rebuild slice 3: complete. Heatmap selections and the missed-coverage
+summary now open a focused Material sheet. The sheet consolidates muscle targets,
+recent exercise history, readiness cautions, and verified exercise suggestions with
+an Add action. Removed the long inline recommendation/detail stack from the primary
+dashboard scroll. Build clean; 164/164 tests; local server intentionally stopped at
+the user's request.

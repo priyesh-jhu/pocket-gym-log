@@ -48,6 +48,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   const [chartMetric, setChartMetric] = useState("volume");
   const [heatmapMode, setHeatmapMode] = useState("coverage");
   const [selectedMuscle, setSelectedMuscle] = useState(null);
+  const [muscleSheetOpen, setMuscleSheetOpen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const settings=dashboardSettings(preferences);
   const rangeDays=settings.rangeDays;
@@ -56,6 +57,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
   const cardStyle=id=>({...card,display:settings.hiddenCards.includes(id)?"none":undefined,order:settings.cardOrder.indexOf(id)});
   const moveCard=(id,direction)=>{const order=[...settings.cardOrder],from=order.indexOf(id),to=from+direction;if(to<0||to>=order.length)return;[order[from],order[to]]=[order[to],order[from]];saveSettings({cardOrder:order});};
   const toggleCard=id=>saveSettings({hiddenCards:settings.hiddenCards.includes(id)?settings.hiddenCards.filter(item=>item!==id):[...settings.hiddenCards,id]});
+  const openMuscleDetails=muscle=>{setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
 
   if (list.length === 0) {
     return (
@@ -161,29 +163,27 @@ export default function ProgressDashboard({ sessions, preferences={}, onSavePref
           <div><div style={{...sectionLabel,marginBottom:3}}>BODY MUSCLE HEATMAP</div><div style={{fontSize:10,color:"#555"}}>Coverage from {heatmap.start} through {heatmap.end}</div></div>
           <div style={{display:"flex",gap:4}}>{[["coverage","Coverage"],["sets","Set volume"]].map(([mode,label])=><button key={mode} onClick={()=>setHeatmapMode(mode)} style={{background:heatmapMode===mode?"#3B82F6":"#161723",border:"1px solid "+(heatmapMode===mode?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"5px 9px",color:heatmapMode===mode?"#fff":"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>)}</div>
         </div>
-        <MuscleHeatmap scores={heatmapMode==="sets"?setVolume.sets:heatmap.scores} onSelect={setSelectedMuscle} selected={selectedMuscle} mode={heatmapMode}/>
+        <MuscleHeatmap scores={heatmapMode==="sets"?setVolume.sets:heatmap.scores} onSelect={openMuscleDetails} selected={selectedMuscle} mode={heatmapMode}/>
         <div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap",fontSize:9,color:"#777",marginTop:4}}>{heatmapMode==="coverage"?<><span><b style={{color:"#22C55E"}}>●</b> repeated</span><span><b style={{color:"#3B82F6"}}>●</b> trained</span><span><b style={{color:"#F59E0B"}}>●</b> secondary</span><span><b style={{color:"#7F1D1D"}}>●</b> missed</span></>:<><span><b style={{color:"#3B82F6"}}>●</b> 1–5 low</span><span><b style={{color:"#22C55E"}}>●</b> 6–12 moderate</span><span><b style={{color:"#F59E0B"}}>●</b> 13–20 high</span><span><b style={{color:"#A855F7"}}>●</b> 20+ review</span><span><b style={{color:"#7F1D1D"}}>●</b> none</span></>}</div>
         <div style={{fontSize:9,color:"#555",textAlign:"center",marginTop:5}}>Tap a muscle to view its target and training history.</div>
-        <div style={{marginTop:11,borderTop:"1px solid #1A1B28",paddingTop:9}}><div style={{fontSize:10,fontWeight:800,color:heatmap.missed.length?"#F87171":"#4ADE80",marginBottom:6}}>{heatmap.missed.length?`MISSED IN THIS ${rangeDays===7?"WEEK":rangeDays===28?"MONTH":"3-MONTH RANGE"}`:"FULL COVERAGE"}</div>{heatmap.missed.length?<div style={{display:"flex",flexWrap:"wrap",gap:4}}>{heatmap.missed.map(muscle=><button onClick={()=>setSelectedMuscle(muscle)} key={muscle} style={{fontSize:9,color:"#FCA5A5",background:"rgba(127,29,29,0.18)",border:"1px solid #7F1D1D55",borderRadius:5,padding:"3px 6px",cursor:"pointer",fontFamily:"inherit"}}>{MUSCLES[muscle]}</button>)}</div>:<div style={{fontSize:10,color:"#777"}}>Every mapped muscle received primary or secondary work in this period.</div>}</div>
-        {exerciseSuggestions.suggestions.length>0&&<div style={{marginTop:11,borderTop:"1px solid #1A1B28",paddingTop:9}}>
-          <div style={{fontSize:10,fontWeight:800,color:"#93C5FD",marginBottom:3}}>EXERCISES TO FILL THE GAPS</div>
-          <div style={{fontSize:9,color:"#555",lineHeight:1.4,marginBottom:7}}>A compact set chosen from the app's verified muscle guide. Direct work is preferred over supporting involvement.</div>
-          {latestReadiness?.pain&&<div style={{fontSize:9,color:"#FCA5A5",background:"rgba(239,68,68,0.08)",borderRadius:6,padding:"6px 7px",marginBottom:7}}>Your latest check-in reported pain. Treat these as planning ideas only; avoid painful movements and seek qualified advice if pain persists.</div>}
-          {!latestReadiness?.pain&&Number(latestReadiness?.soreness)>=4&&<div style={{fontSize:9,color:"#FBBF24",background:"rgba(245,158,11,0.08)",borderRadius:6,padding:"6px 7px",marginBottom:7}}>Your latest soreness was high. Consider recovery before adding more work.</div>}
-          <div style={{display:"grid",gap:6}}>{exerciseSuggestions.suggestions.map((item,index)=><div key={item.name} style={{background:"rgba(59,130,246,0.06)",border:"1px solid #3B82F625",borderRadius:8,padding:"8px 9px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><div style={{fontSize:11,fontWeight:800,color:"#DCEAFE"}}>{index+1}. {item.name}</div>{onAddExercise&&<button onClick={()=>onAddExercise(item.name)} style={{background:"#2563EB",border:"none",borderRadius:6,padding:"4px 7px",color:"#fff",fontSize:9,fontWeight:800,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Add to workout</button>}</div>
-            {item.direct.length>0&&<div style={{fontSize:9,color:"#60A5FA",marginTop:3}}>Direct: {item.direct.map(muscle=>MUSCLES[muscle]).join(", ")}</div>}
-            {item.supporting.length>0&&<div style={{fontSize:9,color:"#FBBF24",marginTop:2}}>Supporting: {item.supporting.map(muscle=>MUSCLES[muscle]).join(", ")}</div>}
-          </div>)}</div>
-          {exerciseSuggestions.uncovered.length>0&&<div style={{fontSize:9,color:"#FCA5A5",marginTop:6}}>No verified exercise mapping for: {exerciseSuggestions.uncovered.map(muscle=>MUSCLES[muscle]).join(", ")}.</div>}
-        </div>}
-        {selectedPriority&&<div style={{marginTop:11,borderTop:"1px solid #1A1B28",paddingTop:10,background:"#0B0C14",borderRadius:9,padding:"10px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><div style={{fontSize:12,fontWeight:900,color:"#E5E7EB"}}>{MUSCLES[selectedMuscle]}</div><button onClick={()=>setSelectedMuscle(null)} style={{background:"none",border:"none",color:"#777",cursor:"pointer",fontSize:16}}>×</button></div>
-          <div style={{fontSize:10,color:"#9CA3AF",marginTop:4}}>{selectedPriority.done.toFixed(1)} of {selectedPriority.target} estimated sets · {selectedPriority.pct}%</div>
-          <div style={{height:6,background:"#1A1B28",borderRadius:4,overflow:"hidden",marginTop:6}}><div style={{height:"100%",width:selectedPriority.pct+"%",background:selectedPriority.pct>=100?"#22C55E":"#3B82F6"}}/></div>
-          <label style={{display:"flex",alignItems:"center",gap:7,fontSize:9,color:"#777",marginTop:8}}>Weekly target sets <input type="number" min="1" max="40" value={settings.targets[selectedMuscle]} onChange={event=>saveSettings({targets:{...settings.targets,[selectedMuscle]:Math.max(1,Math.min(40,Number(event.target.value)||1))}})} style={{width:52,background:"#161723",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px",color:"#E5E7EB",fontFamily:"inherit"}}/></label>
-          <div style={{fontSize:9,fontWeight:800,color:"#93C5FD",marginTop:9}}>RECENT EXERCISES</div>{selectedHistory.length?<div style={{display:"grid",gap:3,marginTop:4}}>{selectedHistory.map((item,index)=><div key={item.date+item.name+index} style={{fontSize:9,color:"#777"}}>{item.date} · {item.name} · {item.sets} set{item.sets===1?"":"s"}</div>)}</div>:<div style={{fontSize:9,color:"#555",marginTop:4}}>No matching exercise in this range.</div>}
-        </div>}
+        <div className="progress-coverage-action">
+          <div><strong>{heatmap.missed.length?`${heatmap.missed.length} muscle groups need attention`:"Full coverage"}</strong><span>{heatmap.missed.length?"Review gaps and verified exercise suggestions.":"Every mapped muscle received work in this period."}</span></div>
+          {heatmap.missed.length>0&&<Button variant="tonal" onClick={()=>openMuscleDetails()}>Review</Button>}
+        </div>
+        <Sheet open={muscleSheetOpen} title="Muscle coverage" onClose={()=>setMuscleSheetOpen(false)}>
+          <div className="progress-muscle-chips">{heatmap.missed.map(muscle=><button type="button" aria-pressed={selectedMuscle===muscle} onClick={()=>setSelectedMuscle(muscle)} key={muscle}>{MUSCLES[muscle]}</button>)}</div>
+          {selectedPriority&&<div className="progress-muscle-detail">
+            <h3>{MUSCLES[selectedMuscle]}</h3><p>{selectedPriority.done.toFixed(1)} of {selectedPriority.target} estimated sets · {selectedPriority.pct}%</p>
+            <div className="progress-target-track"><span style={{width:selectedPriority.pct+"%"}} /></div>
+            <label>Weekly target sets <input type="number" min="1" max="40" value={settings.targets[selectedMuscle]} onChange={event=>saveSettings({targets:{...settings.targets,[selectedMuscle]:Math.max(1,Math.min(40,Number(event.target.value)||1))}})}/></label>
+            <h4>Recent exercises</h4>{selectedHistory.length?<div className="progress-history-list">{selectedHistory.map((item,index)=><div key={item.date+item.name+index}>{item.date} · {item.name} · {item.sets} set{item.sets===1?"":"s"}</div>)}</div>:<p>No matching exercise in this range.</p>}
+          </div>}
+          {exerciseSuggestions.suggestions.length>0&&<div className="progress-suggestions"><h3>Exercises to fill the gaps</h3><p>Chosen from the app's verified muscle guide, with direct work preferred.</p>
+            {latestReadiness?.pain&&<div className="progress-caution">Your latest check-in reported pain. Avoid painful movements and seek qualified advice if pain persists.</div>}
+            {!latestReadiness?.pain&&Number(latestReadiness?.soreness)>=4&&<div className="progress-caution">Your latest soreness was high. Consider recovery before adding more work.</div>}
+            {exerciseSuggestions.suggestions.map(item=><div key={item.name} className="progress-suggestion"><div><strong>{item.name}</strong><span>{item.direct.length?`Direct: ${item.direct.map(muscle=>MUSCLES[muscle]).join(", ")}`:`Supporting: ${item.supporting.map(muscle=>MUSCLES[muscle]).join(", ")}`}</span></div>{onAddExercise&&<Button onClick={()=>onAddExercise(item.name)}>Add</Button>}</div>)}
+          </div>}
+        </Sheet>
         <div style={{fontSize:9,color:"#444",marginTop:8}}>Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
       </div>
       <div style={cardStyle("summary")}>

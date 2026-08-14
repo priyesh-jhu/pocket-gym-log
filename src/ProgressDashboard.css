@@ -11,6 +11,28 @@
 .progress-switch span { position: absolute; top: 5px; left: 5px; width: 18px; height: 18px; border-radius: 50%; background: var(--on-surface-variant); transition: transform var(--dur-short) var(--ease-std), background var(--dur-short) var(--ease-std); }
 .progress-switch[aria-checked="true"] { border-color: var(--primary); background: var(--primary); }
 .progress-switch[aria-checked="true"] span { background: var(--on-primary); transform: translateX(16px); }
+.progress-coverage-action { margin-top: var(--sp3); padding-top: var(--sp3); border-top: 1px solid var(--outline-variant); display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); }
+.progress-coverage-action strong, .progress-coverage-action span { display: block; }
+.progress-coverage-action strong { color: var(--on-surface); font-size: var(--text-body-sm); }
+.progress-coverage-action span { margin-top: 2px; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-muscle-chips { display: flex; flex-wrap: wrap; gap: var(--sp2); margin-bottom: var(--sp4); }
+.progress-muscle-chips button { min-height: 48px; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font: inherit; cursor: pointer; }
+.progress-muscle-chips button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
+.progress-muscle-detail, .progress-suggestions { padding: var(--sp4); border-radius: var(--shape-lg); background: var(--surface-container); }
+.progress-muscle-detail h3, .progress-suggestions h3 { margin: 0; font-size: var(--text-title); }
+.progress-muscle-detail p, .progress-suggestions p { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.progress-target-track { height: 8px; overflow: hidden; border-radius: var(--shape-full); background: var(--surface-container-highest); }
+.progress-target-track span { display: block; height: 100%; border-radius: inherit; background: var(--primary); }
+.progress-muscle-detail label { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.progress-muscle-detail input { width: 72px; min-height: 48px; padding: 0 var(--sp2); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; }
+.progress-muscle-detail h4 { margin: var(--sp3) 0 var(--sp2); font-size: var(--text-label-lg); text-transform: uppercase; letter-spacing: .08em; }
+.progress-history-list { display: grid; gap: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body-sm); }
+.progress-suggestions { display: grid; gap: var(--sp2); margin-top: var(--sp3); }
+.progress-caution { padding: var(--sp3); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--warn); font-size: var(--text-body-sm); }
+.progress-suggestion { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp3); padding: var(--sp2) 0; border-top: 1px solid var(--outline-variant); }
+.progress-suggestion strong, .progress-suggestion span { display: block; }
+.progress-suggestion strong { font-size: var(--text-body); }
+.progress-suggestion span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
 @media (max-width: 390px) {
   .progress-dashboard__toolbar { align-items: stretch; flex-direction: column; }
   .progress-dashboard__toolbar .m3-btn { align-self: flex-end; }
