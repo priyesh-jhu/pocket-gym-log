@@ -4,3 +4,5 @@ export { default as Chip } from "./Chip.jsx";
 export { default as TextField } from "./TextField.jsx";
 export { default as ListItem } from "./ListItem.jsx";
 export { default as SegmentedButtons } from "./SegmentedButtons.jsx";
+export { default as AppBar } from "./AppBar.jsx";
+export { default as NavBar } from "./NavBar.jsx";
