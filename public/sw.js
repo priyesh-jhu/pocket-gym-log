@@ -7,8 +7,15 @@
 const RELEASE_VERSION = new URL(self.location.href).searchParams.get("v") || "development";
 const CACHE_VERSION = `workout-tracker-${RELEASE_VERSION}`;
 const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png"];
+const IS_DEVELOPMENT_HOST = ["localhost", "127.0.0.1", "::1"].includes(self.location.hostname);
 
 self.addEventListener("install", (event) => {
+  if (IS_DEVELOPMENT_HOST) {
+    // Immediately replace any older localhost worker so Vite modules stop
+    // being served from a release cache after the next navigation.
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => cache.addAll(APP_SHELL))
   );
@@ -21,13 +28,16 @@ self.addEventListener("message", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k)))
-    )
+      Promise.all(keys.filter((k) => IS_DEVELOPMENT_HOST || k !== CACHE_VERSION).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
+  // Never put Vite source or optimized dependency modules behind a service
+  // worker. A stale module graph can load two incompatible React runtimes.
+  if (IS_DEVELOPMENT_HOST) return;
+
   const { request } = event;
   if (request.method !== "GET") return;
 
