@@ -7,9 +7,9 @@
 
 ### Progress
 
-- [ ] **PROG-01**: Users can view e1RM progression, daily workout trends, body heatmaps, muscle guidance, group balance, and push/pull ratio through the shared Material design system.
-- [ ] **PROG-02**: Users can change analytics ranges and customization settings through accessible Material controls and sheets.
-- [ ] **PROG-03**: Progress visualizations remain legible and correctly themed in light and dark modes without hard-coded screen colors.
+- [x] **PROG-01**: Users can view e1RM progression, daily workout trends, body heatmaps, muscle guidance, group balance, and push/pull ratio through the shared Material design system.
+- [x] **PROG-02**: Users can change analytics ranges and customization settings through accessible Material controls and sheets.
+- [x] **PROG-03**: Progress visualizations remain legible and correctly themed in light and dark modes without hard-coded screen colors.
 
 ### History
 
@@ -52,9 +52,9 @@ No product expansion is deferred from this milestone. Future features and harden
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROG-01 | Phase 1 | Pending |
-| PROG-02 | Phase 1 | Pending |
-| PROG-03 | Phase 1 | Pending |
+| PROG-01 | Phase 1 | Complete |
+| PROG-02 | Phase 1 | Complete |
+| PROG-03 | Phase 1 | Complete |
 | HIST-01 | Phase 2 | Pending |
 | HIST-02 | Phase 2 | Pending |
 | WGHT-01 | Phase 2 | Pending |
@@ -67,6 +67,7 @@ No product expansion is deferred from this milestone. Future features and harden
 | VERI-03 | Phase 3 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 13 total
 - Mapped to phases: 13
 - Unmapped: 0
