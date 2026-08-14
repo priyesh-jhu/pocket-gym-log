@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
+import { announceRestComplete, getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
 
 describe("rest timer preferences", () => {
   test("defaults to 90 seconds", () => {
@@ -16,5 +16,19 @@ describe("rest timer preferences", () => {
 
   test("ignores unsupported durations", () => {
     assert.deepEqual(setRestTimerSeconds({ x:"free" }, 75), { x:"free" });
+  });
+});
+
+describe("rest timer completion feedback",()=>{
+  test("swallows unsupported vibration and notification APIs",()=>{
+    class BrokenNotification { static permission="granted"; constructor(){throw new Error("unsupported");} }
+    assert.doesNotThrow(()=>announceRestComplete({NotificationApi:BrokenNotification,navigatorApi:{vibrate(){throw new Error("blocked");}}}));
+  });
+
+  test("does not duplicate browser notifications on native platforms",()=>{
+    let created=0;
+    class NotificationApi { static permission="granted"; constructor(){created+=1;} }
+    announceRestComplete({NotificationApi,navigatorApi:{},isNative:true});
+    assert.equal(created,0);
   });
 });

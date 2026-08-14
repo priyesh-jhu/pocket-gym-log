@@ -86,6 +86,7 @@ Switching a card that already has sets entered asks for confirmation first, sinc
 - **Dashboard planning**: Shared week/month/three-month ranges, estimated set-volume mode, weekly muscle targets, last-trained history, and a focused daily-priority list
 - **Actionable recommendations**: Exercise suggestions account for recent exercise selection, equipment habits, and readiness warnings, and can be added directly to the current workout
 - **Custom dashboard**: Reorder, show, or hide analytics cards; settings follow the signed-in account through the existing Firestore settings sync
+- **Flexible set tracking**: Weighted sets use weight and reps; bodyweight, timed, and distance exercises can be completed without entering a fake weight
 - **Training analytics**: Browse older periods and chart 4/12/26/52 weeks by exercise, volume, max weight, estimated 1RM, or frequency
 - **Readiness check-ins**: Optionally save energy, sleep, soreness, and pain context with each workout
 - **Strength goals**: Track account-scoped exercise targets with progress bars and completion states

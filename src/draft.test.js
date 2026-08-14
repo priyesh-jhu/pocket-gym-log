@@ -35,6 +35,19 @@ describe("draft construction", () => {
     assert.equal(isCompleteSet({weight:"100",reps:"10"}),true);
   });
 
+  test("bodyweight, timed, and distance sets need a result but not weight",()=>{
+    assert.equal(isCompleteSet({weight:"",reps:"12"},"bodyweight"),true);
+    assert.equal(isCompleteSet({weight:"",reps:"45"},"timed"),true);
+    assert.equal(isCompleteSet({weight:"",reps:"30"},"distance"),true);
+    assert.equal(isCompleteSet({weight:"20",reps:""},"bodyweight"),false);
+  });
+
+  test("rejects zero, negative, and non-numeric results",()=>{
+    assert.equal(isCompleteSet({weight:"",reps:"0"},"bodyweight"),false);
+    assert.equal(isCompleteSet({weight:"",reps:"-2"},"timed"),false);
+    assert.equal(isCompleteSet({weight:"",reps:"many"},"distance"),false);
+  });
+
   test("hasEnteredData ignores a ticked done flag with no numbers", () => {
     assert.equal(hasEnteredData([{ weight: "", reps: "", unit: "lb", done: true }]), false);
   });

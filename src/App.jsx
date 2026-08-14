@@ -10,7 +10,8 @@ import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loa
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
-import { getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
+import { announceRestComplete, getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
+import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, goalProgress, normalizeReadiness, readinessScore, removeGoal } from "./userFeatures.js";
@@ -413,18 +414,17 @@ export default function App() {
 
   useEffect(() => {
     if (!restRunning) return;
-    const t = setInterval(() => setRestSeconds(s => {
-      if (s+1>=restTarget) {
+    const t = setTimeout(()=>{
+      const next=Math.min(restTarget,restSeconds+1);
+      setRestSeconds(next);
+      if(next>=restTarget) {
         setRestRunning(false);
         setRestComplete(true);
-        if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate([150,80,150]);
-        if (typeof Notification!=="undefined"&&Notification.permission==="granted") new Notification("Rest complete",{body:"Time for your next set."});
-        return restTarget;
+        announceRestComplete({isNative:Capacitor.isNativePlatform()});
       }
-      return s+1;
-    }), 1000);
-    return () => clearInterval(t);
-  }, [restRunning, restTarget]);
+    },1000);
+    return () => clearTimeout(t);
+  }, [restRunning, restTarget, restSeconds]);
 
   function localProfileData(profile) {
     return { sessions:readStoredArray(sessionKey(profile)), bodyweights:readStoredArray(weightKey(profile)), equipmentPrefs:loadPrefs(storage, profile) };
@@ -680,9 +680,11 @@ export default function App() {
 
   function toggleSetDone(ei, si) {
     const selectedSet=draft.exercises[ei]?.sets[si];
+    const tracking=trackingForExercise(draft.exercises[ei]);
     const becomingDone=!selectedSet?.done;
-    if(becomingDone&&!isCompleteSet(selectedSet)) {
-      setSaveStatus("error"); setStatusMsg("Enter both weight and reps before completing a set.");
+    if(becomingDone&&!isCompleteSet(selectedSet,tracking)) {
+      const labels=trackingLabels(tracking);
+      setSaveStatus("error"); setStatusMsg(tracking===TRACKING_TYPES.WEIGHTED?"Enter both weight and reps before completing a set.":`Enter ${labels.measure.toLowerCase()} before completing a set.`);
       setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500);
       return;
     }
@@ -699,12 +701,12 @@ export default function App() {
   }
 
   function cleanSession(s) {
-    return { ...s, exercises: s.exercises.map(ex=>({ ...ex, sets:ex.sets.filter(isCompleteSet).map(({done,...r})=>r) })).filter(ex=>ex.sets.length>0) };
+    return { ...s, exercises: s.exercises.map(ex=>({ ...ex, tracking:trackingForExercise(ex), sets:ex.sets.filter(set=>isCompleteSet(set,trackingForExercise(ex))).map(({done,...r})=>r) })).filter(ex=>ex.sets.length>0) };
   }
 
   function saveSession() {
     const cleaned=cleanSession(draft);
-    if (!cleaned.exercises.length) { setSaveStatus("error"); setStatusMsg("Enter both weight and reps for at least one set."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
+    if (!cleaned.exercises.length) { setSaveStatus("error"); setStatusMsg("Complete at least one valid set. Weighted sets need weight and reps; bodyweight, timed, and distance sets need their result."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
     const completedAt = new Date().toISOString();
     const saved = { ...cleaned, readiness:normalizeReadiness(readiness), completedAt };
     setWorkoutSummary(createWorkoutSummary(saved, sessions, completedAt));
@@ -880,7 +882,7 @@ export default function App() {
   const allExNames = Array.from(new Set([...allVariantNames(),...customExercises.map(item=>item.name),...sessions.flatMap(session=>session.exercises.map(ex=>ex.name))])).sort();
   const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
-  const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(s=>String(s.weight).trim()!==""&&String(s.reps).trim()!=="").length,0);
+  const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(set=>isCompleteSet(set,trackingForExercise(ex))).length,0);
   const progressionIncrements = getProgressionIncrements(equipmentPrefs);
   const restTimerDefault = getRestTimerSeconds(equipmentPrefs);
 
@@ -1070,6 +1072,8 @@ export default function App() {
             {draft.exercises.map((ex,ei)=>{
               const family=exerciseForVariantName(ex.name);
               const planEx=family?variantFor(family,ex.equipment):{name:ex.name,equipment:"custom",target:ex.target||"3 x 8-12",tip:ex.tip||"Custom exercise"};
+              const tracking=trackingForExercise({...ex,target:planEx.target});
+              const trackingCopy=trackingLabels(tracking);
               const variants=family?family.variants:[planEx];
               const pr=prMap[ex.name];
               const last=getLastTime(ex.name);
@@ -1081,7 +1085,7 @@ export default function App() {
                       <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
                       {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
                     </button>
-                    <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
+                    <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
                   </div>
 
                   {variants.length>1&&(
@@ -1118,9 +1122,9 @@ export default function App() {
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
                       <span style={{fontSize:10,color:"#666",fontWeight:600,flexShrink:0}}>↩ Last ({last.date.slice(5)}):</span>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1,minWidth:0}}>
-                        {last.sets.map((s,j)=><span key={j} style={{fontSize:10,color:"#9CA3AF",background:"#161723",borderRadius:5,padding:"2px 7px"}}>{s.weight||"0"}{s.unit} × {s.reps||"0"}</span>)}
+                        {last.sets.map((s,j)=><span key={j} style={{fontSize:10,color:"#9CA3AF",background:"#161723",borderRadius:5,padding:"2px 7px"}}>{s.weight?`${s.weight}${s.unit} × `:""}{s.reps||"0"}{tracking===TRACKING_TYPES.TIMED?" sec":tracking===TRACKING_TYPES.DISTANCE?" m":" reps"}</span>)}
                       </div>
-                      <button onClick={()=>copyLastTime(ei,ex.name)} style={{background:"rgba(59,130,246,0.1)",border:"1px solid "+dayMeta.color+"40",borderRadius:6,padding:"3px 9px",color:dayMeta.color,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Copy weights</button>
+                      <button onClick={()=>copyLastTime(ei,ex.name)} style={{background:"rgba(59,130,246,0.1)",border:"1px solid "+dayMeta.color+"40",borderRadius:6,padding:"3px 9px",color:dayMeta.color,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Copy last</button>
                     </div>
                   )}
 
@@ -1141,7 +1145,7 @@ export default function App() {
                           <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1}${set.done?"":" and start rest timer"}`} title={set.done?"Mark this set incomplete":"Mark this set done and start the rest timer"} style={{width:58,height:28,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"#161723",color:set.done?"#fff":"#9CA3AF",fontSize:10,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
                             {set.done?"✓ Done":`Set ${si+1}`}
                           </button>
-                          <input type="number" inputMode="decimal" placeholder="Weight" value={set.weight} onChange={e=>updateSet(ei,si,"weight",e.target.value)}
+                          <input type="number" inputMode="decimal" placeholder={trackingCopy.weight+(tracking===TRACKING_TYPES.WEIGHTED?"":" (optional)")} value={set.weight} onChange={e=>updateSet(ei,si,"weight",e.target.value)}
                             style={{flex:1,background:"#161723",border:"1px solid "+(isPR?"#FBBF24":"#1E2035"),borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
                           <button onClick={()=>setPlateFor(pOpen?null:pKey)} disabled={!parseFloat(set.weight)} title="Plate calculator"
                             style={{background:pOpen?dayMeta.color:"#161723",border:"1px solid "+(pOpen?dayMeta.color:"#1E2035"),borderRadius:8,padding:"8px 9px",color:pOpen?"#fff":(parseFloat(set.weight)?"#9CA3AF":"#3A3A45"),fontSize:13,cursor:parseFloat(set.weight)?"pointer":"default",fontFamily:"inherit",flexShrink:0}}>🏋</button>
@@ -1149,7 +1153,7 @@ export default function App() {
                             style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 6px",color:"#888",fontSize:12,fontFamily:"inherit",flexShrink:0}}>
                             <option value="lb">lb</option><option value="kg">kg</option>
                           </select>
-                          <input type="number" inputMode="numeric" placeholder="Reps" value={set.reps} onChange={e=>updateSet(ei,si,"reps",e.target.value)}
+                          <input type="number" inputMode="numeric" placeholder={trackingCopy.measure} value={set.reps} onChange={e=>updateSet(ei,si,"reps",e.target.value)}
                             style={{flex:1,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
                           <button onClick={()=>removeSet(ei,si)} disabled={ex.sets.length<=1}
                             style={{background:"none",border:"none",color:ex.sets.length<=1?"#2A2A35":"#F87171",fontSize:16,cursor:ex.sets.length<=1?"default":"pointer",flexShrink:0,padding:"0 4px",fontFamily:"inherit"}}>×</button>
@@ -1237,7 +1241,7 @@ export default function App() {
                         <div key={i} style={{marginBottom:10}}>
                           <div style={{fontSize:12,fontWeight:700,color:meta.color,marginBottom:4}}>{ex.name}</div>
                           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {ex.sets.map((s,j)=><span key={j} style={{background:"#161723",borderRadius:6,padding:"3px 10px",fontSize:11,color:"#9CA3AF"}}>{s.weight||"0"}{s.unit} × {s.reps||"0"}</span>)}
+                            {ex.sets.map((s,j)=>{const type=trackingForExercise(ex);return <span key={j} style={{background:"#161723",borderRadius:6,padding:"3px 10px",fontSize:11,color:"#9CA3AF"}}>{s.weight?`${s.weight}${s.unit} × `:""}{s.reps||"0"}{type===TRACKING_TYPES.TIMED?" sec":type===TRACKING_TYPES.DISTANCE?" m":" reps"}</span>;})}
                           </div>
                         </div>
                       ))}
