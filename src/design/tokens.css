@@ -35,6 +35,11 @@
 
   --muscle-empty:              #DEDED2;
   --muscle-stroke:             #BFBFB2;
+  --muscle-body:               #EAEADF;
+  --muscle-low:                #5676B9;
+  --muscle-moderate:           #3F7C52;
+  --muscle-high:               #9A6A08;
+  --muscle-review:             #73519B;
 
   --scrim:                     rgba(0,0,0,.32);
   --state-layer:               #1A1A16;
@@ -98,6 +103,11 @@
 
   --muscle-empty:              #22222B;
   --muscle-stroke:             #3A3944;
+  --muscle-body:               #16161D;
+  --muscle-low:                #78A6F6;
+  --muscle-moderate:           #7EDB8A;
+  --muscle-high:               #F5C860;
+  --muscle-review:             #C8A4F4;
 
   --scrim:                     rgba(0,0,0,.55);
   --state-layer:               #E8E6EE;

@@ -24,6 +24,23 @@
 .progress-coverage-action strong, .progress-coverage-action span { display: block; }
 .progress-coverage-action strong { color: var(--on-surface); font-size: var(--text-body-sm); }
 .progress-coverage-action span { margin-top: 2px; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.progress-body-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); margin-bottom: var(--sp4); }
+.progress-body-heading p { margin: 0; color: var(--on-surface-variant); font-size: var(--text-body); }
+.progress-body-heading .m3-seg { flex: 0 1 240px; }
+.progress-body-empty { min-height: 160px; display: grid; align-content: center; gap: var(--sp2); text-align: center; color: var(--on-surface); }
+.progress-body-empty p { margin: 0; color: var(--on-surface-variant); }
+.progress-body-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: var(--sp2) var(--sp4); margin-top: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-body-legend span { display: inline-flex; align-items: center; gap: var(--sp1); }
+.progress-body-legend i { width: 12px; height: 12px; border: 1px solid var(--muscle-stroke); border-radius: 50%; background: var(--muscle-empty); }
+.progress-body-legend i.low { background: var(--muscle-low); }
+.progress-body-legend i.moderate { background: var(--muscle-moderate); }
+.progress-body-legend i.high { background: var(--muscle-high); }
+.progress-body-legend i.review { background: var(--muscle-review); }
+.progress-body-regions { margin-top: var(--sp2); color: var(--on-surface-variant); }
+.progress-body-regions summary { min-height: 48px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.progress-body-regions > div { display: flex; flex-wrap: wrap; gap: var(--sp2); }
+.progress-body-regions button { min-height: 48px; padding: 0 var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font: inherit; cursor: pointer; }
+.progress-body-regions button[aria-pressed="true"] { outline: 2px solid var(--primary); outline-offset: 2px; }
 .progress-muscle-chips { display: flex; flex-wrap: wrap; gap: var(--sp2); margin-bottom: var(--sp4); }
 .progress-muscle-chips button { min-height: 48px; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font: inherit; cursor: pointer; }
 .progress-muscle-chips button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary-container); color: var(--on-primary-container); }
@@ -42,6 +59,7 @@
 .progress-suggestion strong, .progress-suggestion span { display: block; }
 .progress-suggestion strong { font-size: var(--text-body); }
 .progress-suggestion span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-guidance-caveat { color: var(--on-surface-variant); font-size: var(--text-body); }
 .progress-trend-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, .65fr); gap: var(--sp2); margin-bottom: var(--sp3); }
 .progress-trend-controls label { display: grid; gap: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-label-sm); }
 .progress-trend-controls select { width: 100%; min-width: 0; min-height: 48px; padding: 0 var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-sm); background: var(--surface-container-highest); color: var(--on-surface); font: inherit; font-size: var(--text-body-sm); }
@@ -74,6 +92,9 @@
 .progress-balance-fill--back, .progress-balance-fill--arms { background: var(--on-primary-container); }
 .progress-balance-fill--shoulders, .progress-balance-fill--core { background: var(--warn); }
 @media (max-width: 390px) {
+  .progress-body-heading { align-items: stretch; flex-direction: column; }
+  .progress-body-heading .m3-seg { flex-basis: auto; width: 100%; }
+  .progress-suggestion { align-items: stretch; flex-direction: column; }
   .progress-dashboard__toolbar { align-items: stretch; flex-direction: column; }
   .progress-dashboard__toolbar .m3-btn { align-self: flex-end; }
   .progress-trend-controls { grid-template-columns: 1fr; }

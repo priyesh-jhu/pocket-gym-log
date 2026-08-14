@@ -5,7 +5,7 @@ import { trainingInsights } from "./trainingInsights.js";
 import { addDaysISO, todayISO } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import MuscleHeatmap from "./MuscleHeatmap.jsx";
-import { Button, Card, Sheet } from "./components/index.js";
+import { Button, Card, SegmentedButtons, Sheet } from "./components/index.js";
 import { normalizeDashboardSettings } from "./progressDashboardSettings.js";
 import useThemeTokens from "./charts/useThemeTokens.js";
 import "./ProgressDashboard.css";
@@ -33,12 +33,14 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const [heatmapMode, setHeatmapMode] = useState("coverage");
   const [selectedMuscle, setSelectedMuscle] = useState(null);
   const [muscleSheetOpen, setMuscleSheetOpen] = useState(false);
+  const guidanceInitialRef = useRef(null);
+  const guidanceReturnRef = useRef(null);
   const settings=providedSettings||normalizeDashboardSettings(preferences);
   const rangeDays=settings.rangeDays;
   const saveSettings=changes=>onSaveSettings?.(changes);
   const cardStyle=id=>({...card,display:settings.hiddenCards.includes(id)?"none":undefined,order:settings.cardOrder.indexOf(id)});
   const rendersGroup = id => !embeddedGroup || embeddedGroup === id;
-  const openMuscleDetails=muscle=>{setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
+  const openMuscleDetails=(muscle, invoker)=>{guidanceReturnRef.current=invoker||document.activeElement;setSelectedMuscle(muscle||heatmap.missed[0]||null);setMuscleSheetOpen(true);};
 
   if (list.length === 0) {
     return (
@@ -111,7 +113,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
 
   return (
     <div className={`progress-dashboard${embeddedGroup ? ` progress-dashboard--${embeddedGroup}` : ""}`}>
-      {rendersGroup("heatmap")&&priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
+      {!embeddedGroup&&rendersGroup("heatmap")&&priorities.length>0&&<div style={{order:-18,background:"linear-gradient(135deg,rgba(59,130,246,0.13),rgba(34,197,94,0.06))",border:"1px solid #3B82F640",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
         <div style={{fontSize:11,fontWeight:900,color:"#93C5FD",letterSpacing:"0.08em",marginBottom:6}}>TODAY'S PRIORITIES</div>
         <div style={{display:"grid",gap:5}}>{priorities.slice(0,3).map(item=><div key={item.muscle} style={{fontSize:11,color:"#A1A1AA"}}><b style={{color:"#E5E7EB"}}>{MUSCLES[item.muscle]}</b> · {item.remaining.toFixed(1)} estimated sets below target{item.daysSince!=null?` · last trained ${item.daysSince} day${item.daysSince===1?"":"s"} ago`:" · no training in this range"}</div>)}</div>
       </div>}
@@ -126,7 +128,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           </div>
         </div>
       )}
-      {rendersGroup("heatmap")&&coverageGaps.length>0&&(
+      {!embeddedGroup&&rendersGroup("heatmap")&&coverageGaps.length>0&&(
         <div style={{order:-16,background:"rgba(245,158,11,0.07)",border:"1px solid #F59E0B35",borderRadius:14,padding:"13px 14px",marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:900,color:"#FBBF24",letterSpacing:"0.08em",marginBottom:4}}>MUSCLE COVERAGE</div>
           <div style={{fontSize:10,color:"#777",lineHeight:1.45,marginBottom:9}}>These groups appeared in one or fewer of your last four completed training weeks.</div>
@@ -135,30 +137,31 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
         </div>
       )}
       {rendersGroup("heatmap")&&<div className="progress-legacy-card progress-legacy-card--heatmap" style={cardStyle("heatmap")}>
-        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:10,marginBottom:10,flexWrap:"wrap"}}>
-          <div><div style={{...sectionLabel,marginBottom:3}}>BODY MUSCLE HEATMAP</div><div style={{fontSize:10,color:"#555"}}>Coverage from {heatmap.start} through {heatmap.end}</div></div>
-          <div style={{display:"flex",gap:4}}>{[["coverage","Coverage"],["sets","Set volume"]].map(([mode,label])=><button key={mode} onClick={()=>setHeatmapMode(mode)} style={{background:heatmapMode===mode?"#3B82F6":"#161723",border:"1px solid "+(heatmapMode===mode?"#3B82F6":"#2A2A3A"),borderRadius:7,padding:"5px 9px",color:heatmapMode===mode?"#fff":"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{label}</button>)}</div>
+        <div className="progress-body-heading">
+          <p>Coverage from {heatmap.start} through {heatmap.end}</p>
+          <SegmentedButtons ariaLabel="Body heatmap mode" value={heatmapMode} onChange={setHeatmapMode} options={[{value:"coverage",label:"Coverage"},{value:"sets",label:"Set volume"}]} />
         </div>
-        <MuscleHeatmap scores={heatmapMode==="sets"?setVolume.sets:heatmap.scores} onSelect={openMuscleDetails} selected={selectedMuscle} mode={heatmapMode}/>
-        <div style={{display:"flex",justifyContent:"center",gap:10,flexWrap:"wrap",fontSize:9,color:"#777",marginTop:4}}>{heatmapMode==="coverage"?<><span><b style={{color:"#22C55E"}}>●</b> repeated</span><span><b style={{color:"#3B82F6"}}>●</b> trained</span><span><b style={{color:"#F59E0B"}}>●</b> secondary</span><span><b style={{color:"#7F1D1D"}}>●</b> missed</span></>:<><span><b style={{color:"#3B82F6"}}>●</b> 1–5 low</span><span><b style={{color:"#22C55E"}}>●</b> 6–12 moderate</span><span><b style={{color:"#F59E0B"}}>●</b> 13–20 high</span><span><b style={{color:"#A855F7"}}>●</b> 20+ review</span><span><b style={{color:"#7F1D1D"}}>●</b> none</span></>}</div>
-        <div style={{fontSize:9,color:"#555",textAlign:"center",marginTop:5}}>Tap a muscle to view its target and training history.</div>
+        {heatmap.trained.length===0?<div className="progress-body-empty"><strong>No mapped muscle work in this range.</strong><p>Log an exercise from the muscle guide or choose another range.</p></div>:<MuscleHeatmap scores={heatmapMode==="sets"?setVolume.sets:heatmap.scores} onSelect={openMuscleDetails} selected={selectedMuscle} mode={heatmapMode}/>} 
+        <div className="progress-body-legend" aria-label="Body heatmap legend">{heatmapMode==="coverage"?<><span><i className="moderate"/>Repeated work</span><span><i className="low"/>Trained</span><span><i className="high"/>Supporting work</span><span><i/>Missed</span></>:<><span><i className="low"/>1–5 low</span><span><i className="moderate"/>6–12 moderate</span><span><i className="high"/>13–20 high</span><span><i className="review"/>20+ review</span><span><i/>None</span></>}</div>
+        <details className="progress-body-regions"><summary>Explore muscle regions</summary><div>{Object.keys(MUSCLES).map(muscle=><button type="button" key={muscle} aria-pressed={selectedMuscle===muscle} onClick={event=>openMuscleDetails(muscle,event.currentTarget)}>{MUSCLES[muscle]}: {heatmap.scores[muscle]>0?"trained":"missed"}</button>)}</div></details>
         <div className="progress-coverage-action">
           <div><strong>{heatmap.missed.length?`${heatmap.missed.length} muscle groups need attention`:"Full coverage"}</strong><span>{heatmap.missed.length?"Review gaps and verified exercise suggestions.":"Every mapped muscle received work in this period."}</span></div>
-          {heatmap.missed.length>0&&<Button variant="tonal" onClick={()=>openMuscleDetails()}>Review</Button>}
+          {heatmap.missed.length>0&&<Button variant="tonal" onClick={event=>openMuscleDetails(null,event.currentTarget)}>Review muscle guidance</Button>}
         </div>
-        <Sheet open={muscleSheetOpen} title="Muscle coverage" onClose={()=>setMuscleSheetOpen(false)}>
-          <div className="progress-muscle-chips">{heatmap.missed.map(muscle=><button type="button" aria-pressed={selectedMuscle===muscle} onClick={()=>setSelectedMuscle(muscle)} key={muscle}>{MUSCLES[muscle]}</button>)}</div>
+        <Sheet open={muscleSheetOpen} title="Muscle guidance" closeLabel="Close muscle guidance" initialFocusRef={guidanceInitialRef} returnFocusRef={guidanceReturnRef} dismissOnHistory onClose={()=>setMuscleSheetOpen(false)}>
+          <div role="group" aria-labelledby="muscles-needing-attention"><h3 id="muscles-needing-attention">Muscles needing attention</h3><div className="progress-muscle-chips">{heatmap.missed.map((muscle,index)=><button ref={index===0?guidanceInitialRef:null} type="button" aria-pressed={selectedMuscle===muscle} onClick={()=>setSelectedMuscle(muscle)} key={muscle}>{MUSCLES[muscle]}</button>)}</div></div>
           {selectedPriority&&<div className="progress-muscle-detail">
-            <h3>{MUSCLES[selectedMuscle]}</h3><p>{selectedPriority.done.toFixed(1)} of {selectedPriority.target} estimated sets · {selectedPriority.pct}%</p>
+            <h3>{MUSCLES[selectedMuscle]}</h3><p>{MUSCLES[selectedMuscle]}: {selectedPriority.done.toFixed(1)} of {selectedPriority.target} estimated sets</p>
             <div className="progress-target-track"><span style={{width:selectedPriority.pct+"%"}} /></div>
             <label>Weekly target sets <input type="number" min="1" max="40" value={settings.targets[selectedMuscle]} onChange={event=>saveSettings({targets:{...settings.targets,[selectedMuscle]:Math.max(1,Math.min(40,Number(event.target.value)||1))}})}/></label>
             <h4>Recent exercises</h4>{selectedHistory.length?<div className="progress-history-list">{selectedHistory.map((item,index)=><div key={item.date+item.name+index}>{item.date} · {item.name} · {item.sets} set{item.sets===1?"":"s"}</div>)}</div>:<p>No matching exercise in this range.</p>}
           </div>}
-          {exerciseSuggestions.suggestions.length>0&&<div className="progress-suggestions"><h3>Exercises to fill the gaps</h3><p>Chosen from the app's verified muscle guide, with direct work preferred.</p>
+          {exerciseSuggestions.suggestions.length>0?<div className="progress-suggestions"><h3>Exercises to fill the gaps</h3><p>Chosen from the app's verified muscle guide, with direct work preferred.</p>
             {latestReadiness?.pain&&<div className="progress-caution">Your latest check-in reported pain. Avoid painful movements and seek qualified advice if pain persists.</div>}
             {!latestReadiness?.pain&&Number(latestReadiness?.soreness)>=4&&<div className="progress-caution">Your latest soreness was high. Consider recovery before adding more work.</div>}
-            {exerciseSuggestions.suggestions.map(item=><div key={item.name} className="progress-suggestion"><div><strong>{item.name}</strong><span>{item.direct.length?`Direct: ${item.direct.map(muscle=>MUSCLES[muscle]).join(", ")}`:`Supporting: ${item.supporting.map(muscle=>MUSCLES[muscle]).join(", ")}`}</span></div>{onAddExercise&&<Button onClick={()=>onAddExercise(item.name)}>Add</Button>}</div>)}
-          </div>}
+            {exerciseSuggestions.suggestions.map(item=><div key={item.name} className="progress-suggestion"><div><strong>{item.name}</strong><span>{item.direct.length?`Direct: ${item.direct.map(muscle=>MUSCLES[muscle]).join(", ")}`:`Supporting: ${item.supporting.map(muscle=>MUSCLES[muscle]).join(", ")}`}</span></div>{onAddExercise&&<Button aria-label={`Add ${item.name}`} onClick={()=>formGuide[item.name]&&onAddExercise(item.name)}>Add exercise</Button>}</div>)}
+          </div>:<p>No verified suggestions are available for this gap yet.</p>}
+          <p className="progress-guidance-caveat">Custom exercises without a muscle guide cannot be classified yet. Guidance is trend-based and not medical advice.</p>
         </Sheet>
         <div style={{fontSize:9,color:"#444",marginTop:8}}>Primary work counts fully; secondary work appears amber. Custom exercises need a muscle guide before they can affect this map.</div>
       </div>}
