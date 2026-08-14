@@ -38,6 +38,23 @@
   border-radius: 18px !important;
 }
 
+.session-exit-confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--sp2);
+  margin-bottom: var(--sp3);
+  padding: var(--sp3) var(--sp4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  background: var(--surface-container-high);
+  box-shadow: var(--elev-1);
+}
+.session-exit-confirm > div { flex: 1; min-width: 0; }
+.session-exit-confirm strong,
+.session-exit-confirm span { display: block; }
+.session-exit-confirm strong { color: var(--on-surface); font-size: var(--text-body); }
+.session-exit-confirm span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+
 @media (max-width: 640px) {
   .app-shell { width: 100%; box-shadow: none; }
   .app-content { padding: 14px 12px 0 !important; }

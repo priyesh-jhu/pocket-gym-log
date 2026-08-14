@@ -316,6 +316,8 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
+  const [confirmExitSession, setConfirmExitSession] = useState(false);
+  const sessionHistoryRef = useRef(false);
 
   // Internal storage namespace: Firebase UID when signed in, isolated guest
   // storage otherwise. This value is never used as the displayed username.
@@ -564,12 +566,43 @@ export default function App() {
     const fresh = newSession(currentDay, equipmentPrefs);
     draftNamespaceRef.current = activeProfile;
     setDraft(fresh); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setPlateFor(null);
+    leaveSession();
   }
 
   function startSession() {
     setDraft(previous => ({ ...previous, startedAt: previous.startedAt || new Date().toISOString() }));
+    if (!sessionHistoryRef.current) {
+      window.history.pushState({ workoutSession: true }, "");
+      sessionHistoryRef.current = true;
+    }
     setSessionActive(true);
   }
+
+  function leaveSession() {
+    setSessionActive(false);
+    setConfirmExitSession(false);
+    if (sessionHistoryRef.current) {
+      sessionHistoryRef.current = false;
+      window.history.back();
+    }
+  }
+
+  function requestSessionExit() {
+    if (draftHasContent(draft)) setConfirmExitSession(true);
+    else leaveSession();
+  }
+
+  useEffect(() => {
+    if (!sessionActive) return undefined;
+    const handleBack = () => {
+      if (!sessionHistoryRef.current) return;
+      sessionHistoryRef.current = false;
+      if (draftHasContent(draft)) setConfirmExitSession(true);
+      else setSessionActive(false);
+    };
+    window.addEventListener("popstate", handleBack);
+    return () => window.removeEventListener("popstate", handleBack);
+  }, [sessionActive, draft]);
 
   function requestEquipmentSwitch(ei, equipment) {
     const ex = draft.exercises[ei];
@@ -736,7 +769,7 @@ export default function App() {
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
     setDraft(newSession(currentDay, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); setRestRunning(false); setRestComplete(false); setRestSeconds(0);
-    setSessionActive(false);
+    leaveSession();
   }
 
   function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
@@ -920,8 +953,9 @@ export default function App() {
       <AppBar
         overline={new Date().toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}
         title={sessionActive ? dayMeta.label : "Pocket Gym Log"}
-        actions={
-          <>
+        actions={sessionActive
+          ? <Button variant="text" onClick={requestSessionExit} aria-label="Exit workout"><X size={20} /></Button>
+          : <>
             {firebaseConfigured && (firebaseUser
               ? <Button variant="text" onClick={disconnectFirebase}
                         title={(firebaseUser.email || "Signed in") + " — click to sign out"}>
@@ -939,8 +973,7 @@ export default function App() {
               <Upload size={16} />
             </Button>
             <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
-          </>
-        }
+          </>}
       />
 
       <main className="app-content" style={{maxWidth:720,margin:"0 auto",padding:"20px 16px 0"}}>
@@ -1005,6 +1038,17 @@ export default function App() {
         {/* ── ACTIVE SESSION ── */}
         {activeTab==="log" && sessionActive && (
           <div>
+            {confirmExitSession && (
+              <div className="session-exit-confirm" role="alertdialog" aria-label="Exit workout">
+                <div><strong>Leave this workout?</strong><span>Your draft stays saved on this device.</span></div>
+                <Button variant="text" onClick={leaveSession}>Leave</Button>
+                <Button variant="text" onClick={() => {
+                  window.history.pushState({ workoutSession: true }, "");
+                  sessionHistoryRef.current = true;
+                  setConfirmExitSession(false);
+                }}>Keep training</Button>
+              </div>
+            )}
             <div className="day-switcher" style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
               {dayOrder.map(k => {
                 const t=dayTemplates[k]; const active=currentDay===k;
