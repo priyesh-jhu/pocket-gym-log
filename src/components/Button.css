@@ -10,7 +10,7 @@
   border: 0;
   border-radius: var(--shape-full);
   font: inherit;
-  font-size: 15px;
+  font-size: var(--text-body-lg);
   font-weight: 700;
   letter-spacing: .01em;
   cursor: pointer;

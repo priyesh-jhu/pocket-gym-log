@@ -58,6 +58,18 @@
   --dur-short: 100ms; --dur-med: 300ms; --dur-long: 500ms;
 
   /* ── type ── */
+  /* Type scale. Floor is 11px — the redesign's rule is nothing below 10.5px. */
+  --text-label-sm:    11px;
+  --text-label:       11.5px;
+  --text-body-sm:     12.5px;
+  --text-label-lg:    13px;
+  --text-body:        13.5px;
+  --text-body-lg:     15px;
+  --text-title:       15.5px;
+  --text-title-lg:    18px;
+  --text-headline:    23px;
+  --text-headline-lg: 25px;
+  --text-display:     52px;
   --font-sans: "Manrope Variable", "Manrope", system-ui, sans-serif;
 }
 
