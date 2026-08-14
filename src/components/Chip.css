@@ -1,0 +1,17 @@
+.m3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--shape-sm);
+  background: var(--surface-container-highest);
+  color: var(--on-surface-variant);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.m3-chip--button   { min-height: 48px; cursor: pointer; }
+.m3-chip--selected { background: var(--filled-bg); color: var(--filled-fg); }

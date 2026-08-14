@@ -1,0 +1,9 @@
+.m3-card {
+  color: var(--on-surface);
+  border-radius: var(--shape-xxl);
+  padding: var(--sp5);
+}
+.m3-card--filled   { background: var(--surface-container);      box-shadow: var(--elev-1); }
+.m3-card--raised   { background: var(--surface-container-high);  box-shadow: var(--elev-2); }
+.m3-card--outlined { background: transparent; box-shadow: none;
+                     border: 1px solid var(--outline-variant); }
