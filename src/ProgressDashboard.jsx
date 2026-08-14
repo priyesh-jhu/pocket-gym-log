@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { activityCalendar, consistencySummary, dominantUnit, weeklyVolume, muscleBalance, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, pushPullRatio, sessionVolume, toLb, weekStartISO } from "./stats.js";
 import { trainingInsights } from "./trainingInsights.js";
@@ -27,6 +27,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const chartTheme = useThemeTokens();
   const [historyPage, setHistoryPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState(null);
+  const dateButtonRefs = useRef(new Map());
   const [chartExercise, setChartExercise] = useState("all");
   const [chartMetric, setChartMetric] = useState("volume");
   const [heatmapMode, setHeatmapMode] = useState("coverage");
@@ -75,11 +76,17 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
   const selectedPriority=selectedMuscle?allPriorities.find(item=>item.muscle===selectedMuscle):null;
   const selectedHistory=selectedMuscle?list.flatMap(session=>(session.exercises||[]).filter(exercise=>[...(formGuide[exercise.name]?.primary||[]),...(formGuide[exercise.name]?.secondary||[])].includes(selectedMuscle)).map(exercise=>({date:session.date,name:exercise.name,sets:exercise.sets?.length||0}))).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8):[];
   const selectedSessions = selectedDate ? list.filter(session=>session?.date===selectedDate) : [];
+  const closeSelectedDate = () => {
+    const priorDate = selectedDate;
+    setSelectedDate(null);
+    requestAnimationFrame(() => dateButtonRefs.current.get(priorDate)?.focus());
+  };
 
   const exerciseNames = [...new Set(list.flatMap(session=>(session.exercises||[]).map(exercise=>exercise.name)).filter(Boolean))].sort();
   const chartSessions = chartExercise==="all" ? list : list.map(session=>({...session,exercises:(session.exercises||[]).filter(exercise=>exercise.name===chartExercise)}));
-  const chartBuckets = Array.from({length:rangeDays},(_,index)=>{
-    const date=addDaysISO(periodEnd,index-rangeDays+1);
+  const chartEnd = todayISO();
+  const chartBuckets = Array.from({ length: rangeDays },(_,index)=>{
+    const date=addDaysISO(chartEnd,index-rangeDays+1);
     return {key:date,date,label:rangeDays===7?new Date(date+"T12:00:00").toLocaleDateString([],{weekday:"short"}):date.slice(5),sessions:chartSessions.filter(session=>session?.date===date)};
   });
   const chartData = chartBuckets.map(bucket=>{
@@ -92,12 +99,13 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
     return {label:bucket.label,date:bucket.date,value:values[chartMetric]};
   });
   const metricLabels={volume:`Volume (${unit})`,maxWeight:`Max weight (${unit})`,estimated1RM:`Estimated 1RM (${unit})`,sessions:"Sessions"};
+  const chartHasResults = chartData.some(point => point.value > 0);
   const periodLabel = `${weeks[0].label} – ${new Date(addDaysISO(weeks[11].weekStart, 6) + "T12:00:00").toLocaleDateString([], {month:"numeric",day:"numeric",year:"numeric"})}`;
   const historyControls = (
     <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap"}}>
-      <button onClick={()=>setHistoryPage(page=>Math.min(maxHistoryPage,page+1))} disabled={historyPage>=maxHistoryPage} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 8px",color:historyPage>=maxHistoryPage?"#3A3A45":"#9CA3AF",fontSize:10,fontWeight:700,cursor:historyPage>=maxHistoryPage?"default":"pointer",fontFamily:"inherit"}}>← Earlier</button>
-      {historyPage>0&&<button onClick={()=>setHistoryPage(page=>Math.max(0,page-1))} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 8px",color:"#9CA3AF",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Later →</button>}
-      {historyPage>0&&<button onClick={()=>setHistoryPage(0)} style={{background:"rgba(59,130,246,0.1)",border:"1px solid #3B82F650",borderRadius:6,padding:"4px 8px",color:"#60A5FA",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Current</button>}
+      <button className="progress-calendar-nav" onClick={()=>setHistoryPage(page=>Math.min(maxHistoryPage,page+1))} disabled={historyPage>=maxHistoryPage}>← Earlier</button>
+      {historyPage>0&&<button className="progress-calendar-nav" onClick={()=>setHistoryPage(page=>Math.max(0,page-1))}>Later →</button>}
+      {historyPage>0&&<button className="progress-calendar-nav" onClick={()=>setHistoryPage(0)}>Current</button>}
     </div>
   );
 
@@ -190,8 +198,10 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
         <div style={{marginBottom:10}}>{historyControls}</div>
         <div style={{display:"grid",gridTemplateColumns:"18px minmax(0,1fr)",gap:6,alignItems:"stretch"}}>
           <div style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4,fontSize:8,color:"#555",textAlign:"right",alignItems:"center"}}>{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
-          <div aria-label="12-week training calendar" style={{display:"grid",gridTemplateColumns:`repeat(${calendar.length},minmax(6px,1fr))`,gap:4,minWidth:0}}>
-            {calendar.map((week,wi)=><div key={wi} style={{display:"grid",gridTemplateRows:"repeat(7,1fr)",gap:4,minWidth:0}}>{week.map(day=><button key={day.date} onClick={()=>day.count&&setSelectedDate(day.date)} disabled={!day.count} aria-label={`${day.date}: ${day.count} session${day.count===1?"":"s"}${day.count?". View details.":""}`} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} style={{display:"block",aspectRatio:"1",width:"100%",minWidth:0,padding:0,borderRadius:3,background:day.future?"#0B0C13":day.count>1?"#2563EB":day.count===1?"#3B82F6":"#171824",border:"1px solid "+(selectedDate===day.date?"#F8FAFC":day.count?"#60A5FA30":"#1E203520"),boxSizing:"border-box",opacity:day.future?0.35:1,cursor:day.count?"pointer":"default",boxShadow:selectedDate===day.date?"0 0 0 2px #60A5FA55":"none"}} />)}</div>)}
+          <div className="progress-calendar-scroll" role="region" aria-label="Scrollable 12-week training calendar" tabIndex="0">
+          <div aria-label="12-week training calendar" className="progress-calendar-grid">
+            {calendar.map((week,wi)=><div key={wi} className="progress-calendar-week">{week.map(day=><button ref={node => { if (node) dateButtonRefs.current.set(day.date, node); else dateButtonRefs.current.delete(day.date); }} key={day.date} onClick={()=>day.count&&setSelectedDate(day.date)} disabled={!day.count} aria-label={`${day.date}: ${day.count} session${day.count===1?"":"s"}${day.count?". View details.":""}`} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} className={`progress-calendar-day${selectedDate===day.date?" is-selected":""}${day.future?" is-future":""}`} data-count={day.count} />)}</div>)}
+          </div>
           </div>
         </div>
         <div style={{height:5,borderRadius:4,background:"#161723",overflow:"hidden",marginTop:12}}><div style={{height:"100%",width:consistency.goalPct+"%",background:consistency.goalPct>=80?"#22C55E":"#3B82F6",borderRadius:4}} /></div>
@@ -199,7 +209,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           <div style={{marginTop:12,background:"#0B0C14",border:"1px solid #2A2C45",borderRadius:10,padding:"11px 12px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,marginBottom:8}}>
               <div><div style={{fontSize:12,fontWeight:800,color:"#E5E7EB"}}>{new Date(selectedDate+"T12:00:00").toLocaleDateString([], {weekday:"long",month:"short",day:"numeric",year:"numeric"})}</div><div style={{fontSize:9,color:"#555",marginTop:1}}>{selectedSessions.length} saved workout{selectedSessions.length===1?"":"s"}</div></div>
-              <button onClick={()=>setSelectedDate(null)} aria-label="Close workout details" style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:7,width:26,height:26,color:"#888",fontSize:17,cursor:"pointer",fontFamily:"inherit"}}>×</button>
+              <button onClick={closeSelectedDate} aria-label="Close workout details" className="progress-details-close">×</button>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:7}}>{selectedSessions.map((session,index)=><div key={session.id||index} style={{background:"#10111A",border:"1px solid #1C1E30",borderRadius:8,padding:"8px 10px"}}>
               <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"baseline",marginBottom:5}}><span style={{fontSize:11,fontWeight:800,color:"#60A5FA"}}>{session.day||"Workout"}</span><span style={{fontSize:9,color:"#666"}}>{fmtVolume(sessionVolume(session),unit)} {unit} volume</span></div>
@@ -211,7 +221,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
       </div>}
 
       {rendersGroup("trend")&&<div className="progress-legacy-card progress-legacy-card--trend" style={cardStyle("trend")}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div>{historyControls}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:10}}><div style={{...sectionLabel,marginBottom:0}}>TRAINING TREND <span style={{ color: "#555", fontWeight: 500 }}>· {metricLabels[chartMetric]}</span></div></div>
         <div className="progress-trend-controls">
           <label><span>Exercise</span><select aria-label="Chart exercise" value={chartExercise} onChange={event=>setChartExercise(event.target.value)}><option value="all">All exercises</option>{exerciseNames.map(name=><option key={name} value={name}>{name}</option>)}</select></label>
           <label><span>Metric</span><select aria-label="Chart metric" value={chartMetric} onChange={event=>setChartMetric(event.target.value)}><option value="volume">Volume</option><option value="maxWeight">Max weight</option><option value="estimated1RM">Estimated 1RM</option><option value="sessions">Sessions</option></select></label>
@@ -222,11 +232,13 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
               <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
               <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} interval={rangeDays===7?0:rangeDays===28?3:9} minTickGap={5} />
               <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} />
-              <Tooltip labelFormatter={(_,payload)=>payload?.[0]?.payload?.date||""} contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12, fontSize: 12 }} />
-              <Bar dataKey="value" name={metricLabels[chartMetric]} fill={chartTheme.primary} radius={[5, 5, 0, 0]} />
+              <Tooltip labelFormatter={(_,payload)=>payload?.[0]?.payload?.date||""} formatter={value => [`${value}${chartMetric === "sessions" ? "" : ` ${unit}`}`, metricLabels[chartMetric]]} contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12, fontSize: 12 }} />
+              <Bar dataKey="value" name={metricLabels[chartMetric]} fill={chartTheme.primary} radius={[5, 5, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {!chartHasResults&&<p className="progress-daily-empty">No {metricLabels[chartMetric]} recorded for this selection in the last {rangeDays} days.</p>}
+        <details className="progress-data-details"><summary>View daily trend data</summary><div className="progress-data-table-wrap"><table><caption>{metricLabels[chartMetric]} by day</caption><thead><tr><th scope="col">Date</th><th scope="col">Value</th></tr></thead><tbody>{chartData.map(point=><tr key={point.date}><td>{point.date}</td><td>{point.value}{chartMetric === "sessions" ? "" : ` ${unit}`}</td></tr>)}</tbody></table></div></details>
       </div>}
 
       {rendersGroup("balance")&&<div className="progress-legacy-card progress-legacy-card--balance" style={cardStyle("balance")}>
