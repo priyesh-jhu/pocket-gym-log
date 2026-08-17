@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { todayISO, todaysDayKey } from "./dateUtils.js";
 import { MUSCLES, formGuide } from "./data/formGuide.js";
 import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
@@ -17,6 +16,7 @@ import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCust
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js";
+import { commitWeightMutation, createWeightCloudOperation, prepareWeightMutation } from "./weightRecords.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
@@ -26,6 +26,7 @@ import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import ProgressScreen from "./screens/ProgressScreen.jsx";
 import HistoryScreen from "./screens/HistoryScreen.jsx";
+import WeightScreen from "./screens/WeightScreen.jsx";
 
 const NAV_ITEMS = [
   { id: "log",      label: "Home",     Icon: Home },
@@ -192,125 +193,6 @@ function GuideSection({ icon, title, items, color }) {
   );
 }
 
-// ─── WEIGHT TAB (sub-component) ───────────────────────────────────────────────
-function WeightTab({ bodyweights, weightInput, setWeightInput, weightUnit, setWeightUnit, weightDate, setWeightDate, confirmDeleteWeight, setConfirmDeleteWeight, onAdd, onDelete }) {
-  const safe = (Array.isArray(bodyweights) ? bodyweights : [])
-    .filter(e => e && e.date && !isNaN(parseFloat(e.weight)))
-    .map(e => ({ id:e.id||("w_"+e.date), date:String(e.date), weight:parseFloat(e.weight), unit:e.unit==="kg"?"kg":"lb" }));
-
-  function toLb(e) { const w=parseFloat(e.weight); return isNaN(w)?0:(e.unit==="kg"?w*2.20462:w); }
-
-  let chartData = [];
-  try {
-    const sorted = [...safe].sort((a,b)=>a.date.localeCompare(b.date));
-    const conv = lb => weightUnit==="kg" ? lb/2.20462 : lb;
-    chartData = sorted.map(e => {
-      const ws = new Date(e.date); ws.setDate(ws.getDate()-6);
-      const startISO = ws.toISOString().slice(0,10);
-      const win = sorted.filter(p=>p.date>=startISO&&p.date<=e.date);
-      const avgLb = win.reduce((s,p)=>s+toLb(p),0) / (win.length||1);
-      return { date:e.date.slice(5), weight:Math.round(conv(toLb(e))*10)/10, trend:Math.round(conv(avgLb)*10)/10 };
-    });
-  } catch { /* Leave the chart empty when a stored date cannot be parsed. */ }
-
-  const sortedW = [...safe].sort((a,b)=>b.date.localeCompare(a.date));
-  const latest = sortedW[0];
-  const oldest = [...safe].sort((a,b)=>a.date.localeCompare(b.date))[0];
-  const netLb = latest&&oldest ? toLb(latest)-toLb(oldest) : 0;
-  const netDisp = weightUnit==="kg" ? netLb/2.20462 : netLb;
-  const latestDisp = latest ? (weightUnit==="kg" ? Math.round(toLb(latest)/2.20462*10)/10 : Math.round(toLb(latest)*10)/10) : 0;
-
-  return (
-    <div>
-      <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-        <div style={{fontSize:12,color:"#666",fontWeight:700,marginBottom:10}}>LOG BODYWEIGHT</div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          <input type="number" inputMode="decimal" placeholder="Weight" value={weightInput}
-            onChange={e=>setWeightInput(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter")onAdd();}}
-            style={{flex:"1 1 90px",background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"9px 11px",color:"#ECEAF4",fontSize:14,fontFamily:"inherit",minWidth:0}}/>
-          <select value={weightUnit} onChange={e=>setWeightUnit(e.target.value)}
-            style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"9px 8px",color:"#888",fontSize:13,fontFamily:"inherit",flexShrink:0}}>
-            <option value="lb">lb</option>
-            <option value="kg">kg</option>
-          </select>
-          <input type="date" value={weightDate} onChange={e=>setWeightDate(e.target.value)}
-            style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"9px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",flexShrink:0}}/>
-          <button onClick={onAdd}
-            style={{background:"#3B82F6",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
-            Add
-          </button>
-        </div>
-        <div style={{fontSize:10,color:"#555",marginTop:8}}>One entry per day — same date updates the existing entry.</div>
-      </div>
-
-      {safe.length === 0 ? (
-        <div style={{textAlign:"center",padding:"30px 20px",color:"#444",fontSize:13}}>
-          No weigh-ins yet. Add your first above to start the chart.
-        </div>
-      ) : (
-        <>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:16,background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px"}}>
-            <div>
-              <div style={{fontSize:22,fontWeight:900,color:"#3B82F6"}}>{latestDisp}<span style={{fontSize:12,color:"#666",fontWeight:600}}> {weightUnit}</span></div>
-              <div style={{fontSize:11,color:"#555"}}>Latest ({latest.date.slice(5)})</div>
-            </div>
-            <div>
-              <div style={{fontSize:22,fontWeight:900,color:netDisp<=0?"#22C55E":"#F59E0B"}}>{netDisp>=0?"+":""}{Math.round(netDisp*10)/10}</div>
-              <div style={{fontSize:11,color:"#555"}}>Net change</div>
-            </div>
-            <div>
-              <div style={{fontSize:22,fontWeight:900,color:"#9CA3AF"}}>{safe.length}</div>
-              <div style={{fontSize:11,color:"#555"}}>Weigh-ins</div>
-            </div>
-          </div>
-
-          {chartData.length >= 2 ? (
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"16px",marginBottom:16}}>
-              <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>Bodyweight Trend <span style={{fontSize:11,color:"#666",fontWeight:500}}>({weightUnit})</span></div>
-              <div style={{width:"100%",height:240}}>
-                <ResponsiveContainer>
-                  <LineChart data={chartData} margin={{top:5,right:10,left:-18,bottom:5}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1E2035"/>
-                    <XAxis dataKey="date" stroke="#444" tick={{fontSize:10}}/>
-                    <YAxis stroke="#444" tick={{fontSize:10}} domain={["dataMin - 2","dataMax + 2"]}/>
-                    <Tooltip contentStyle={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:8,fontSize:12}}/>
-                    <Legend wrapperStyle={{fontSize:11}}/>
-                    <Line type="monotone" dataKey="weight" name="Weigh-in" stroke="#3B82F6" strokeWidth={2} dot={{r:3}}/>
-                    <Line type="monotone" dataKey="trend" name="7-day avg" stroke="#F59E0B" strokeWidth={2} strokeDasharray="5 4" dot={false}/>
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          ) : (
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"20px 16px",marginBottom:16,textAlign:"center",color:"#666",fontSize:13}}>
-              Log at least 2 weigh-ins to see the trend chart.
-            </div>
-          )}
-
-          <div style={{fontSize:12,color:"#666",fontWeight:700,marginBottom:8}}>HISTORY</div>
-          {sortedW.map(e => (
-            <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#0F1018",border:"1px solid #16172A",borderRadius:10,padding:"10px 14px",marginBottom:6}}>
-              <div style={{display:"flex",alignItems:"baseline",gap:10}}>
-                <span style={{fontSize:15,fontWeight:800,color:"#ECEAF4"}}>{e.weight}<span style={{fontSize:11,color:"#666",fontWeight:600}}> {e.unit}</span></span>
-                <span style={{fontSize:12,color:"#555"}}>{e.date}</span>
-              </div>
-              {confirmDeleteWeight === e.id ? (
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <button onClick={()=>onDelete(e.id)} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"3px 9px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>
-                  <button onClick={()=>setConfirmDeleteWeight(null)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"3px 9px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                </div>
-              ) : (
-                <button onClick={()=>setConfirmDeleteWeight(e.id)} style={{background:"none",border:"none",color:"#444",fontSize:16,cursor:"pointer",fontFamily:"inherit",padding:"0 4px"}}>×</button>
-              )}
-            </div>
-          ))}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => { try { return storage.get(TAB_KEY)||"log"; } catch { return "log"; } });
@@ -351,10 +233,7 @@ export default function App() {
   const [restComplete, setRestComplete] = useState(false);
 
   const [bodyweights, setBodyweights] = useState([]);
-  const [weightInput, setWeightInput] = useState("");
-  const [weightUnit, setWeightUnit] = useState("lb");
-  const [weightDate, setWeightDate] = useState(() => todayISO());
-  const [confirmDeleteWeight, setConfirmDeleteWeight] = useState(null);
+  const [weightDisplayUnit, setWeightDisplayUnit] = useState("lb");
 
   const [guideExercise, setGuideExercise] = useState(null);
   const [plateFor, setPlateFor] = useState(null);
@@ -583,12 +462,6 @@ export default function App() {
   function writeWeights(updated) {
     if (!activeProfile) return false;
     return storage.set(weightKey(activeProfile), JSON.stringify(updated));
-  }
-
-  function persistWeights(updated, cloudOperation=null) {
-    const ok = writeWeights(updated);
-    if (ok) runCloud(cloudOperation);
-    return ok;
   }
 
   function switchDay(k) { setCurrentDay(k); setDraft(newSession(k, equipmentPrefs)); setDraftSavedAt(null); setConfirmDiscardDraft(false); setConfirmSwitch(null); }
@@ -873,17 +746,53 @@ export default function App() {
 
   function resetAll() { setSessions([]); persist([]); pushSnapshot({sessions:[],bodyweights,equipmentPrefs}, true); setConfirmReset(false); }
 
-  function addWeight() {
-    const w = parseFloat(weightInput);
-    if (isNaN(w)||w<=0) { setSaveStatus("error"); setStatusMsg("Enter a valid weight."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2000); return; }
-    const entry = { id:"w_"+Date.now(), date:weightDate, weight:w, unit:weightUnit };
-    const updated = [...bodyweights.filter(e=>e.date!==weightDate), entry].sort((a,b)=>a.date.localeCompare(b.date));
-    setBodyweights(updated); persistWeights(updated, firebaseUser ? ()=>saveCloudBodyweight(firebaseUser.uid, entry) : null);
-    setWeightInput("");
-    setSaveStatus("saved"); setStatusMsg("Weight logged ✓"); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
+  // Weight mutations: same two-stage seam as History — the device write is
+  // synchronous and authoritative; the cloud mirror (including an old-date
+  // delete when an edit moves dates) runs only after that write is confirmed,
+  // through the existing runCloud status path.
+  function saveWeighIn(draft) {
+    const editingId = draft?.id || null;
+    const prepared = prepareWeightMutation(bodyweights, draft, { editingId });
+    if (!prepared.ok) return { ok:false, error:prepared.error, field:prepared.field };
+    const committed = commitWeightMutation({
+      nextWeights: prepared.nextWeights,
+      writeLocal: writeWeights,
+      applyState: setBodyweights,
+    });
+    if (!committed.ok) {
+      setSaveStatus("error"); setStatusMsg("This weigh-in couldn’t be saved. Your previous entry is unchanged.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+      return { ok:false, error:"This weigh-in couldn’t be saved. Your previous entry is unchanged. Try again." };
+    }
+    if (firebaseUser) {
+      runCloud(createWeightCloudOperation({
+        deleteOld: prepared.cloud.kind === "move" ? () => deleteCloudBodyweight(firebaseUser.uid, prepared.cloud.oldDate) : null,
+        saveNew: () => saveCloudBodyweight(firebaseUser.uid, prepared.entry),
+      }));
+    }
+    setSaveStatus("saved"); setStatusMsg("Weigh-in saved ✓");
+    setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
+    return { ok:true };
   }
 
-  function deleteWeight(id) { const removed=bodyweights.find(e=>e.id===id); const u=bodyweights.filter(e=>e.id!==id); setBodyweights(u); persistWeights(u, firebaseUser&&removed ? ()=>deleteCloudBodyweight(firebaseUser.uid, removed.date) : null); setConfirmDeleteWeight(null); }
+  function deleteWeighIn(id) {
+    const target = bodyweights.find(item => item?.id === id);
+    if (!target) return { ok:false, error:"That weigh-in is no longer available on this device." };
+    const committed = commitWeightMutation({
+      nextWeights: bodyweights.filter(item => item?.id !== id),
+      writeLocal: writeWeights,
+      applyState: setBodyweights,
+    });
+    if (!committed.ok) {
+      setSaveStatus("error"); setStatusMsg("Could not delete that weigh-in. It is still saved on this device.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+      return { ok:false, error:"This weigh-in couldn’t be deleted. It’s still saved on this device. Try again." };
+    }
+    if (firebaseUser) runCloud(createWeightCloudOperation({ deleteOld: () => deleteCloudBodyweight(firebaseUser.uid, target.date) }));
+    setSaveStatus("saved"); setStatusMsg("Weigh-in deleted ✓");
+    setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
+    return { ok:true };
+  }
 
   function exportData() {
     const accountName = firebaseUser?.displayName || firebaseUser?.email || "guest";
@@ -917,8 +826,8 @@ export default function App() {
     // React state must never diverge from disk. Snapshot what's currently
     // persisted (the `sessions`/`bodyweights`/`equipmentPrefs` state variables
     // ARE the on-disk values — nothing else writes to storage except through
-    // persist()/persistWeights()/savePrefs()), attempt every write FIRST, and
-    // only update state once all three have actually landed.
+    // persist()/commitWeightMutation()/savePrefs()), attempt every write FIRST,
+    // and only update state once all three have actually landed.
     const prevSessions = sessions;
     const prevWeights = bodyweights;
     const prevPrefs = equipmentPrefs;
@@ -1381,15 +1290,19 @@ export default function App() {
           <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveProgressPreferences} onAddExercise={addDashboardExercise} onGoHome={() => switchTab("log")} loading={loading}/>
         )}
 
-        {/* ── WEIGHT TAB ── */}
-        {activeTab==="weight" && <WeightTab
-          bodyweights={bodyweights}
-          weightInput={weightInput} setWeightInput={setWeightInput}
-          weightUnit={weightUnit} setWeightUnit={setWeightUnit}
-          weightDate={weightDate} setWeightDate={setWeightDate}
-          confirmDeleteWeight={confirmDeleteWeight} setConfirmDeleteWeight={setConfirmDeleteWeight}
-          onAdd={addWeight} onDelete={deleteWeight}
-        />}
+        {/* ── Weight destination ── */}
+        {activeTab==="weight" && (
+          <WeightScreen
+            bodyweights={bodyweights}
+            displayUnit={weightDisplayUnit}
+            onChangeDisplayUnit={setWeightDisplayUnit}
+            loading={loading}
+            loadError={localLoadError?.bodyweights || null}
+            onRetryLoad={retryLocalProfileLoad}
+            onSaveWeighIn={saveWeighIn}
+            onDeleteWeighIn={deleteWeighIn}
+          />
+        )}
 
         {/* ── SETTINGS TAB ── */}
         {activeTab === "settings" && (
