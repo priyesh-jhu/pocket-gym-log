@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 2
 current_phase_name: History and Weight Screens
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-08-17T15:11:20.330Z"
+stopped_at: Phase 2 UI-SPEC approved
+last_updated: "2026-08-17T15:16:33.684Z"
 last_activity: 2026-08-14
 last_activity_desc: Completed and human-approved the resilient, tokenized Progress destination.
 progress:
@@ -96,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T15:11:20.322Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-history-and-weight-screens/02-CONTEXT.md
+Last session: 2026-08-17T15:16:33.675Z
+Stopped at: Phase 2 UI-SPEC approved
+Resume file: .planning/phases/02-history-and-weight-screens/02-UI-SPEC.md
