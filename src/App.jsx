@@ -1,32 +1,32 @@
 import { useState, useEffect, useRef } from "react";
 import { todayISO, todaysDayKey } from "./dateUtils.js";
-import { MUSCLES, formGuide } from "./data/formGuide.js";
-import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
-import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
+import { dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
+import { emptySets, hasEnteredData, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
-import { announceRestComplete, getRestTimerSeconds, REST_TIMER_OPTIONS, setRestTimerSeconds } from "./restTimer.js";
+import { announceRestComplete, getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
-import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
+import { addGoal, getGoals, normalizeReadiness } from "./userFeatures.js";
 import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js";
 import { commitWeightMutation, createWeightCloudOperation, prepareWeightMutation } from "./weightRecords.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
-import { AppBar, Button, NavBar, Sheet } from "./components/index.js";
+import { BarChart3, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
+import { AppBar, Button, NavBar } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import ProgressScreen from "./screens/ProgressScreen.jsx";
 import HistoryScreen from "./screens/HistoryScreen.jsx";
 import WeightScreen from "./screens/WeightScreen.jsx";
+import SessionScreen from "./screens/SessionScreen.jsx";
 
 const NAV_ITEMS = [
   { id: "log",      label: "Home",     Icon: Home },
@@ -75,25 +75,6 @@ function firebaseErrorMessage(error, fallback) {
   return messages[error?.code] || (error?.message ? `${fallback} (${error.message})` : fallback);
 }
 
-// ─── PLATE CALCULATOR ─────────────────────────────────────────────────────────
-const PLATE_SETS = {
-  lb: { bar:45, plates:[45,35,25,10,5,2.5] },
-  kg: { bar:20, plates:[25,20,15,10,5,2.5,1.25] },
-};
-
-function calcPlates(total, unit) {
-  const { bar, plates } = PLATE_SETS[unit] || PLATE_SETS.lb;
-  if (isNaN(total) || total <= bar) return { perSide:[], leftover:0, bar };
-  let rem = (total - bar) / 2;
-  const result = [];
-  for (const p of plates) {
-    let count = 0;
-    while (rem + 1e-9 >= p) { rem -= p; count++; }
-    if (count > 0) result.push({ plate:p, count });
-  }
-  return { perSide:result, leftover:Math.round(rem * 100) / 100, bar };
-}
-
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function downloadJSON(data, filename) {
   try {
@@ -118,80 +99,6 @@ function buildPRMap(sessions) {
 }
 
 function fmtRest(sec) { return Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0"); }
-
-// ─── BODY MAP ─────────────────────────────────────────────────────────────────
-function BodyMap({ view="front", primary=[], secondary=[], color="#3B82F6" }) {
-  const fill = id => primary.includes(id) ? color : secondary.includes(id) ? color+"66" : "#1C1D2A";
-  const strk = id => (primary.includes(id)||secondary.includes(id)) ? color : "#23243A";
-
-  if (view === "back") return (
-    <svg viewBox="0 0 120 220" style={{width:"100%",height:"100%",maxHeight:280}}>
-      <circle cx="60" cy="20" r="12" fill="#161826" stroke="#23243A" strokeWidth="1.5"/>
-      <rect x="54" y="31" width="12" height="8" fill="#161826" stroke="#23243A" strokeWidth="1"/>
-      <path d="M50 40 q10 -4 20 0 q-2 9 -10 11 q-8 -2 -10 -11 z" fill={fill("traps")} stroke={strk("traps")} strokeWidth="1.2"/>
-      <path d="M40 44 q-10 2 -11 14 q9 -3 14 -5 z" fill={fill("rearDelts")} stroke={strk("rearDelts")} strokeWidth="1"/>
-      <path d="M80 44 q10 2 11 14 q-9 -3 -14 -5 z" fill={fill("rearDelts")} stroke={strk("rearDelts")} strokeWidth="1"/>
-      <path d="M47 52 q13 -3 26 0 q1 9 -2 16 q-11 3 -22 0 q-3 -7 -2 -16 z" fill={fill("midBack")} stroke={strk("midBack")} strokeWidth="1.1"/>
-      <path d="M44 56 q-4 14 1 24 q6 -2 9 -7 q-2 -10 -2 -19 q-5 0 -8 2 z" fill={fill("lats")} stroke={strk("lats")} strokeWidth="1"/>
-      <path d="M76 56 q4 14 -1 24 q-6 -2 -9 -7 q2 -10 2 -19 q5 0 8 2 z" fill={fill("lats")} stroke={strk("lats")} strokeWidth="1"/>
-      <path d="M28 60 q-5 9 -4 21 q5 -1 8 -3 q1 -10 1 -19 z" fill={fill("triceps")} stroke={strk("triceps")} strokeWidth="1"/>
-      <path d="M92 60 q5 9 4 21 q-5 -1 -8 -3 q-1 -10 -1 -19 z" fill={fill("triceps")} stroke={strk("triceps")} strokeWidth="1"/>
-      <path d="M22 83 q-2 14 1 25 q5 -1 7 -3 q-1 -12 -1 -24 q-4 0 -7 2 z" fill={fill("forearms")} stroke={strk("forearms")} strokeWidth="1"/>
-      <path d="M98 83 q2 14 -1 25 q-5 -1 -7 -3 q1 -12 1 -24 q4 0 7 2 z" fill={fill("forearms")} stroke={strk("forearms")} strokeWidth="1"/>
-      <path d="M50 70 q10 -2 20 0 q1 10 -1 18 q-9 2 -18 0 q-2 -8 -1 -18 z" fill={fill("lowerBack")} stroke={strk("lowerBack")} strokeWidth="1.1"/>
-      <path d="M49 90 q11 -3 22 0 q2 9 -1 16 q-10 3 -20 0 q-3 -7 -1 -16 z" fill={fill("glutes")} stroke={strk("glutes")} strokeWidth="1.2"/>
-      <path d="M49 108 q-3 20 0 36 q6 2 9 0 q1 -18 1 -36 q-5 -2 -10 0 z" fill={fill("hamstrings")} stroke={strk("hamstrings")} strokeWidth="1"/>
-      <path d="M71 108 q3 20 0 36 q-6 2 -9 0 q-1 -18 -1 -36 q5 -2 10 0 z" fill={fill("hamstrings")} stroke={strk("hamstrings")} strokeWidth="1"/>
-      <path d="M50 146 q-3 26 0 50 q5 2 8 0 q2 -26 1 -50 q-5 -2 -9 0 z" fill={fill("calves")} stroke={strk("calves")} strokeWidth="1"/>
-      <path d="M70 146 q3 26 0 50 q-5 2 -8 0 q-2 -26 -1 -50 q5 -2 9 0 z" fill={fill("calves")} stroke={strk("calves")} strokeWidth="1"/>
-    </svg>
-  );
-
-  return (
-    <svg viewBox="0 0 120 220" style={{width:"100%",height:"100%",maxHeight:280}}>
-      <circle cx="60" cy="20" r="12" fill="#161826" stroke="#23243A" strokeWidth="1.5"/>
-      <rect x="54" y="31" width="12" height="8" fill="#161826" stroke="#23243A" strokeWidth="1"/>
-      <path d="M40 44 q-10 2 -11 14 q8 -4 13 -4 z" fill={fill("sideDelts")} stroke={strk("sideDelts")} strokeWidth="1"/>
-      <path d="M80 44 q10 2 11 14 q-8 -4 -13 -4 z" fill={fill("sideDelts")} stroke={strk("sideDelts")} strokeWidth="1"/>
-      <path d="M41 43 q6 -3 12 0 l-1 11 q-7 -2 -12 1 z" fill={fill("frontDelts")} stroke={strk("frontDelts")} strokeWidth="1"/>
-      <path d="M79 43 q-6 -3 -12 0 l1 11 q7 -2 12 1 z" fill={fill("frontDelts")} stroke={strk("frontDelts")} strokeWidth="1"/>
-      <path d="M48 47 q-7 1 -8 12 q0 6 7 8 q6 1 12 -1 l0 -19 q-6 -1 -11 0 z" fill={fill("chest")} stroke={strk("chest")} strokeWidth="1.2"/>
-      <path d="M72 47 q7 1 8 12 q0 6 -7 8 q-6 1 -12 -1 l0 -19 q6 -1 11 0 z" fill={fill("chest")} stroke={strk("chest")} strokeWidth="1.2"/>
-      <path d="M30 60 q-5 8 -4 20 q5 -1 8 -3 q1 -10 1 -18 z" fill={fill("biceps")} stroke={strk("biceps")} strokeWidth="1"/>
-      <path d="M90 60 q5 8 4 20 q-5 -1 -8 -3 q-1 -10 -1 -18 z" fill={fill("biceps")} stroke={strk("biceps")} strokeWidth="1"/>
-      <path d="M27 61 q-5 9 -4 20 q-4 -2 -5 -6 q0 -9 4 -16 z" fill={fill("triceps")} stroke={strk("triceps")} strokeWidth="1"/>
-      <path d="M93 61 q5 9 4 20 q4 -2 5 -6 q0 -9 -4 -16 z" fill={fill("triceps")} stroke={strk("triceps")} strokeWidth="1"/>
-      <path d="M22 82 q-2 14 1 26 q5 -1 7 -3 q-1 -13 -1 -25 q-4 0 -7 2 z" fill={fill("forearms")} stroke={strk("forearms")} strokeWidth="1"/>
-      <path d="M98 82 q2 14 -1 26 q-5 -1 -7 -3 q1 -13 1 -25 q4 0 7 2 z" fill={fill("forearms")} stroke={strk("forearms")} strokeWidth="1"/>
-      <path d="M50 68 q10 -2 20 0 q1 16 -2 30 q-8 3 -16 0 q-3 -14 -2 -30 z" fill={fill("abs")} stroke={strk("abs")} strokeWidth="1.2"/>
-      <path d="M47 70 q-3 12 -1 24 q4 -1 6 -3 q-1 -11 -1 -21 z" fill={fill("obliques")} stroke={strk("obliques")} strokeWidth="0.9"/>
-      <path d="M73 70 q3 12 1 24 q-4 -1 -6 -3 q1 -11 1 -21 z" fill={fill("obliques")} stroke={strk("obliques")} strokeWidth="0.9"/>
-      <path d="M48 100 q-4 22 0 44 q6 2 10 0 q2 -22 1 -44 q-6 -2 -11 0 z" fill={fill("quads")} stroke={strk("quads")} strokeWidth="1"/>
-      <path d="M72 100 q4 22 0 44 q-6 2 -10 0 q-2 -22 -1 -44 q6 -2 11 0 z" fill={fill("quads")} stroke={strk("quads")} strokeWidth="1"/>
-      <path d="M58 100 q4 18 0 38 q-3 1 -5 0 q-3 -20 0 -38 z" fill={fill("adductors")} stroke={strk("adductors")} strokeWidth="0.9"/>
-      <path d="M62 100 q-4 18 0 38 q3 1 5 0 q3 -20 0 -38 z" fill={fill("adductors")} stroke={strk("adductors")} strokeWidth="0.9"/>
-      <path d="M50 146 q-3 30 0 60 q5 2 8 0 q2 -30 1 -60 z" fill={fill("calves")} stroke={strk("calves")} strokeWidth="1"/>
-      <path d="M70 146 q3 30 0 60 q-5 2 -8 0 q-2 -30 -1 -60 z" fill={fill("calves")} stroke={strk("calves")} strokeWidth="1"/>
-    </svg>
-  );
-}
-
-// ─── GUIDE SECTION (sub-component) ────────────────────────────────────────────
-function GuideSection({ icon, title, items, color }) {
-  return (
-    <div style={{marginBottom:14}}>
-      <div style={{fontSize:11,color,fontWeight:800,letterSpacing:"0.06em",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
-        <span>{icon}</span>{title}
-      </div>
-      {items.map((c,i) => (
-        <div key={i} style={{display:"flex",gap:9,marginBottom:7,alignItems:"flex-start"}}>
-          <span style={{flexShrink:0,width:17,height:17,borderRadius:"50%",background:color+"22",color,fontSize:9,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",marginTop:2}}>{i+1}</span>
-          <span style={{fontSize:12.5,color:"#C4C2D4",lineHeight:1.5}}>{c}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
@@ -1018,260 +925,29 @@ export default function App() {
 
         {/* ── ACTIVE SESSION ── */}
         {activeTab==="log" && sessionActive && (
-          <div>
-            {confirmExitSession && (
-              <div className="session-exit-confirm" role="alertdialog" aria-label="Exit workout">
-                <div><strong>Leave this workout?</strong><span>Your draft stays saved on this device.</span></div>
-                <Button variant="text" onClick={leaveSession}>Leave</Button>
-                <Button variant="text" onClick={() => {
-                  window.history.pushState({ workoutSession: true }, "");
-                  sessionHistoryRef.current = true;
-                  setConfirmExitSession(false);
-                }}>Keep training</Button>
-              </div>
-            )}
-            <div className="session-toolbar">
-              <Button variant="text" icon={<CalendarDays size={17} />} onClick={() => setSessionSheet("details")}>Workout details</Button>
-              <Button variant="text" icon={<SlidersHorizontal size={17} />} onClick={() => setSessionSheet("options")}>Session options</Button>
-            </div>
-            <div className="day-switcher" style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-              {dayOrder.map(k => {
-                const t=dayTemplates[k]; const active=currentDay===k;
-                return <button key={k} onClick={()=>switchDay(k)} style={{flex:"0 0 auto",background:active?t.color:"#13141F",color:active?"#fff":"#666",border:"1px solid "+(active?t.color:"#1E2035"),borderRadius:10,padding:"8px 14px",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",transition:"all 0.2s"}}>
-                  <div style={{fontSize:9,opacity:0.8,marginBottom:1}}>{k}</div>{t.emoji} {t.label}
-                </button>;
-              })}
-            </div>
-
-            {draftHasContent(draft)&&(
-              <div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.22)",borderRadius:10,padding:"9px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                <span style={{fontSize:11,color:"#60A5FA",fontWeight:700,flex:1}}>
-                  {draftSavedAt ? "Draft saved on this device · "+new Date(draftSavedAt).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}) : "Saving draft…"}
-                </span>
-                {confirmDiscardDraft ? (
-                  <span style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:10,color:"#9CA3AF"}}>Discard entered workout?</span>
-                    <button onClick={discardDraft} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"4px 9px",color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Discard</button>
-                    <button onClick={()=>setConfirmDiscardDraft(false)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 9px",color:"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                  </span>
-                ) : (
-                  <button onClick={()=>setConfirmDiscardDraft(true)} style={{background:"none",border:"none",color:"#777",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>Discard draft</button>
-                )}
-              </div>
-            )}
-
-            <div className="session-legacy-details" aria-hidden="true">
-            {/* Coach note */}
-            <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"25",borderRadius:12,padding:"12px 16px",marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-                <div>
-                  <div style={{fontSize:14,fontWeight:800,color:dayMeta.color}}>{dayMeta.emoji} {dayMeta.label}</div>
-                  <div style={{fontSize:11,color:"#777",marginTop:2}}>{dayMeta.focus}</div>
-                </div>
-                <button onClick={()=>setShowCoach(v=>!v)} style={{background:"none",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 10px",color:"#777",fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>{showCoach?"Hide":"Coach"}</button>
-              </div>
-              {showCoach&&<div style={{marginTop:10,fontSize:12,color:"#9CA3AF",lineHeight:1.5,borderTop:"1px solid #1A1A28",paddingTop:10}}>
-                <div>📋 {dayMeta.coachNote}</div>
-                <div style={{marginTop:6,color:"#666"}}>🏃 Cardio: {dayMeta.cardio}</div>
-              </div>}
-            </div>
-
-            {/* Date */}
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:12,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-              <label style={{fontSize:12,color:"#666",fontWeight:600}}>Date</label>
-              <input type="date" value={draft.date} onChange={e=>setDraft(p=>({...p,date:e.target.value}))} style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"6px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit"}}/>
-            </div>
-
-            {/* Rest timer controls are always visible during a workout. */}
-            <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"30",borderRadius:12,padding:"11px 14px",marginBottom:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-              <div>
-                <div style={{fontSize:12,fontWeight:800,color:dayMeta.color}}>⏱ Rest timer</div>
-                <div style={{fontSize:10,color:"#666",marginTop:2}}>{restRunning?`${fmtRest(Math.max(0,restTarget-restSeconds))} remaining`:restComplete?"Rest complete":"Starts automatically when you check off a set"}</div>
-              </div>
-              <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                {REST_TIMER_OPTIONS.map(value=><button key={value} onClick={()=>startRestTimer(value)} aria-label={`Start a ${value} second rest timer`} style={{background:restTarget===value&&restRunning?dayMeta.color:"#161723",border:"1px solid "+(restTarget===value&&restRunning?dayMeta.color:"#2A2A3A"),borderRadius:7,padding:"6px 9px",color:restTarget===value&&restRunning?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{value}s</button>)}
-                {(restRunning||restComplete)&&<button onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",padding:"0 3px"}} aria-label="Stop rest timer">×</button>}
-              </div>
-            </div>
-
-            {/* Warm-up */}
-            {dayMeta.warmup&&(
-              <div style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:15}}>🤸</span>
-                    <div><div style={{fontSize:13,fontWeight:800,color:dayMeta.color}}>Warm-Up</div><div style={{fontSize:10,color:"#666",marginTop:1}}>~5-8 min · do this before set 1</div></div>
-                  </div>
-                  <button onClick={()=>setShowWarmup(v=>!v)} style={{background:"none",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 10px",color:"#777",fontSize:11,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>{showWarmup?"Hide":"Show"}</button>
-                </div>
-                {showWarmup&&<div style={{marginTop:12,borderTop:"1px solid #1A1A28",paddingTop:12}}>
-                  <div style={{fontSize:12,color:"#9CA3AF",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
-                    <span style={{flexShrink:0}}>🔥</span><span><b style={{color:"#CFCDE0"}}>General:</b> {dayMeta.warmup.general}</span>
-                  </div>
-                  {dayMeta.warmup.drills.map((d,i)=>(
-                    <div key={i} style={{display:"flex",gap:10,marginBottom:9,alignItems:"flex-start"}}>
-                      <span style={{flexShrink:0,width:18,height:18,borderRadius:5,background:dayMeta.color+"22",color:dayMeta.color,fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>{i+1}</span>
-                      <div style={{fontSize:12,lineHeight:1.45}}><span style={{fontWeight:700,color:"#CFCDE0"}}>{d.name}</span><span style={{color:"#777"}}> — {d.detail}</span></div>
-                    </div>
-                  ))}
-                </div>}
-              </div>
-            )}
-            </div>
-
-            {/* Exercises */}
-            <div className="session-exercise-nav" aria-label="Exercise navigation">
-              <Button variant="text" aria-label="Previous exercise" disabled={activeExercise === 0} onClick={() => setActiveExercise(index => Math.max(0, index - 1))}><ChevronLeft size={20} /></Button>
-              <div><strong>Exercise {activeExercise + 1} of {draft.exercises.length}</strong><span>{draftFilled} completed set{draftFilled === 1 ? "" : "s"}</span></div>
-              <Button variant="text" aria-label="Next exercise" disabled={activeExercise === draft.exercises.length - 1} onClick={() => setActiveExercise(index => Math.min(draft.exercises.length - 1, index + 1))}><ChevronRight size={20} /></Button>
-            </div>
-            {draft.exercises.map((ex,ei)=>{
-              const family=exerciseForVariantName(ex.name);
-              const planEx=family?variantFor(family,ex.equipment):{name:ex.name,equipment:"custom",target:ex.target||"3 x 8-12",tip:ex.tip||"Custom exercise"};
-              const tracking=trackingForExercise({...ex,target:planEx.target});
-              const trackingCopy=trackingLabels(tracking);
-              const variants=family?family.variants:[planEx];
-              const pr=prMap[ex.name];
-              const last=getLastTime(ex.name);
-              const progression=last&&getProgressionRecommendation(last.sets,planEx.target,progressionIncrements);
-              return (
-                <div className={`workout-card ${ei === activeExercise ? "is-active" : "is-collapsed"}`} key={ei} style={{background:"#0F1018",border:"1px solid "+dayMeta.color+"20",borderRadius:14,padding:"14px 16px",marginBottom:10}}>
-                  <div className="exercise-head" style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4,gap:8}}>
-                    <button onClick={()=>formGuide[ex.name]&&setGuideExercise(ex.name)} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:0,cursor:formGuide[ex.name]?"pointer":"default",fontFamily:"inherit",textAlign:"left"}}>
-                      <span style={{fontWeight:700,fontSize:14,color:dayMeta.color}}>{ex.name}</span>
-                      {formGuide[ex.name]&&<span style={{fontSize:9,color:dayMeta.color,border:"1px solid "+dayMeta.color+"55",borderRadius:5,padding:"1px 5px",fontWeight:700,flexShrink:0}}>ⓘ form</span>}
-                    </button>
-                    <div className="exercise-actions" style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}><button className="session-open-exercise" onClick={()=>setActiveExercise(ei)}>{ex.sets.filter(set => set.done).length}/{ex.sets.length} sets{ei === activeExercise ? "" : " · Open"}</button><div style={{fontSize:10,color:"#444",background:"#161723",borderRadius:6,padding:"2px 8px"}}>Target: {planEx.target}</div><span title={trackingCopy.help} style={{fontSize:8,color:tracking===TRACKING_TYPES.WEIGHTED?"#777":"#60A5FA",border:"1px solid #2A2A3A",borderRadius:5,padding:"2px 5px",textTransform:"uppercase"}}>{tracking}</span><button onClick={()=>moveDraftExercise(ei,-1)} disabled={ei===0} title="Move up" style={{background:"none",border:"none",color:ei===0?"#333":"#777",cursor:ei===0?"default":"pointer"}}>↑</button><button onClick={()=>moveDraftExercise(ei,1)} disabled={ei===draft.exercises.length-1} title="Move down" style={{background:"none",border:"none",color:ei===draft.exercises.length-1?"#333":"#777",cursor:ei===draft.exercises.length-1?"default":"pointer"}}>↓</button><button onClick={()=>removeDraftExercise(ei)} disabled={draft.exercises.length<=1} title="Remove exercise" style={{background:"none",border:"none",color:draft.exercises.length<=1?"#2A2A35":"#666",fontSize:15,cursor:draft.exercises.length<=1?"default":"pointer",padding:0}}>×</button></div>
-                  </div>
-
-                  {variants.length>1&&(
-                    <div style={{display:"flex",gap:4,marginBottom:8}}>
-                      {variants.map(v=>{
-                        const on=ex.equipment===v.equipment;
-                        return (
-                          <button key={v.equipment} onClick={()=>requestEquipmentSwitch(ei,v.equipment)}
-                            style={{background:on?dayMeta.color:"#161723",border:"1px solid "+(on?dayMeta.color:"#1E2035"),borderRadius:7,padding:"3px 11px",color:on?"#fff":"#777",fontSize:10,fontWeight:700,cursor:on?"default":"pointer",fontFamily:"inherit"}}>
-                            {v.equipment==="free"?"Free":"Machine"}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {confirmSwitch&&confirmSwitch.ei===ei&&(
-                    <div style={{background:"#0C0D16",border:"1px solid "+dayMeta.color+"40",borderRadius:8,padding:"9px 12px",marginBottom:8}}>
-                      <div style={{fontSize:11,color:"#9CA3AF",lineHeight:1.45,marginBottom:8}}>
-                        Switch to {confirmSwitch.equipment==="machine"?"the machine":"free weights"}? The {countEnteredSets(ex.sets)} set{countEnteredSets(ex.sets)!==1?"s":""} you've entered will be cleared.
-                      </div>
-                      <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>applyEquipmentSwitch(ei,confirmSwitch.equipment)}
-                          style={{background:dayMeta.color,border:"none",borderRadius:6,padding:"4px 12px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Switch</button>
-                        <button onClick={()=>setConfirmSwitch(null)}
-                          style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 12px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {pr&&<div style={{fontSize:10,color:"#FBBF24",marginBottom:6,fontWeight:600}}>🏆 Best: {pr.weight}{ex.sets[0]?.unit||"lb"} × {pr.reps} ({pr.date})</div>}
-
-                  {last&&(
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
-                      <span style={{fontSize:10,color:"#666",fontWeight:600,flexShrink:0}}>↩ Last ({last.date.slice(5)}):</span>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1,minWidth:0}}>
-                        {last.sets.map((s,j)=><span key={j} style={{fontSize:10,color:"#9CA3AF",background:"#161723",borderRadius:5,padding:"2px 7px"}}>{s.weight?`${s.weight}${s.unit} × `:""}{s.reps||"0"}{tracking===TRACKING_TYPES.TIMED?" sec":tracking===TRACKING_TYPES.DISTANCE?" m":" reps"}</span>)}
-                      </div>
-                      <button onClick={()=>copyLastTime(ei,ex.name)} style={{background:"rgba(59,130,246,0.1)",border:"1px solid "+dayMeta.color+"40",borderRadius:6,padding:"3px 9px",color:dayMeta.color,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Copy last</button>
-                    </div>
-                  )}
-
-                  {progression&&(
-                    <div style={{background:progression.action==="increase"?"rgba(52,211,153,0.08)":progression.action==="reduce"?"rgba(251,191,36,0.08)":"rgba(59,130,246,0.08)",border:"1px solid "+(progression.action==="increase"?"#34D39935":progression.action==="reduce"?"#FBBF2435":"#3B82F635"),borderRadius:8,padding:"8px 10px",marginBottom:10,fontSize:10,lineHeight:1.45,color:"#9CA3AF"}}>
-                      <span style={{fontWeight:800,color:progression.action==="increase"?"#34D399":progression.action==="reduce"?"#FBBF24":"#60A5FA"}}>↗ {progression.label}: </span>{progression.message}
-                    </div>
-                  )}
-
-                  {ex.sets.map((set,si)=>{
-                    const isPR=pr&&parseFloat(set.weight)>pr.weight;
-                    const pKey=ei+"-"+si;
-                    const pOpen=plateFor===pKey;
-                    const pData=pOpen?calcPlates(parseFloat(set.weight),set.unit):null;
-                    return (
-                      <div key={si} style={{position:"relative",marginBottom:8}}>
-                        <div className="set-row" style={{display:"flex",gap:8,alignItems:"center"}}>
-                          <button onClick={()=>toggleSetDone(ei,si)} aria-label={`${set.done?"Mark incomplete":"Complete"} set ${si+1}${set.done?"":" and start rest timer"}`} title={set.done?"Mark this set incomplete":"Mark this set done and start the rest timer"} style={{width:58,height:28,flexShrink:0,borderRadius:6,border:"1px solid "+(set.done?dayMeta.color:"#2A2A3A"),background:set.done?dayMeta.color:"#161723",color:set.done?"#fff":"#9CA3AF",fontSize:10,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>
-                            {set.done?"✓ Done":`Set ${si+1}`}
-                          </button>
-                          <input type="number" inputMode="decimal" placeholder={trackingCopy.weight+(tracking===TRACKING_TYPES.WEIGHTED?"":" (optional)")} value={set.weight} onChange={e=>updateSet(ei,si,"weight",e.target.value)}
-                            style={{flex:1,background:"#161723",border:"1px solid "+(isPR?"#FBBF24":"#1E2035"),borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
-                          <button onClick={()=>setPlateFor(pOpen?null:pKey)} disabled={!parseFloat(set.weight)} title="Plate calculator"
-                            style={{background:pOpen?dayMeta.color:"#161723",border:"1px solid "+(pOpen?dayMeta.color:"#1E2035"),borderRadius:8,padding:"8px 9px",color:pOpen?"#fff":(parseFloat(set.weight)?"#9CA3AF":"#3A3A45"),fontSize:13,cursor:parseFloat(set.weight)?"pointer":"default",fontFamily:"inherit",flexShrink:0}}>🏋</button>
-                          <select value={set.unit} onChange={e=>updateSet(ei,si,"unit",e.target.value)}
-                            style={{background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 6px",color:"#888",fontSize:12,fontFamily:"inherit",flexShrink:0}}>
-                            <option value="lb">lb</option><option value="kg">kg</option>
-                          </select>
-                          <input type="number" inputMode="numeric" placeholder={trackingCopy.measure} value={set.reps} onChange={e=>updateSet(ei,si,"reps",e.target.value)}
-                            style={{flex:1,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",minWidth:0}}/>
-                          <button onClick={()=>removeSet(ei,si)} disabled={ex.sets.length<=1}
-                            style={{background:"none",border:"none",color:ex.sets.length<=1?"#2A2A35":"#F87171",fontSize:16,cursor:ex.sets.length<=1?"default":"pointer",flexShrink:0,padding:"0 4px",fontFamily:"inherit"}}>×</button>
-                        </div>
-                        {pOpen&&pData&&(
-                          <div style={{background:"#0C0D16",border:"1px solid "+dayMeta.color+"30",borderRadius:8,padding:"8px 12px",marginTop:6,fontSize:11}}>
-                            {pData.perSide.length===0
-                              ? <span style={{color:"#888"}}>At or below bar weight ({pData.bar}{set.unit}) — no plates needed.</span>
-                              : <div>
-                                  <span style={{color:"#666",fontWeight:700}}>Per side ({pData.bar}{set.unit} bar): </span>
-                                  {pData.perSide.map((p,k)=><span key={k} style={{color:dayMeta.color,fontWeight:700}}>{p.count}×{p.plate}{k<pData.perSide.length-1?"  ·  ":""}</span>)}
-                                  {pData.leftover>0&&<span style={{color:"#F87171",marginLeft:6}}>(+{pData.leftover}{set.unit} unmatched)</span>}
-                                </div>
-                            }
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <button onClick={()=>addSet(ei)} style={{background:"rgba(255,255,255,0.03)",border:"1px dashed #2A2A3A",borderRadius:8,padding:"6px 12px",color:"#666",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",width:"100%",marginTop:2}}>+ Add Set</button>
-                  <div style={{marginTop:8,fontSize:11,color:"#555",lineHeight:1.5}}>💡 {planEx.tip}</div>
-                </div>
-              );
-            })}
-
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
-              <div style={{fontSize:12,color:"#666",fontWeight:800,marginBottom:10}}>CUSTOMIZE WORKOUT</div>
-              {customExercises.length>0&&<div style={{display:"flex",gap:7,marginBottom:10}}>
-                <select value={customExerciseId} onChange={e=>setCustomExerciseId(e.target.value)} style={{flex:1,minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}}><option value="">Add a saved exercise…</option>{customExercises.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
-                <button onClick={addSavedCustomExercise} disabled={!customExerciseId} style={{background:customExerciseId?"#3B82F6":"#1E2035",border:"none",borderRadius:8,padding:"8px 13px",color:customExerciseId?"#fff":"#555",fontSize:11,fontWeight:700,cursor:customExerciseId?"pointer":"default",fontFamily:"inherit"}}>Add</button>
-              </div>}
-              <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.5fr) minmax(95px,0.8fr) auto",gap:7,marginBottom:12}}>
-                <input value={newExerciseName} onChange={e=>setNewExerciseName(e.target.value)} placeholder="New exercise name" style={{minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} />
-                <input value={newExerciseTarget} onChange={e=>setNewExerciseTarget(e.target.value)} placeholder="3 x 8-12" style={{minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} />
-                <button onClick={createAndAddExercise} style={{background:"#1E2035",border:"1px solid #2A2A3A",borderRadius:8,padding:"8px 11px",color:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Create + add</button>
-              </div>
-              <div style={{borderTop:"1px solid #1A1A28",paddingTop:11}}>
-                <div style={{display:"flex",gap:7,marginBottom:workoutTemplates.length?9:0}}><input value={templateName} onChange={e=>setTemplateName(e.target.value)} placeholder="Template name (e.g. Quick Push)" style={{flex:1,minWidth:0,background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 9px",color:"#ECEAF4",fontSize:12,fontFamily:"inherit"}} /><button onClick={storeWorkoutTemplate} style={{background:"#1E2035",border:"1px solid #2A2A3A",borderRadius:8,padding:"8px 11px",color:"#9CA3AF",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Save current template</button></div>
-                {workoutTemplates.map(template=><div key={template.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"7px 0",borderTop:"1px solid #16172A"}}><div><div style={{fontSize:11,fontWeight:700}}>{template.name}</div><div style={{fontSize:9,color:"#555"}}>{template.exercises.length} exercise{template.exercises.length!==1?"s":""}</div></div>{pendingTemplate?.id===template.id?<div style={{display:"flex",gap:5,alignItems:"center"}}><span style={{fontSize:9,color:"#FBBF24"}}>Replace current draft?</span><button onClick={()=>applySavedWorkoutTemplate(template)} style={{background:"#3B82F6",border:"none",borderRadius:6,padding:"4px 8px",color:"#fff",fontSize:9,fontWeight:700,cursor:"pointer"}}>Apply</button><button onClick={()=>setPendingTemplate(null)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#777",fontSize:9,cursor:"pointer"}}>Cancel</button></div>:<button onClick={()=>draftHasContent(draft)?setPendingTemplate(template):applySavedWorkoutTemplate(template)} style={{background:"none",border:"1px solid #2A2A3A",borderRadius:6,padding:"4px 9px",color:"#777",fontSize:9,fontWeight:700,cursor:"pointer"}}>Use template</button>}</div>)}
-              </div>
-              {workoutToolsMsg&&<div style={{fontSize:10,color:workoutToolsMsg.includes("exists")||workoutToolsMsg.startsWith("Enter")?"#F87171":"#4ADE80",marginTop:8}}>{workoutToolsMsg}</div>}
-            </div>
-
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}><div><div style={{fontSize:12,color:"#9CA3AF",fontWeight:800}}>READINESS CHECK-IN</div><div style={{fontSize:9,color:"#555"}}>Optional · saved with this workout</div></div><div style={{fontSize:16,fontWeight:900,color:readinessScore(readiness)>=70?"#22C55E":readinessScore(readiness)>=50?"#F59E0B":"#F87171"}}>{readinessScore(readiness)}%</div></div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7}}>{[["energy","Energy"],["sleep","Sleep"],["soreness","Soreness"]].map(([key,label])=><label key={key} style={{fontSize:9,color:"#666"}}>{label}<select value={readiness[key]} onChange={event=>setReadiness(value=>({...value,[key]:Number(event.target.value)}))} style={{display:"block",width:"100%",marginTop:3,background:"#161723",border:"1px solid #2A2A3A",borderRadius:6,padding:"5px",color:"#9CA3AF",fontSize:10}}>{[1,2,3,4,5].map(value=><option key={value} value={value}>{value}/5</option>)}</select></label>)}</div>
-              <label style={{display:"flex",gap:7,alignItems:"center",fontSize:10,color:readiness.pain?"#F87171":"#666",marginTop:9}}><input type="checkbox" checked={readiness.pain} onChange={event=>setReadiness(value=>({...value,pain:event.target.checked}))}/> Pain or unusual discomfort today</label>
-            </div>
-
-            <div style={{background:"#0F1018",border:"1px solid #16172A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-              <div style={{fontSize:12,color:"#666",fontWeight:600,marginBottom:8}}>Session Notes (optional)</div>
-              <textarea value={draft.notes} onChange={e=>setDraft(p=>({...p,notes:e.target.value}))} placeholder="How did it feel? Energy, soreness..." rows={2}
-                style={{width:"100%",background:"#161723",border:"1px solid #1E2035",borderRadius:8,padding:"8px 10px",color:"#ECEAF4",fontSize:13,fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
-            </div>
-
-            <button onClick={saveSession} style={{width:"100%",background:dayMeta.color,border:"none",borderRadius:12,padding:"14px",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 20px "+dayMeta.color+"30"}}>
-              Save Session{draftFilled>0?"  ·  "+draftFilled+" set"+(draftFilled!==1?"s":""):""}
-            </button>
-          </div>
+          <SessionScreen
+            draft={draft} setDraft={setDraft} dayMeta={dayMeta} currentDay={currentDay} switchDay={switchDay}
+            confirmExitSession={confirmExitSession} setConfirmExitSession={setConfirmExitSession} leaveSession={leaveSession} sessionHistoryRef={sessionHistoryRef}
+            draftSavedAt={draftSavedAt} confirmDiscardDraft={confirmDiscardDraft} setConfirmDiscardDraft={setConfirmDiscardDraft} discardDraft={discardDraft}
+            showCoach={showCoach} setShowCoach={setShowCoach} showWarmup={showWarmup} setShowWarmup={setShowWarmup}
+            sessionSheet={sessionSheet} setSessionSheet={setSessionSheet}
+            restRunning={restRunning} restSeconds={restSeconds} restTarget={restTarget} setRestTarget={setRestTarget} setRestSeconds={setRestSeconds} restComplete={restComplete} setRestComplete={setRestComplete} setRestRunning={setRestRunning}
+            startRestTimer={startRestTimer} stopRestTimer={stopRestTimer} addRestTime={addRestTime} updateRestTimerDefault={updateRestTimerDefault}
+            activeExercise={activeExercise} setActiveExercise={setActiveExercise} draftFilled={draftFilled}
+            prMap={prMap} getLastTime={getLastTime} copyLastTime={copyLastTime} progressionIncrements={progressionIncrements}
+            moveDraftExercise={moveDraftExercise} removeDraftExercise={removeDraftExercise}
+            confirmSwitch={confirmSwitch} setConfirmSwitch={setConfirmSwitch} requestEquipmentSwitch={requestEquipmentSwitch} applyEquipmentSwitch={applyEquipmentSwitch}
+            toggleSetDone={toggleSetDone} updateSet={updateSet} removeSet={removeSet} addSet={addSet}
+            plateFor={plateFor} setPlateFor={setPlateFor}
+            guideExercise={guideExercise} setGuideExercise={setGuideExercise}
+            customExercises={customExercises} customExerciseId={customExerciseId} setCustomExerciseId={setCustomExerciseId} addSavedCustomExercise={addSavedCustomExercise}
+            newExerciseName={newExerciseName} setNewExerciseName={setNewExerciseName} newExerciseTarget={newExerciseTarget} setNewExerciseTarget={setNewExerciseTarget} createAndAddExercise={createAndAddExercise}
+            templateName={templateName} setTemplateName={setTemplateName} storeWorkoutTemplate={storeWorkoutTemplate} workoutTemplates={workoutTemplates} pendingTemplate={pendingTemplate} setPendingTemplate={setPendingTemplate} applySavedWorkoutTemplate={applySavedWorkoutTemplate}
+            workoutToolsMsg={workoutToolsMsg}
+            readiness={readiness} setReadiness={setReadiness}
+            saveSession={saveSession} draftHasContent={draftHasContent} getProgressionRecommendation={getProgressionRecommendation}
+          />
         )}
-
         {/* ── History destination ── */}
         {activeTab==="history" && (
           <HistoryScreen
@@ -1335,79 +1011,6 @@ export default function App() {
       </main>
 
       {!sessionActive && <NavBar items={NAV_ITEMS} active={activeTab} onChange={switchTab} />}
-
-      <Sheet open={sessionSheet === "details"} title="Workout details" onClose={() => setSessionSheet(null)}>
-        <div className="session-sheet-section">
-          <label className="session-sheet-date"><span>Training date</span><input type="date" value={draft.date} onChange={event => setDraft(previous => ({ ...previous, date: event.target.value }))} /></label>
-        </div>
-        <div className="session-sheet-section"><h3>{dayMeta.emoji} {dayMeta.label}</h3><p>{dayMeta.focus}</p><p>{dayMeta.coachNote}</p><small>Cardio: {dayMeta.cardio}</small></div>
-        {dayMeta.warmup && <div className="session-sheet-section"><h3>Warm-up</h3><p>{dayMeta.warmup.general}</p><ol>{dayMeta.warmup.drills.map(drill => <li key={drill.name}><strong>{drill.name}</strong><span>{drill.detail}</span></li>)}</ol></div>}
-      </Sheet>
-
-      <Sheet open={sessionSheet === "options"} title="Session options" onClose={() => setSessionSheet(null)}>
-        <div className="session-sheet-section"><h3>Rest timer</h3><p>Choose the default used after completing a set.</p><div className="session-sheet-actions">{REST_TIMER_OPTIONS.map(value => <Button key={value} variant={restTarget === value ? "filled" : "text"} onClick={() => { setRestTarget(value); updateRestTimerDefault(value); }}>{value}s</Button>)}</div></div>
-        <div className="session-sheet-section"><h3>Draft</h3><p>Your workout is saved automatically on this device.</p><Button variant="text" onClick={() => { setSessionSheet(null); setConfirmDiscardDraft(true); }}>Discard workout</Button></div>
-      </Sheet>
-
-      {/* Rest timer */}
-      {(restRunning||restComplete)&&(
-        <div className="rest-dock" style={{position:"fixed",bottom:16,left:"50%",transform:"translateX(-50%)",background:"#13141F",border:"1px solid "+(restComplete?"#34D39970":dayMeta.color+"40"),borderRadius:14,padding:"10px 16px",display:"flex",alignItems:"center",gap:14,boxShadow:"0 6px 24px rgba(0,0,0,0.5)",zIndex:50}}>
-          <div style={{fontSize:11,color:restComplete?"#34D399":"#888",fontWeight:700}}>{restComplete?"REST COMPLETE":"REST"}</div>
-          <div style={{fontSize:22,fontWeight:900,color:restComplete?"#34D399":dayMeta.color,fontVariantNumeric:"tabular-nums",minWidth:56,textAlign:"center"}}>{fmtRest(Math.max(0,restTarget-restSeconds))}</div>
-          <div style={{display:"flex",gap:4}}>
-            {REST_TIMER_OPTIONS.map(t=><button key={t} onClick={()=>{setRestTarget(t);setRestSeconds(0);setRestComplete(false);setRestRunning(true);}} style={{background:restTarget===t&&!restComplete?dayMeta.color:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:restTarget===t&&!restComplete?"#fff":"#888",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{t}s</button>)}
-            <button onClick={()=>addRestTime(30)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 8px",color:"#9CA3AF",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>+30s</button>
-          </div>
-          <button aria-label="Close rest timer" onClick={stopRestTimer} style={{background:"none",border:"none",color:"#888",fontSize:18,cursor:"pointer",fontFamily:"inherit",padding:"0 2px"}}><X size={18}/></button>
-        </div>
-      )}
-
-      {/* Form guide modal */}
-      {guideExercise&&formGuide[guideExercise]&&(()=>{
-        const g=formGuide[guideExercise];
-        return (
-          <div onClick={()=>setGuideExercise(null)} style={{position:"fixed",inset:0,background:"rgba(4,5,10,0.8)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-            <div onClick={e=>e.stopPropagation()} style={{background:"#0B0C14",border:"1px solid #1E2035",borderRadius:"18px 18px 0 0",width:"100%",maxWidth:720,maxHeight:"92vh",overflowY:"auto",padding:"0 0 30px"}}>
-              <div style={{position:"sticky",top:0,background:"#0B0C14",borderBottom:"1px solid #16172A",padding:"16px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",zIndex:2}}>
-                <div style={{fontSize:16,fontWeight:800,color:dayMeta.color}}>{guideExercise}</div>
-                <button onClick={()=>setGuideExercise(null)} style={{background:"#161723",border:"1px solid #2A2A3A",borderRadius:8,width:30,height:30,color:"#9CA3AF",fontSize:18,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
-              </div>
-              <div style={{padding:"16px 18px"}}>
-                <div style={{display:"grid",gridTemplateColumns:"0.8fr 1.5fr",gap:16}}>
-                  <div>
-                    <div style={{background:"#0C0D16",border:"1px solid #16172A",borderRadius:12,padding:10,display:"flex",flexDirection:"column",alignItems:"center",position:"sticky",top:70}}>
-                      <div style={{fontSize:9,color:"#666",fontWeight:800,letterSpacing:"0.1em",marginBottom:4,alignSelf:"flex-start"}}>MUSCLES · {g.view==="back"?"BACK":"FRONT"}</div>
-                      <BodyMap view={g.view} primary={g.primary} secondary={g.secondary} color={dayMeta.color}/>
-                      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:8,justifyContent:"center"}}>
-                        {g.primary.map(m=><span key={m} style={{fontSize:9,fontWeight:700,color:"#fff",background:dayMeta.color,borderRadius:100,padding:"2px 8px"}}>{MUSCLES[m]}</span>)}
-                        {g.secondary.map(m=><span key={m} style={{fontSize:9,fontWeight:600,color:dayMeta.color,background:dayMeta.color+"1A",border:"1px solid "+dayMeta.color+"40",borderRadius:100,padding:"2px 8px"}}>{MUSCLES[m]}</span>)}
-                      </div>
-                      <div style={{fontSize:8.5,color:"#555",marginTop:6,textAlign:"center"}}>● primary ○ secondary</div>
-                    </div>
-                  </div>
-                  <div>
-                    <GuideSection icon="🧩" title="SETUP & POSITION" items={g.setup} color={dayMeta.color}/>
-                    <GuideSection icon="🎯" title="EXECUTION" items={g.execution} color={dayMeta.color}/>
-                    <div style={{marginBottom:14,background:"#0C0D16",border:"1px solid #16172A",borderRadius:10,padding:"10px 12px"}}>
-                      <div style={{fontSize:11,color:"#60A5FA",fontWeight:800,letterSpacing:"0.06em",marginBottom:6}}>💨 BREATHING</div>
-                      <div style={{fontSize:12.5,color:"#C4C2D4",lineHeight:1.5}}>{g.breathing}</div>
-                    </div>
-                    <div style={{background:"rgba(239,68,68,0.06)",border:"1px solid rgba(239,68,68,0.18)",borderRadius:10,padding:"10px 12px"}}>
-                      <div style={{fontSize:11,color:"#F87171",fontWeight:800,letterSpacing:"0.06em",marginBottom:8}}>⚠️ COMMON MISTAKES</div>
-                      {g.mistakes.map((c,i)=>(
-                        <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-start"}}>
-                          <span style={{flexShrink:0,color:"#F87171",fontSize:12,marginTop:1}}>✕</span>
-                          <span style={{fontSize:12,color:"#B59CA0",lineHeight:1.45}}>{c}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
     </div>
   );
