@@ -20,6 +20,7 @@
 
 .history-month { display: grid; gap: var(--sp2); }
 .history-month__title { margin: 0; color: var(--on-surface-variant); font-size: var(--text-label); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.history-month__count { margin: 0; color: var(--on-surface-dim); font-size: var(--text-body); font-variant-numeric: tabular-nums; }
 .history-list, .history-exercises, .history-sets { margin: 0; padding: 0; list-style: none; }
 .history-list { display: grid; gap: var(--sp2); }
 

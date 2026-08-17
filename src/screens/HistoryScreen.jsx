@@ -280,6 +280,7 @@ export default function HistoryScreen({
         groups.map(group => (
           <section key={group.key} className="history-month" aria-labelledby={`history-month-${group.key}`}>
             <h2 id={`history-month-${group.key}`} className="history-month__title">{group.label}</h2>
+            <p className="history-month__count">{group.count} {group.count === 1 ? "workout" : "workouts"}</p>
             <ul className="history-list">
               {group.sessions.map(record => (
                 <li key={record.id}>
