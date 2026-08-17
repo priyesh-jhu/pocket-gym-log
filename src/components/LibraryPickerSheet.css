@@ -1,0 +1,6 @@
+.library-picker__count { margin: var(--sp2) 0 var(--sp3); font-size: var(--text-label-sm); color: var(--on-surface-dim); }
+.library-picker__list { display: flex; flex-direction: column; gap: var(--sp2); max-height: 60vh; overflow-y: auto; }
+.library-picker__row { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; border-radius: var(--shape-md); min-height: 48px; }
+.library-picker__row:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.library-picker__row .m3-list-item { background: var(--surface-container); border-radius: var(--shape-md); padding: var(--sp3); }
+.library-picker__empty { padding: var(--sp5) var(--sp4); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body-sm); }
