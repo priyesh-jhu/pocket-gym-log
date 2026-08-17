@@ -71,7 +71,7 @@ Phases execute in numeric order: 1 → 2 → 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Progress Completion | 3/3 | Complete    | 2026-08-14 |
-| 2. History and Weight Screens | 0/TBD | Not started | - |
+| 2. History and Weight Screens | 3/3 | Complete    | 2026-08-17 |
 | 3. Redesign Cleanup and Android Verification | 0/TBD | Not started | - |
 
 ---
