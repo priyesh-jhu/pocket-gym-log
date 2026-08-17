@@ -322,3 +322,148 @@ progress/1RM calculations from `App.jsx` (105 lines). `ProgressScreen` is now th
 single owner of Progress rendering and delegates pure analytics to `stats.js`, as
 specified by the target architecture. Build clean; 164/164 tests; lint returns to
 the single baselined guest-loading finding.
+
+═══════════ PHASE 2 (GSD roadmap) — resumed 2026-08-17 ═══════════
+
+Context: work continued outside this session. Plan 1 finished, Plans 2/3 of the
+original redesign largely landed, then a GSD project was initialized retroactively
+with a 3-phase completion roadmap. Phase 1 (Progress) = 3/3 complete, human-approved.
+Phase 2 (History + Weight) had 3 plans written but 0 executed.
+
+Ruling: GSD's `gsd-execute-phase` skill is NOT installed — its skills directory is
+empty and only 3 orphaned step fragments exist under get-shit-done/workflows/. The
+Skill tool rejects the name. Rather than reconstruct a workflow from fragments,
+execute the GSD plans with the subagent-driven loop already in use. The plans carry
+wave/depends_on, and 02-01 -> 02-02 -> 02-03 is strictly sequential.
+Cost if wrong: no GSD state-file automation; STATE.md/ROADMAP.md need manual updates.
+
+Baseline at 77d53c2: 218-test target N/A; pre-plan count was 172/172, build clean,
+lint baseline 1 allowed finding (now App.jsx:402, tracked by scripts/verify-lint-baseline.mjs).
+
+Plan 02-01 (History): implemented, commits 5a95ce2, 10c1cec, c573063.
+  Tests 172 -> 218, green in all six test:tz zones. Build clean. Lint baseline clean.
+  App.jsx inline styles 246 -> 217. Legacy "HISTORY TAB" block gone; <HistoryScreen
+  wired exactly once. No hardcoded colours in the new History files.
+
+Rulings on the implementer's five concerns:
+
+1. RATIFY the out-of-plan edit to SettingsScreen. `Reset all data` existed ONLY in
+   the legacy History footer the plan told it to delete, so obeying the plan literally
+   would have made reset unreachable — contradicting the plan's own "no change to
+   reset behaviour". Verified: resetAll still defined at App.jsx:872 and surfaced from
+   SettingsScreen with its two-step confirmation. Settings is also the right home for
+   a destructive data action. Plan defect; the implementer was right to deviate.
+   Cost if wrong: two small hunks to revert.
+
+2. RATIFY moving SESSION_PREFIX/WEIGHT_PREFIX into localProfileData.js. This was the
+   data-loss-critical concern, so I verified the strings against 77d53c2 directly:
+   "workout-sessions:" and "workout-bodyweight:" are byte-identical before and after.
+   Duplicating persisted key prefixes across two files would have been the real hazard.
+   Cost if wrong: none — verified.
+
+3. RATIFY reading strictly at bootstrap and falling back to forgiving semantics for
+   non-owning tabs, instead of gating the read on activeTab. Better behaviour: the
+   plan's approach would leave History showing an empty list with NO error if the user
+   navigated there after a failed read. Verified Progress is untouched —
+   App.jsx:1013 reads `["history", "weight"]` with no "progress".
+   Cost if wrong: one extra strict read at mount.
+
+4. NOTED, not a defect: the implementer disclosed that Tasks 2-3's pure-logic tests
+   were written before the screen/App work but after the functions existed, so they
+   passed first run rather than red-first. It ran a mutation check instead (2 injected
+   bugs caused 3 of 32 tests to fail). Thin but non-zero teeth, and the disclosure is
+   worth more than the strictness. No action.
+
+5. CONFIRMED REAL — Phase 1 escapes, and I verified each independently:
+   - `--error-container` and `--on-error-container` used at ProgressScreen.css:36 for
+     the error banner's background and text; DEFINED NOWHERE. Undefined custom
+     properties drop the declaration, so the Progress error state renders as unstyled
+     bare text.
+   - `--secondary` used at ProgressScreen.css:162 and :182, DEFINED NOWHERE. It sits
+     in a semantic set beside --primary/--success/--warn, so a distinct colour is
+     intended; undefined it silently inherits.
+   - `.sr-only` used at ProgressScreen.jsx:148 on `<h1>Training progress</h1>`,
+     DEFINED NOWHERE — so that heading renders VISIBLY, giving the approved Progress
+     screen a duplicate title.
+   These are exactly the failure mode I had Plan 1 reviewers check name-by-name;
+   Phase 1 ran without that check and they slipped through.
+
+Ruling: fix concern 5 NOW as a hygiene batch rather than deferring to Phase 3.
+`.sr-only` is a live visual bug on a screen the user has already approved, and the
+error banner is unstyled. Both are small. Defining --secondary is a minor design
+decision I am making (cool accent, matching the --accent-cool from the original
+mockup) — flagged to the user as reversible in one token.
+Cost if wrong: one token value the user may want recoloured.
+
+Phase 1 escape fixes: commits 7df2838 (error-container/on-error-container/secondary
+  tokens + .sr-only utility) and c3efbd1 (--line -> --outline-variant in index.css).
+  Repo-wide sweep now reports "every var(--token) is defined". Tests 218/218, build
+  clean, lint baseline clean.
+
+Ownership note: the --line defect was MINE. Plan 1 Task 1 replaced index.css's old
+:root block (which defined `--line: rgba(148,163,184,.12)` at f73b72f:10) while
+`.workout-card { border-color: var(--line) !important }` kept consuming it. No Plan 1
+reviewer caught it because every review prompt scoped the token check to
+src/components/, never the surviving legacy stylesheet. Lesson for Phase 3: the
+undefined-token sweep must run repo-wide, not per-directory.
+
+Plan 02-01 review: spec ✅ (all must_haves.truths mechanically verified, incl.
+  write-ordering via source + injected-callback tests, deep-copy isolation via full
+  snapshot deepEqual, no `new Date(iso)` in the new modules, 218/218 across all six
+  test:tz zones, ARCH-01 by grep, every token name checked). 3 findings.
+
+Ruling on finding 1 (Important, REPRODUCED by the reviewer with a Node script):
+THE FINDING WINS over the plan text. `readLocalProfileResult` returns one combined
+{ok,data,error} for sessions AND bodyweights, so a corrupt WEIGHT blob fails the whole
+read, sets localLoadError, and HistoryScreen renders its load-error card even though
+valid sessions are already in React state via the forgiving bootstrap fallback. And
+retryLocalProfileLoad re-runs the same combined read, so `Try again` can never succeed
+— the user's history is durably unreachable through the UI for a reason unrelated to
+history. The combined shape is verbatim what the plan's Task 1 <action> specified, so
+this is a plan defect, not an implementer defect. But it violates the plan's own truth
+"invalid records are isolated without blanking valid history" and the UI-SPEC's "global
+replacement only if no safe history can render". Binding truth beats literal contract.
+Fixing now rather than in 02-03 because plan 02-02 (Weight) builds on this exact seam
+and would otherwise inherit and duplicate the bug.
+Cost if wrong: a slightly larger result shape than the plan described.
+
+Ruling on finding 2 (Minor, contestable — per-month "{N} workouts" line missing):
+RENDER IT. groupSessionsByMonth computes a per-group `count` that nothing consumes,
+which is strong evidence of intent, and the UI-SPEC places that copy contract directly
+under its "month groups" bullet. Cheap to add.
+Cost if wrong: one supporting line per month heading the user may not want.
+
+Ruling on finding 3 (Minor — --sp3/12px not in the UI-SPEC's 7-value spacing scale for
+new Phase 2 screens): PARK. HomeScreen.css and SettingsScreen.css from Phase 1 already
+use --sp3 the same way, so "fixing" History alone would make it inconsistent with its
+siblings, and the spec's exception clause is ambiguous about screen-level CSS. Real but
+deferred; if it matters it should be a deliberate sweep across all screens in Phase 3.
+Cost if wrong: 12px gaps where the scale wanted 8px or 16px, on one screen among three.
+
+Plan 02-01: fix round 1/5 dispatched (findings 1 + 2).
+Plan 02-01: complete (5a95ce2, 10c1cec, c573063, +fixes 123b0db, 1aa8568). Tests 227,
+  six tz zones green, build+lint clean. Findings 1+2 verified inline by me: corrupt
+  weight blob no longer blanks History (sessions.ok=true, History error=null), App
+  passes localLoadError?.sessions only, per-month count rendered at
+  HistoryScreen.jsx:283. Finding 3 (--sp3) parked.
+Ruling: from here, review diffs inline instead of dispatching reviewer subagents.
+  Measured: reviewers were ~41% of ~1.19M session tokens (one burned 154k). Tests are
+  NOT the cost — 227 tests run in 120ms. Also cutting long implementer reports and
+  doc updates per user instruction. Cost if wrong: fewer independent eyes; I mitigate
+  by verifying data-integrity claims by execution, not by reading.
+Deployed to production (pocket-gym-log.web.app) at commit 8b1d8da — verified HTTP 200,
+  correct title, fresh bundle hash. Includes Plan 1 + Phase 1 + plan 02-01 (History).
+  Weight tab still legacy at deploy time (02-02 ran after).
+
+Plan 02-02 (Weight): complete, 649eae6/472d45d/82d298d. Tests 227->238 (+11, capped per
+  user's token-minimization request). Verified inline (no reviewer subagent, per prior
+  ruling): commitWeightMutation is write-then-state with correct short-circuit on
+  failure, no new Date(iso) on stored dates in new files, createWeightCloudOperation
+  composes with existing runCloud, tokens clean, legacy WeightTab/persistWeights fully
+  removed. Not independently verified: old-date-delete-before-new-date-save ordering
+  on a cross-date edit (implementer's claim, plausible from the code shape, not traced
+  end-to-end) — flag for the eventual signed-in device pass.
+
+User instruction: "every deployment should have clean version number" — version
+bumping is not yet part of the deploy flow. package.json is at 1.5.2. Need to define
+what bumps when (patch per phase? per plan?) before the next deploy.
