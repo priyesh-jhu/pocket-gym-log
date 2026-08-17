@@ -21,6 +21,7 @@
   --on-primary:                #FFFFFF;
   --primary-container:         #C8F065;
   --on-primary-container:      #1D2600;
+  --secondary:                 #1E4E8C;
 
   /* Filled controls draw from different roles per theme (volt is the
      FILL in light, the TEXT colour in dark). Resolving that here means
@@ -31,6 +32,8 @@
   --warn:                      #8A6300;
   --error:                     #B3261E;
   --on-error:                  #FFFFFF;
+  --error-container:           #F9DEDC;
+  --on-error-container:        #410E0B;
   --success:                   #2E6B2E;
 
   --muscle-empty:              #DEDED2;
@@ -92,6 +95,7 @@
   --on-primary:                #1D2600;
   --primary-container:         #2C3A0F;
   --on-primary-container:      #D9FF87;
+  --secondary:                 #7FB4FF;
 
   --filled-bg:                 var(--primary);
   --filled-fg:                 var(--on-primary);
@@ -99,6 +103,8 @@
   --warn:                      #F5C860;
   --error:                     #F2B8B5;
   --on-error:                  #601410;
+  --error-container:           #8C1D18;
+  --on-error-container:        #F9DEDC;
   --success:                   #7EDB8A;
 
   --muscle-empty:              #22222B;
