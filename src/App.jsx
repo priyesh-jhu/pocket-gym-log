@@ -15,7 +15,7 @@ import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseT
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
-import { readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
+import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
@@ -316,9 +316,11 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => { try { return storage.get(TAB_KEY)||"log"; } catch { return "log"; } });
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Set only when this device's saved records could not be READ (storage threw,
-  // or the stored JSON is corrupt). History and Weight surface it as a retryable
-  // error so a failed read is never mistaken for an empty training log.
+  // Per-collection read failures: { sessions, bodyweights }, or null when this
+  // device's saved records read cleanly. History and Weight each surface only
+  // their own collection's failure as a retryable error, so a failed read is
+  // never mistaken for an empty log — and a corrupt weigh-in blob can never make
+  // a perfectly readable workout history unreachable.
   const [localLoadError, setLocalLoadError] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
@@ -398,22 +400,16 @@ export default function App() {
     let cancelled = false;
     const result = readLocalProfileResult({ storage, profile: "guest", loadPrefs });
     if (!cancelled) {
-      if (result.ok) {
-        setSessions(result.data.sessions);
-        setBodyweights(result.data.bodyweights);
-        setEquipmentPrefs(result.data.equipmentPrefs);
-        restoreDraft("guest", result.data.equipmentPrefs);
-      } else {
-        // History and Weight own this failure and offer a retry. Every other
-        // destination keeps the long-standing forgiving behaviour so one corrupt
-        // blob cannot stop the rest of the app from starting.
-        setLocalLoadError(result.error);
-        const prefs = loadPrefs(storage, "guest");
-        setSessions(readStoredArray(sessionKey("guest")));
-        setBodyweights(readStoredArray(weightKey("guest")));
-        setEquipmentPrefs(prefs);
-        restoreDraft("guest", prefs);
-      }
+      // Whichever collection read cleanly is used as-is. A collection that could
+      // not be read falls back to the long-standing forgiving reader, so the rest
+      // of the app still starts, and its failure is recorded separately so only
+      // the destination that owns it shows an error.
+      const prefs = result.equipmentPrefs;
+      setSessions(result.sessions.ok ? result.sessions.data : readStoredArray(sessionKey("guest")));
+      setBodyweights(result.bodyweights.ok ? result.bodyweights.data : readStoredArray(weightKey("guest")));
+      setEquipmentPrefs(prefs);
+      restoreDraft("guest", prefs);
+      setLocalLoadError(profileLoadErrors(result));
       setLoading(false);
     }
     return () => { cancelled = true; };
@@ -467,15 +463,21 @@ export default function App() {
     return { sessions:readStoredArray(sessionKey(profile)), bodyweights:readStoredArray(weightKey(profile)), equipmentPrefs:loadPrefs(storage, profile) };
   }
 
-  // Retry for the destinations that own their own loading/error state. It
-  // deliberately leaves the workout draft alone: this re-reads saved records, so
-  // it must not roll back anything the user is typing on the Log tab.
+  // Retry for the destinations that own their own loading/error state. Only the
+  // collections that read cleanly are applied, so retrying from History cannot
+  // blank weigh-ins that are still unreadable, or the reverse. It deliberately
+  // leaves the workout draft alone: this re-reads saved records, so it must not
+  // roll back anything the user is typing on the Log tab.
   function retryLocalProfileLoad() {
     runLocalProfileLoad({
       readResult: () => readLocalProfileResult({ storage, profile:activeProfile, loadPrefs }),
       setLoading,
       setError: setLocalLoadError,
-      applyData: data => { setSessions(data.sessions); setBodyweights(data.bodyweights); setEquipmentPrefs(data.equipmentPrefs); },
+      applyData: data => {
+        if (data.sessions) setSessions(data.sessions);
+        if (data.bodyweights) setBodyweights(data.bodyweights);
+        if (data.equipmentPrefs) setEquipmentPrefs(data.equipmentPrefs);
+      },
     });
   }
 
@@ -1366,7 +1368,7 @@ export default function App() {
           <HistoryScreen
             sessions={sessions}
             loading={loading}
-            loadError={localLoadError}
+            loadError={localLoadError?.sessions || null}
             onRetryLoad={retryLocalProfileLoad}
             onStartWorkout={() => { switchTab("log"); startSession(); }}
             onSaveWorkout={saveHistoricalWorkout}

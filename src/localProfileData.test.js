@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
+import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 
 const PROFILE = "guest";
 
@@ -85,6 +85,146 @@ test("an unusable storage object is reported instead of throwing", () => {
   const result = readLocalProfileResult({ storage: null, profile: PROFILE, loadPrefs });
   assert.equal(result.ok, false);
   assert.ok(result.error instanceof Error);
+});
+
+// ─── PER-COLLECTION ISOLATION ─────────────────────────────────────────────────
+// Workouts and weigh-ins are separate keys and separate destinations. A corrupt
+// blob in one must never make the other unreachable, or a user with a perfectly
+// good training history is told it cannot be shown.
+
+const VALID_SESSIONS = [{ id: "s1", date: "2026-08-14", exercises: [{ name: "Squat", sets: [{ weight: "225", reps: "5", unit: "lb" }] }] }];
+const VALID_WEIGHTS = [{ id: "w1", date: "2026-08-14", weight: 180, unit: "lb" }];
+
+test("a corrupt weigh-in blob leaves the workout history readable", () => {
+  const storage = fakeStorage({
+    [sessionKey(PROFILE)]: JSON.stringify(VALID_SESSIONS),
+    [weightKey(PROFILE)]: "{not json",
+  });
+  const result = readLocalProfileResult({ storage, profile: PROFILE, loadPrefs });
+
+  assert.equal(result.sessions.ok, true);
+  assert.deepEqual(result.sessions.data, VALID_SESSIONS);
+  assert.equal(result.sessions.error, null);
+  assert.equal(result.bodyweights.ok, false);
+  assert.ok(result.bodyweights.error instanceof Error);
+  // The coarse answer still reports a failure, but History's own error is clear.
+  assert.equal(result.ok, false);
+  assert.equal(profileLoadErrors(result).sessions, null);
+  assert.ok(profileLoadErrors(result).bodyweights instanceof Error);
+});
+
+test("a corrupt workout blob leaves the weigh-ins readable", () => {
+  const storage = fakeStorage({
+    [sessionKey(PROFILE)]: JSON.stringify({ id: "s1" }),
+    [weightKey(PROFILE)]: JSON.stringify(VALID_WEIGHTS),
+  });
+  const result = readLocalProfileResult({ storage, profile: PROFILE, loadPrefs });
+
+  assert.equal(result.bodyweights.ok, true);
+  assert.deepEqual(result.bodyweights.data, VALID_WEIGHTS);
+  assert.equal(result.sessions.ok, false);
+  assert.ok(profileLoadErrors(result).sessions instanceof Error);
+  assert.equal(profileLoadErrors(result).bodyweights, null);
+});
+
+test("both collections can fail independently", () => {
+  const storage = fakeStorage({
+    [sessionKey(PROFILE)]: "[1,",
+    [weightKey(PROFILE)]: "{not json",
+  });
+  const result = readLocalProfileResult({ storage, profile: PROFILE, loadPrefs });
+  const errors = profileLoadErrors(result);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.data, null);
+  assert.ok(errors.sessions instanceof Error);
+  assert.ok(errors.bodyweights instanceof Error);
+});
+
+test("thrown access on one key does not fail the other", () => {
+  const storage = fakeStorage({ [weightKey(PROFILE)]: JSON.stringify(VALID_WEIGHTS) }, sessionKey(PROFILE));
+  const result = readLocalProfileResult({ storage, profile: PROFILE, loadPrefs });
+  assert.equal(result.sessions.ok, false);
+  assert.equal(result.bodyweights.ok, true);
+  assert.deepEqual(result.bodyweights.data, VALID_WEIGHTS);
+});
+
+test("an unusable storage object fails both collections without throwing", () => {
+  const result = readLocalProfileResult({ storage: null, profile: PROFILE, loadPrefs });
+  assert.equal(result.sessions.ok, false);
+  assert.equal(result.bodyweights.ok, false);
+  assert.deepEqual(result.equipmentPrefs, { "Barbell Bench Press": "machine" });
+});
+
+test("nothing failed means no per-collection errors at all", () => {
+  const clean = readLocalProfileResult({ storage: fakeStorage(), profile: PROFILE, loadPrefs });
+  assert.equal(profileLoadErrors(clean), null);
+});
+
+test("a load applies the readable collections even when the other one fails", () => {
+  const applied = [];
+  const errors = [];
+  const storage = fakeStorage({
+    [sessionKey(PROFILE)]: JSON.stringify(VALID_SESSIONS),
+    [weightKey(PROFILE)]: "{not json",
+  });
+  runLocalProfileLoad({
+    readResult: () => readLocalProfileResult({ storage, profile: PROFILE, loadPrefs }),
+    setLoading: () => {},
+    setError: value => errors.push(value),
+    applyData: data => applied.push(data),
+  });
+
+  assert.equal(applied.length, 1);
+  assert.deepEqual(applied[0].sessions, VALID_SESSIONS);
+  assert.equal("bodyweights" in applied[0], false, "an unreadable collection must not be applied");
+  assert.equal(errors.at(-1).sessions, null);
+  assert.ok(errors.at(-1).bodyweights instanceof Error);
+});
+
+test("a retry that repairs only the weigh-ins keeps History readable throughout", () => {
+  const entries = {
+    [sessionKey(PROFILE)]: JSON.stringify(VALID_SESSIONS),
+    [weightKey(PROFILE)]: "{not json",
+  };
+  const options = {
+    readResult: () => readLocalProfileResult({ storage: fakeStorage(entries), profile: PROFILE, loadPrefs }),
+    setLoading: () => {},
+    setError: () => {},
+    applyData: () => {},
+  };
+
+  const first = runLocalProfileLoad(options);
+  assert.equal(first.sessions.ok, true);
+  assert.equal(profileLoadErrors(first).sessions, null);
+
+  entries[weightKey(PROFILE)] = JSON.stringify(VALID_WEIGHTS);
+  const retry = runLocalProfileLoad(options);
+  assert.equal(retry.ok, true);
+  assert.equal(profileLoadErrors(retry), null);
+  assert.deepEqual(retry.sessions.data, VALID_SESSIONS);
+});
+
+test("a retry that repairs the workouts clears the History error and applies them", () => {
+  const entries = { [sessionKey(PROFILE)]: "[1," };
+  const applied = [];
+  const errors = [];
+  const options = {
+    readResult: () => readLocalProfileResult({ storage: fakeStorage(entries), profile: PROFILE, loadPrefs }),
+    setLoading: () => {},
+    setError: value => errors.push(value),
+    applyData: data => applied.push(data),
+  };
+
+  runLocalProfileLoad(options);
+  assert.ok(errors.at(-1).sessions instanceof Error);
+  assert.equal(applied.length, 1, "readable weigh-ins are still applied");
+  assert.equal("sessions" in applied[0], false);
+
+  entries[sessionKey(PROFILE)] = JSON.stringify(VALID_SESSIONS);
+  runLocalProfileLoad(options);
+  assert.equal(errors.at(-1), null);
+  assert.deepEqual(applied.at(-1).sessions, VALID_SESSIONS);
 });
 
 test("a failed load enters loading, clears then reports the error, and applies no data", () => {
