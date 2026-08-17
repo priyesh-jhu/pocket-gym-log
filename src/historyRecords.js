@@ -247,17 +247,20 @@ export function prepareHistoryUpdate(original, draft) {
 
   for (const draftExercise of draftExercises) {
     const source = originalExercises[draftExercise?.sourceIndex];
+    const base = isPlainObject(source) ? { ...source } : {};
     const name = text(draftExercise?.name).trim();
+    const tracking = trackingForExercise({ ...base, name: name || text(base.name), tracking: draftExercise?.tracking });
+    const draftSets = Array.isArray(draftExercise?.sets) ? draftExercise.sets : [];
+    const sets = draftSets
+      .map(draftSet => preparedSet(base.sets?.[draftSet?.sourceIndex], draftSet))
+      .filter(set => isCompleteSet(set, tracking));
+    // An exercise the user emptied out simply drops, exactly as saving a live
+    // workout does. A named-but-blank exercise that still holds sets is an error
+    // the user must fix rather than silently lose.
+    if (!sets.length) continue;
     if (!name) {
       return { ok: false, session: null, field: `exercise-${draftExercise?.key || ""}-name`, error: "Every exercise needs a name." };
     }
-    const tracking = trackingForExercise({ ...(isPlainObject(source) ? source : {}), name, tracking: draftExercise?.tracking });
-    const draftSets = Array.isArray(draftExercise?.sets) ? draftExercise.sets : [];
-    const sets = draftSets
-      .map(draftSet => preparedSet(originalExercises[draftExercise?.sourceIndex]?.sets?.[draftSet?.sourceIndex], draftSet))
-      .filter(set => isCompleteSet(set, tracking));
-    if (!sets.length) continue;
-    const base = isPlainObject(source) ? { ...source } : {};
     exercises.push({ ...base, name, tracking, sets });
   }
 

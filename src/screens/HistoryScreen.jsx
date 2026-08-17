@@ -12,6 +12,7 @@ import "./HistoryScreen.css";
 const LOAD_ERROR = "Workout history couldn’t be shown. Your workouts are still saved. Try again.";
 const SAVE_ERROR = "Workout changes couldn’t be saved. Your original workout is unchanged. Try again.";
 const VALIDATION_ERROR = "Review the highlighted workout details before saving.";
+const DELETE_ERROR = "This workout couldn’t be deleted. It’s still saved on this device. Try again.";
 
 function measureLabel(tracking) {
   return trackingLabels(tracking).measure;
@@ -23,7 +24,7 @@ function measurePlaceholder(tracking) {
   return "reps";
 }
 
-function SessionCard({ record, expanded, onToggle, onEdit }) {
+function SessionCard({ record, expanded, onToggle, onEdit, onRequestDelete }) {
   const detailId = `history-detail-${record.id}`;
   const summary = [
     `${record.exerciseCount} ${record.exerciseCount === 1 ? "exercise" : "exercises"}`,
@@ -74,9 +75,21 @@ function SessionCard({ record, expanded, onToggle, onEdit }) {
           </p>
         )}
         {record.notes && <p className="history-notes">{record.notes}</p>}
-        {onEdit && (
+        {(onEdit || onRequestDelete) && (
           <div className="history-actions">
-            <Button variant="tonal" onClick={event => onEdit(record, event.currentTarget)}>Edit workout</Button>
+            {onEdit && (
+              <Button
+                variant="tonal"
+                onClick={event => { event.stopPropagation(); onEdit(record, event.currentTarget); }}
+              >Edit workout</Button>
+            )}
+            {onRequestDelete && (
+              <Button
+                variant="text"
+                className="history-delete"
+                onClick={event => { event.stopPropagation(); onRequestDelete(record, event.currentTarget); }}
+              >Delete workout</Button>
+            )}
           </div>
         )}
       </div>
@@ -91,6 +104,7 @@ export default function HistoryScreen({
   onRetryLoad,
   onStartWorkout,
   onSaveWorkout,
+  onDeleteWorkout,
 }) {
   const titleId = useId();
   const errorId = useId();
@@ -99,6 +113,9 @@ export default function HistoryScreen({
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const [announcement, setAnnouncement] = useState("");
   // Drafts survive an accidental dismissal for as long as this screen lives, so
   // an interrupted edit is never silently thrown away — and never written to the
@@ -106,6 +123,8 @@ export default function HistoryScreen({
   const retainedDrafts = useRef(new Map());
   const pristineRef = useRef("");
   const editReturnRef = useRef(null);
+  const deleteReturnRef = useRef(null);
+  const keepWorkoutRef = useRef(null);
   const formRef = useRef(null);
   const setKeyRef = useRef(0);
 
@@ -200,6 +219,32 @@ export default function HistoryScreen({
     if (target?.focus) target.focus();
   }
 
+  // Requesting a delete only opens a confirmation; nothing is removed until App
+  // confirms a successful device write.
+  function requestDelete(record, invoker) {
+    deleteReturnRef.current = invoker || null;
+    setDeleteError(null);
+    setDeleteTarget(record);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget || !onDeleteWorkout || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    let result;
+    try { result = await onDeleteWorkout(deleteTarget.id); }
+    catch { result = { ok: false }; }
+    setDeleting(false);
+    if (result?.ok) {
+      retainedDrafts.current.delete(deleteTarget.id);
+      setExpandedId(current => (current === deleteTarget.id ? null : current));
+      setAnnouncement("Workout deleted.");
+      setDeleteTarget(null);
+      return;
+    }
+    setDeleteError(result?.error || DELETE_ERROR);
+  }
+
   const editTitleContext = editing ? `${editing.dayLabel} · ${editing.dateLabel}` : "";
 
   return (
@@ -243,6 +288,7 @@ export default function HistoryScreen({
                     expanded={expandedId === record.id}
                     onToggle={() => setExpandedId(current => (current === record.id ? null : record.id))}
                     onEdit={onSaveWorkout ? openEditor : null}
+                    onRequestDelete={onDeleteWorkout ? requestDelete : null}
                   />
                 </li>
               ))}
@@ -363,6 +409,31 @@ export default function HistoryScreen({
             <div className="history-editor__actions">
               <Button variant="filled" disabled={saving} onClick={saveWorkout}>{saving ? "Saving…" : "Save workout"}</Button>
               <Button variant="text" onClick={() => closeEditor({ retain: false })}>Discard workout changes</Button>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      <Sheet
+        open={Boolean(deleteTarget)}
+        title="Delete workout?"
+        closeLabel="Close Delete workout"
+        initialFocusRef={keepWorkoutRef}
+        returnFocusRef={deleteReturnRef}
+        dismissOnHistory
+        onClose={() => { setDeleteTarget(null); setDeleteError(null); }}
+      >
+        {deleteTarget && (
+          <div className="history-confirm">
+            <p className="history-confirm__body">
+              This removes the workout from {deleteTarget.dateLabel} from this device and your synced account. This can’t be undone.
+            </p>
+            {deleteError && <p className="history-editor__error" role="alert">{deleteError}</p>}
+            <div className="history-editor__actions">
+              <Button variant="filled" className="history-destructive" disabled={deleting} onClick={confirmDelete}>
+                {deleting ? "Deleting…" : "Delete workout"}
+              </Button>
+              <Button variant="text" ref={keepWorkoutRef} onClick={() => { setDeleteTarget(null); setDeleteError(null); }}>Keep workout</Button>
             </div>
           </div>
         )}

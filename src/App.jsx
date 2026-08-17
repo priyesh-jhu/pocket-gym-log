@@ -6,7 +6,7 @@ import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariant
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
-import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
+import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
@@ -850,6 +850,25 @@ export default function App() {
     return { ok:true };
   }
 
+  function deleteHistoricalWorkout(id) {
+    const target = sessions.find(item => item?.id === id);
+    if (!target) return { ok:false, error:"That workout is no longer available on this device." };
+    const committed = commitHistoryMutation({
+      nextSessions: sessions.filter(item => item?.id !== id),
+      writeLocal: writeSessions,
+      applyState: setSessions,
+      mirrorCloud: firebaseUser ? () => runCloud(() => deleteCloudSession(firebaseUser.uid, id)) : null,
+    });
+    if (!committed.ok) {
+      setSaveStatus("error"); setStatusMsg("Could not delete that workout. It is still saved on this device.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+      return { ok:false, error:"This workout couldn’t be deleted. It’s still saved on this device. Try again." };
+    }
+    setSaveStatus("saved"); setStatusMsg("Workout deleted ✓");
+    setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
+    return { ok:true };
+  }
+
   function resetAll() { setSessions([]); persist([]); pushSnapshot({sessions:[],bodyweights,equipmentPrefs}, true); setConfirmReset(false); }
 
   function addWeight() {
@@ -1351,6 +1370,7 @@ export default function App() {
             onRetryLoad={retryLocalProfileLoad}
             onStartWorkout={() => { switchTab("log"); startSession(); }}
             onSaveWorkout={saveHistoricalWorkout}
+            onDeleteWorkout={deleteHistoricalWorkout}
           />
         )}
 

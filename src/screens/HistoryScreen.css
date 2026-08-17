@@ -87,8 +87,13 @@
 }
 .history-textarea { resize: vertical; }
 
+.history-confirm { display: grid; gap: var(--sp4); }
+.history-confirm__body { margin: 0; color: var(--on-surface-variant); font-size: var(--text-body); overflow-wrap: anywhere; }
+
 .history-screen .m3-btn { min-height: 48px; font-size: var(--text-label-lg); font-weight: 600; }
 .history-screen .m3-field__input { min-height: 48px; }
+.history-screen .history-delete { color: var(--error); }
+.history-screen .history-destructive { background: var(--error); color: var(--on-error); }
 
 @media (max-width: 390px) {
   .history-editor__set { grid-template-columns: minmax(0, 1fr) 76px; }

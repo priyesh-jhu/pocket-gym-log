@@ -344,6 +344,15 @@ test("an empty exercise name is rejected before anything is written", () => {
   assert.match(result.field, /^exercise-/);
 });
 
+test("a malformed stored exercise never blocks saving the rest of the record", () => {
+  const original = { ...confirmed(), exercises: [null, confirmed().exercises[0]] };
+  const draft = createHistoryDraft(original);
+  draft.notes = "still saveable";
+  const result = prepareHistoryUpdate(original, draft);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.session.exercises.map(item => item.name), ["Barbell Bench Press"]);
+});
+
 test("a garbage draft or missing original is rejected safely", () => {
   assert.equal(prepareHistoryUpdate(null, createHistoryDraft(confirmed())).ok, false);
   assert.equal(prepareHistoryUpdate(confirmed(), null).ok, false);
@@ -419,6 +428,50 @@ test("a commit never mutates the confirmed collection it was handed", () => {
   commitHistoryMutation({ nextSessions, writeLocal: () => true, applyState: () => {}, mirrorCloud: () => {} });
   commitHistoryMutation({ nextSessions, writeLocal: () => false, applyState: () => {}, mirrorCloud: () => {} });
   assert.equal(JSON.stringify(nextSessions), snapshot);
+});
+
+// These two model exactly what App's save and delete adapters inject, so the
+// ordering contract is proven for the real cloud operations, not just abstractly.
+test("an edit commit mirrors a cloud session save only after the device write", () => {
+  const calls = [];
+  const stored = [confirmed()];
+  const edited = { ...confirmed(), notes: "edited" };
+  const result = commitHistoryMutation({
+    nextSessions: stored.map(item => (item.id === edited.id ? edited : item)),
+    writeLocal: value => { calls.push(`writeSessions:${value[0].notes}`); return true; },
+    applyState: value => calls.push(`setSessions:${value[0].notes}`),
+    mirrorCloud: () => calls.push(`saveCloudSession:${edited.id}`),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, ["writeSessions:edited", "setSessions:edited", `saveCloudSession:${edited.id}`]);
+});
+
+test("a delete commit mirrors a cloud session delete only after the device write", () => {
+  const calls = [];
+  const stored = [confirmed(), { ...confirmed(), id: "session_keep" }];
+  const removedId = stored[0].id;
+  const result = commitHistoryMutation({
+    nextSessions: stored.filter(item => item.id !== removedId),
+    writeLocal: value => { calls.push(`writeSessions:${value.length}`); return true; },
+    applyState: value => calls.push(`setSessions:${value.length}`),
+    mirrorCloud: () => calls.push(`deleteCloudSession:${removedId}`),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls, ["writeSessions:1", "setSessions:1", `deleteCloudSession:${removedId}`]);
+});
+
+test("a failed delete leaves the workout in the confirmed collection", () => {
+  const calls = [];
+  const stored = [confirmed()];
+  const result = commitHistoryMutation({
+    nextSessions: stored.filter(item => item.id !== stored[0].id),
+    writeLocal: () => { calls.push("writeSessions"); return false; },
+    applyState: () => calls.push("setSessions"),
+    mirrorCloud: () => calls.push("deleteCloudSession"),
+  });
+  assert.equal(result.ok, false);
+  assert.deepEqual(calls, ["writeSessions"]);
+  assert.equal(stored.length, 1);
 });
 
 test("a commit without a usable list or writer refuses rather than guessing", () => {
