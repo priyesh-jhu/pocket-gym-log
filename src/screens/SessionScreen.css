@@ -60,6 +60,12 @@
 .session-draft-banner__destructive { background: var(--error); color: var(--on-error); }
 
 .session-legacy-details { display: none; }
+.session-legacy-card { padding: var(--sp2); }
+.session-legacy-card__row { display: flex; justify-content: space-between; gap: var(--sp2); }
+.session-legacy-card__title { font-size: var(--text-body); font-weight: 700; }
+.session-legacy-card__sub { font-size: var(--text-label-sm); color: var(--on-surface-dim); }
+.session-legacy-card__toggle { font-size: var(--text-label-sm); }
+.session-legacy-card__body { font-size: var(--text-label-sm); color: var(--on-surface-variant); }
 
 .session-exercise-nav {
   position: sticky;

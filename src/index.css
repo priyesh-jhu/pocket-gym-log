@@ -4,58 +4,13 @@
 ::view-transition-new(root) { animation: enter .18s ease both; }
 @keyframes fade-out { to { opacity: .35; } }
 
-.day-switcher::-webkit-scrollbar { display: none; }
 .nav-icon { display: none; }
-
-@media (hover: hover) {
-  .workout-card:hover { border-color: rgba(91,140,255,.22) !important; transform: translateY(-1px); }
-}
 
 .app-content { width: 100%; padding: 24px 20px 0 !important; }
 .app-content > div { animation: enter .22s ease-out; }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
-.workout-card {
-  background: linear-gradient(145deg, rgba(17,19,29,.94), rgba(12,13,21,.96)) !important;
-  border-color: var(--outline-variant) !important;
-  border-radius: 18px !important;
-  padding: 18px !important;
-  margin-bottom: 12px !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,.16);
-}
-.workout-card:focus-within { border-color: rgba(91,140,255,.35) !important; }
-.set-row input, .set-row select, .set-row button { min-height: 40px; }
-.day-switcher { gap: 8px !important; scroll-snap-type: x proximity; }
-.day-switcher > button { scroll-snap-align: start; min-height: 56px; border-radius: 14px !important; }
-
-.rest-dock {
-  bottom: calc(88px + env(safe-area-inset-bottom)) !important;
-  width: min(calc(100% - 28px), 620px);
-  justify-content: center;
-  background: rgba(19,20,31,.92) !important;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border-radius: 18px !important;
-}
-
-.session-exit-confirm {
-  display: flex;
-  align-items: center;
-  gap: var(--sp2);
-  margin-bottom: var(--sp3);
-  padding: var(--sp3) var(--sp4);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--shape-lg);
-  background: var(--surface-container-high);
-  box-shadow: var(--elev-1);
-}
-.session-exit-confirm > div { flex: 1; min-width: 0; }
-.session-exit-confirm strong,
-.session-exit-confirm span { display: block; }
-.session-exit-confirm strong { color: var(--on-surface); font-size: var(--text-body); }
-.session-exit-confirm span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
 .session-toolbar { display: flex; justify-content: space-between; gap: var(--sp2); margin-bottom: var(--sp3); }
-.session-legacy-details { display: none; }
 .session-sheet-section + .session-sheet-section { margin-top: var(--sp5); padding-top: var(--sp5); border-top: 1px solid var(--outline-variant); }
 .session-sheet-section h3 { margin: 0; color: var(--on-surface); font-size: var(--text-title); }
 .session-sheet-section p { margin: var(--sp2) 0 0; color: var(--on-surface-variant); font-size: var(--text-body-sm); line-height: 1.55; }
@@ -99,29 +54,10 @@
   font-weight: 700;
   cursor: pointer;
 }
-.workout-card.is-collapsed { padding-block: var(--sp3) !important; }
-.workout-card.is-collapsed > :not(.exercise-head) { display: none !important; }
-.workout-card.is-collapsed .exercise-head { margin-bottom: 0 !important; align-items: center !important; }
-.workout-card.is-collapsed .exercise-actions > :not(.session-open-exercise) { display: none !important; }
 
 @media (max-width: 640px) {
   .app-shell { width: 100%; box-shadow: none; }
   .app-content { padding: 14px 12px 0 !important; }
-  .workout-card { border-radius: 16px !important; padding: 14px !important; }
-  .exercise-head { flex-wrap: wrap; gap: 5px !important; }
-  .exercise-head > button { max-width: 100%; }
-  .exercise-actions { width: 100%; justify-content: flex-end; }
-  .exercise-actions > div:first-child { margin-right: auto; }
-  .set-row { display: grid !important; grid-template-columns: 54px minmax(72px,1fr) 38px 50px minmax(62px,.8fr) 22px; gap: 5px !important; }
-  .set-row input { padding: 8px 7px !important; font-size: 12px !important; }
-  .set-row select { padding: 6px 3px !important; font-size: 10px !important; }
-  .rest-dock { padding: 9px 10px !important; gap: 8px !important; overflow-x: auto; justify-content: flex-start; }
-  .rest-dock > div:nth-child(3) { display: flex; }
-}
-
-@media (max-width: 390px) {
-  .set-row { grid-template-columns: 50px minmax(60px,1fr) 34px 44px minmax(54px,.72fr) 18px; }
-  .workout-card { padding: 12px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
