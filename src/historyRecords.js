@@ -11,7 +11,7 @@
 //      for anyone west of Greenwich.
 //   2. A confirmed record is never mutated. Drafts are deep copies, and a
 //      failed update leaves the original deeply untouched.
-import { dayTemplates } from "./data/exercises.js";
+import { dayOrder, dayTemplates } from "./data/exercises.js";
 import { parseLocalDate } from "./dateUtils.js";
 import { isCompleteSet } from "./draft.js";
 import { TRACKING_TYPES, trackingForExercise } from "./exerciseTracking.js";
@@ -40,6 +40,12 @@ function numberOrNull(value) {
 }
 
 function unitOf(set) { return set?.unit === "kg" ? "kg" : "lb"; }
+
+/** The workout days the edit sheet can offer, in the app's established order. */
+export const HISTORY_DAY_OPTIONS = dayOrder.map(value => ({
+  value,
+  label: `${dayTemplates[value].emoji} ${dayTemplates[value].label}`,
+}));
 
 /** Day identity for a card. Unknown or missing template metadata reads as Workout. */
 export function dayIdentity(day) {

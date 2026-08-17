@@ -16,6 +16,7 @@ import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
 import { readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
+import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
@@ -822,6 +823,33 @@ export default function App() {
     leaveSession();
   }
 
+  // History mutations: App validates, prepares, and hands the ordering to the
+  // tested commitHistoryMutation seam — device first, then React state, then the
+  // optional cloud mirror. Never a handwritten write/state sequence here.
+  function saveHistoricalWorkout(draftWorkout) {
+    const original = sessions.find(item => item?.id === draftWorkout?.id);
+    if (!original) return { ok:false, error:"That workout is no longer available on this device." };
+    const prepared = prepareHistoryUpdate(original, draftWorkout);
+    if (!prepared.ok) return { ok:false, error:prepared.error, field:prepared.field };
+    const updated = sessions
+      .map(item => (item?.id === original.id ? prepared.session : item))
+      .sort((a,b)=>String(a?.date).localeCompare(String(b?.date)));
+    const committed = commitHistoryMutation({
+      nextSessions: updated,
+      writeLocal: writeSessions,
+      applyState: setSessions,
+      mirrorCloud: firebaseUser ? () => runCloud(() => saveCloudSession(firebaseUser.uid, prepared.session)) : null,
+    });
+    if (!committed.ok) {
+      setSaveStatus("error"); setStatusMsg("Workout changes couldn’t be saved. Your original workout is unchanged.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},3000);
+      return { ok:false, error:"Workout changes couldn’t be saved. Your original workout is unchanged. Try again." };
+    }
+    setSaveStatus("saved"); setStatusMsg("Workout updated ✓");
+    setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},1500);
+    return { ok:true };
+  }
+
   function resetAll() { setSessions([]); persist([]); pushSnapshot({sessions:[],bodyweights,equipmentPrefs}, true); setConfirmReset(false); }
 
   function addWeight() {
@@ -1322,6 +1350,7 @@ export default function App() {
             loadError={localLoadError}
             onRetryLoad={retryLocalProfileLoad}
             onStartWorkout={() => { switchTab("log"); startSession(); }}
+            onSaveWorkout={saveHistoricalWorkout}
           />
         )}
 
