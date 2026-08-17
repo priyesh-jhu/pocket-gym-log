@@ -1,4 +1,4 @@
-/* History destination. Tokens only — no colour literals, no !important.
+/* History destination. Tokens only — no colour literals, no forced-priority overrides.
    One phone-width column; every interactive target is at least 48px. */
 
 .history-screen { display: grid; gap: var(--sp4); }

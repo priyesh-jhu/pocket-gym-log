@@ -1,4 +1,4 @@
-/* Weight destination. Tokens only — no colour literals, no !important.
+/* Weight destination. Tokens only — no colour literals, no forced-priority overrides.
    One phone-width column; every interactive target is at least 48px. */
 
 .weight-screen { display: grid; gap: var(--sp4); }
