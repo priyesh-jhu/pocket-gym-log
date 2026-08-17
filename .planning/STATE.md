@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 3
 current_phase_name: Redesign Cleanup and Android Verification
-status: planning
-stopped_at: Phase 2 complete, human-approved
+status: complete
+stopped_at: Phase 3 complete, human-approved
 last_updated: "2026-08-17T00:00:00.000Z"
 last_activity: 2026-08-17
-last_activity_desc: Completed and human-approved History and Weight destinations (plans 02-01/02/03); deployed v1.5.3.
+last_activity_desc: Completed 03-01 (SessionScreen extraction) and 03-02 (App.jsx inline-style cleanup, full gate, browser + Android verification); human-approved.
 progress:
   total_phases: 3
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 3
+  completed_phases: 3
+  total_plans: 8
+  completed_plans: 5
 ---
 
 # Project State
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-08-14)
 ## Current Position
 
 Phase: 3 of 3 (Redesign Cleanup and Android Verification)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-17 — Phase 2 complete, transitioned to Phase 3
+Plan: 03-02 complete
+Status: Milestone ready to close
+Last activity: 2026-08-17 — Phase 3 complete, human-approved
 
 Progress: [██████████] 100%
 
@@ -77,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Body priorities and coverage guidance remain inside the single Body group boundary.
 - [Phase 01]: Enhanced Sheet focus, return, labeling, and history behavior stays opt-in for Progress callers.
 - [Phase 01-03]: Development unregisters service workers and clears only app-owned caches to prevent stale Vite React modules from mixing after HMR or restart.
+- [Phase 03-02]: `style={{}}` used only to set a computed CSS custom property or dynamic numeric value (day-accent colour, progress-bar width) is an accepted exception to the "no inline styles" gate; all other inline styles in App.jsx were migrated to tokenized CSS classes.
 
 ### Pending Todos
 
@@ -84,7 +85,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 3]: Final acceptance requires manual 360px/390px theme checks and Android-device verification because dedicated component and screen UI tests are intentionally out of scope.
+None currently — Phase 3's manual 360px/390px theme checks and Android-device verification were completed and approved.
 
 ## Deferred Items
 

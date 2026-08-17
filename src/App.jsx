@@ -831,7 +831,7 @@ export default function App() {
   const screenOwnsLoadingState = ["history", "weight"].includes(activeTab);
 
   if (loading && !screenOwnsLoadingState) return (
-    <div style={{background:"#08090E",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#666",fontFamily:"sans-serif"}}>
+    <div className="app-loading">
       Loading your training log...
     </div>
   );
@@ -860,52 +860,52 @@ export default function App() {
             <Button variant="text" onClick={triggerImport} aria-label="Import workout data">
               <Upload size={16} />
             </Button>
-            <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} style={{display:"none"}}/>
+            <input ref={importInputRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden-file-input"/>
           </>}
       />
 
-      <main className="app-content" style={{maxWidth:720,margin:"0 auto",padding:"20px 16px 0"}}>
+      <main className="app-content">
 
         {/* Status banners */}
-        {saveStatus==="saving"&&<div style={{background:"rgba(59,130,246,0.08)",border:"1px solid rgba(59,130,246,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#60A5FA"}}>Saving...</div>}
-        {saveStatus==="saved"&&<div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#4ADE80"}}>{statusMsg||"Saved ✓"}</div>}
-        {saveStatus==="error"&&<div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:12,color:"#F87171"}}>{statusMsg||"Something went wrong."}</div>}
+        {saveStatus==="saving"&&<div className="status-banner status-banner--info">Saving...</div>}
+        {saveStatus==="saved"&&<div className="status-banner status-banner--success">{statusMsg||"Saved ✓"}</div>}
+        {saveStatus==="error"&&<div className="status-banner status-banner--error">{statusMsg||"Something went wrong."}</div>}
 
         {workoutSummary&&(
-          <div style={{background:"linear-gradient(145deg,rgba(52,211,153,0.12),#0F1018 55%)",border:"1px solid rgba(52,211,153,0.3)",borderRadius:14,padding:"16px",marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:14}}>
-              <div><div style={{fontSize:16,fontWeight:900,color:"#34D399"}}>✓ Workout complete</div><div style={{fontSize:11,color:"#777",marginTop:2}}>{workoutSummary.date} · {dayTemplates[workoutSummary.day]?.label || workoutSummary.day || "Workout"}</div></div>
-              <button onClick={()=>setWorkoutSummary(null)} aria-label="Dismiss workout summary" style={{background:"none",border:"none",color:"#777",fontSize:18,cursor:"pointer",fontFamily:"inherit"}}>×</button>
+          <div className="workout-summary">
+            <div className="workout-summary__head">
+              <div><div className="workout-summary__title">✓ Workout complete</div><div className="workout-summary__meta">{workoutSummary.date} · {dayTemplates[workoutSummary.day]?.label || workoutSummary.day || "Workout"}</div></div>
+              <button onClick={()=>setWorkoutSummary(null)} aria-label="Dismiss workout summary" className="workout-summary__close">×</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginBottom:workoutSummary.prs.length||workoutSummary.improvements.length||workoutSummary.notes?12:0}}>
-              {[[workoutSummary.durationMinutes?workoutSummary.durationMinutes+"m":"—","Duration"],[workoutSummary.exercises,"Exercises"],[workoutSummary.sets,"Sets"],[workoutSummary.volumeLb.toLocaleString(),"Volume (lb)"]].map(([value,label])=><div key={label} style={{background:"rgba(8,9,14,0.55)",borderRadius:8,padding:"8px 6px",textAlign:"center"}}><div style={{fontSize:15,fontWeight:900,color:"#ECEAF4",overflow:"hidden",textOverflow:"ellipsis"}}>{value}</div><div style={{fontSize:9,color:"#666",marginTop:2}}>{label}</div></div>)}
+            <div className={`workout-summary__stats${workoutSummary.prs.length||workoutSummary.improvements.length||workoutSummary.notes?" workout-summary__stats--tight":""}`}>
+              {[[workoutSummary.durationMinutes?workoutSummary.durationMinutes+"m":"—","Duration"],[workoutSummary.exercises,"Exercises"],[workoutSummary.sets,"Sets"],[workoutSummary.volumeLb.toLocaleString(),"Volume (lb)"]].map(([value,label])=><div key={label} className="workout-summary__stat"><div className="workout-summary__stat-value">{value}</div><div className="workout-summary__stat-label">{label}</div></div>)}
             </div>
-            {workoutSummary.prs.length>0&&<div style={{fontSize:11,color:"#FBBF24",lineHeight:1.55,marginTop:7}}>🏆 New PR{workoutSummary.prs.length!==1?"s":""}: {workoutSummary.prs.map(pr=>`${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}</div>}
-            {workoutSummary.improvements.length>0&&<div style={{fontSize:11,color:"#60A5FA",lineHeight:1.55,marginTop:7}}>↗ Heavier than last time: {workoutSummary.improvements.map(item=>`${item.name} +${item.increaseLb} lb`).join(" · ")}</div>}
-            {workoutSummary.notes&&<div style={{fontSize:11,color:"#9CA3AF",lineHeight:1.5,marginTop:9,paddingTop:8,borderTop:"1px solid #1E2035"}}>“{workoutSummary.notes}”</div>}
+            {workoutSummary.prs.length>0&&<div className="workout-summary__prs">🏆 New PR{workoutSummary.prs.length!==1?"s":""}: {workoutSummary.prs.map(pr=>`${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}</div>}
+            {workoutSummary.improvements.length>0&&<div className="workout-summary__improvements">↗ Heavier than last time: {workoutSummary.improvements.map(item=>`${item.name} +${item.increaseLb} lb`).join(" · ")}</div>}
+            {workoutSummary.notes&&<div className="workout-summary__notes">“{workoutSummary.notes}”</div>}
           </div>
         )}
 
         {/* ── IMPORT CONFIRMATION ── */}
         {pendingImport&&(
-          <div style={{background:"#0F1018",border:"1px solid #2A2A3A",borderRadius:14,padding:"14px 16px",marginBottom:16}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#ECEAF4",marginBottom:6}}>Import workout data</div>
-            <div style={{fontSize:12,color:"#9CA3AF",lineHeight:1.6}}>
-              File contains <b style={{color:"#ECEAF4"}}>{pendingImport.sessions.length}</b> session{pendingImport.sessions.length!==1?"s":""} and <b style={{color:"#ECEAF4"}}>{pendingImport.bodyweights.length}</b> weigh-in{pendingImport.bodyweights.length!==1?"s":""}, exported from profile <b style={{color:"#ECEAF4"}}>{pendingImport.profile||"unknown"}</b>.
+          <div className="import-confirm">
+            <div className="import-confirm__title">Import workout data</div>
+            <div className="import-confirm__body">
+              File contains <b>{pendingImport.sessions.length}</b> session{pendingImport.sessions.length!==1?"s":""} and <b>{pendingImport.bodyweights.length}</b> weigh-in{pendingImport.bodyweights.length!==1?"s":""}, exported from profile <b>{pendingImport.profile||"unknown"}</b>.
               {(pendingImport.skipped.sessions>0||pendingImport.skipped.bodyweights>0)&&(
-                <div style={{color:"#F59E0B",marginTop:4}}>Skipped {pendingImport.skipped.sessions} malformed session{pendingImport.skipped.sessions!==1?"s":""} and {pendingImport.skipped.bodyweights} malformed weigh-in{pendingImport.skipped.bodyweights!==1?"s":""}.</div>
+                <div className="import-confirm__skipped">Skipped {pendingImport.skipped.sessions} malformed session{pendingImport.skipped.sessions!==1?"s":""} and {pendingImport.skipped.bodyweights} malformed weigh-in{pendingImport.skipped.bodyweights!==1?"s":""}.</div>
               )}
               {pendingOverwrite>0&&(
-                <div style={{color:"#60A5FA",marginTop:4}}>Merging will update {pendingOverwrite} weigh-in{pendingOverwrite!==1?"s":""} you already logged for those dates with the imported value.</div>
+                <div className="import-confirm__merge-note">Merging will update {pendingOverwrite} weigh-in{pendingOverwrite!==1?"s":""} you already logged for those dates with the imported value.</div>
               )}
             </div>
-            <div style={{fontSize:11,color:"#666",marginTop:8,background:"#0C0D16",border:"1px solid #16172A",borderRadius:8,padding:"8px 10px"}}>
-              This will apply to <b style={{color:"#9CA3AF"}}>{firebaseUser?.displayName||firebaseUser?.email||"this device's guest log"}</b>, regardless of which account the file was exported from.
+            <div className="import-confirm__account">
+              This will apply to <b>{firebaseUser?.displayName||firebaseUser?.email||"this device's guest log"}</b>, regardless of which account the file was exported from.
             </div>
-            <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-              <button onClick={confirmImportMerge} style={{background:"#3B82F6",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Merge (recommended)</button>
-              <button onClick={confirmImportReplace} style={{background:"#EF4444",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Replace — deletes {sessions.length} existing session{sessions.length!==1?"s":""}</button>
-              <button onClick={()=>setPendingImport(null)} style={{background:"#1E2035",border:"none",borderRadius:8,padding:"8px 16px",color:"#888",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+            <div className="import-confirm__actions">
+              <Button variant="filled" onClick={confirmImportMerge}>Merge (recommended)</Button>
+              <Button variant="danger" onClick={confirmImportReplace}>Replace — deletes {sessions.length} existing session{sessions.length!==1?"s":""}</Button>
+              <Button variant="tonal" onClick={()=>setPendingImport(null)}>Cancel</Button>
             </div>
           </div>
         )}

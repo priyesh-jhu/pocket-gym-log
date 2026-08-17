@@ -467,3 +467,12 @@ Plan 02-02 (Weight): complete, 649eae6/472d45d/82d298d. Tests 227->238 (+11, cap
 User instruction: "every deployment should have clean version number" — version
 bumping is not yet part of the deploy flow. package.json is at 1.5.2. Need to define
 what bumps when (patch per phase? per plan?) before the next deploy.
+Plan 02-03 Task 1 (audit): complete, commit ee5c362. Only defect: CSS header comments
+  literally contained "!important" as prose, tripping the plan's own audit grep -
+  reworded, no behavior change. Verified inline: hydration isolation, write-before-
+  state, Weight cloud-rejection never unwinds local success (saveWeighIn calls
+  commitWeightMutation synchronously; runCloud is separate/async after). Dev server
+  confirmed on 127.0.0.1:5173, single process, HTTP 200.
+Task 2 (human-verify, gate=blocking): plan explicitly forbids me from doing this —
+  deploy/push/version-bump/Android/Phase-3 all disallowed during this checkpoint.
+  Handed off to user with a checklist derived from the plan's <how-to-verify>.
