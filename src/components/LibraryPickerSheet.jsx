@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Chip, ListItem, Sheet, TextField } from "./index.js";
+import { Chip, ListItem, Sheet, TextField } from "./index.js";
 import { MUSCLES } from "../data/formGuide.js";
 import exerciseLibrary from "../data/exerciseLibrary.json" with { type: "json" };
 import "./LibraryPickerSheet.css";
