@@ -1,0 +1,65 @@
+/* History destination. Tokens only — no colour literals, no !important.
+   One phone-width column; every interactive target is at least 48px. */
+
+.history-screen { display: grid; gap: var(--sp4); }
+
+.history-header { display: grid; gap: var(--sp1); }
+.history-header h1 { margin: 0; color: var(--on-surface); font-size: var(--text-headline); font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.history-count { margin: 0; color: var(--on-surface-variant); font-size: var(--text-body); font-variant-numeric: tabular-nums; }
+
+.history-loading { display: grid; gap: var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body); }
+.history-skeleton { min-height: 96px; border-radius: var(--shape-lg); background: var(--surface-container); }
+
+.history-error { overflow-wrap: anywhere; }
+.history-error h2 { margin: 0 0 var(--sp2); font-size: var(--text-title-lg); font-weight: 600; }
+.history-error p { margin: 0 0 var(--sp4); color: var(--on-surface-variant); font-size: var(--text-body); }
+
+.history-empty { padding: var(--sp8) var(--sp4); display: grid; gap: var(--sp2); justify-items: center; text-align: center; }
+.history-empty h2 { margin: 0; font-size: var(--text-title-lg); font-weight: 600; }
+.history-empty p { margin: 0 0 var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body); }
+
+.history-month { display: grid; gap: var(--sp2); }
+.history-month__title { margin: 0; color: var(--on-surface-variant); font-size: var(--text-label); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.history-list, .history-exercises, .history-sets { margin: 0; padding: 0; list-style: none; }
+.history-list { display: grid; gap: var(--sp2); }
+
+.history-screen .m3-card { padding: 0; overflow: hidden; }
+.history-card.is-expanded { background: var(--surface-container-high); }
+
+.history-disclosure {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: var(--sp3);
+  padding: var(--sp4);
+  border: 0;
+  background: transparent;
+  color: var(--on-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.history-disclosure:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
+.history-disclosure__body { display: grid; gap: 2px; min-width: 0; }
+.history-dot { width: 10px; height: 10px; border-radius: var(--shape-full); background: var(--primary); }
+.history-card__title { font-size: var(--text-body-lg); font-weight: 600; overflow-wrap: anywhere; }
+.history-card__meta { color: var(--on-surface-variant); font-size: var(--text-body); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.history-chevron { color: var(--on-surface-variant); transition: transform var(--dur-med) var(--ease-emph); }
+.history-card.is-expanded .history-chevron { transform: rotate(180deg); }
+
+.history-detail { display: grid; gap: var(--sp4); padding: 0 var(--sp4) var(--sp4); }
+.history-detail[hidden] { display: none; }
+.history-detail__empty, .history-detail__line { margin: 0; color: var(--on-surface-variant); font-size: var(--text-body); overflow-wrap: anywhere; }
+.history-exercises { display: grid; gap: var(--sp4); padding-top: var(--sp4); border-top: 1px solid var(--outline-variant); }
+.history-exercise__name { margin: 0 0 var(--sp2); color: var(--on-surface); font-size: var(--text-body); font-weight: 600; overflow-wrap: anywhere; }
+.history-sets { display: flex; flex-wrap: wrap; gap: var(--sp2); }
+.history-set { padding: var(--sp1) var(--sp3); border-radius: var(--shape-full); background: var(--surface-container-highest); color: var(--on-surface-variant); font-size: var(--text-body); font-variant-numeric: tabular-nums; }
+.history-notes { margin: 0; padding-top: var(--sp4); border-top: 1px solid var(--outline-variant); color: var(--on-surface-variant); font-size: var(--text-body); overflow-wrap: anywhere; }
+
+.history-screen .m3-btn { min-height: 48px; font-size: var(--text-label-lg); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .history-screen *, .history-screen *::before, .history-screen *::after { animation-duration: 0s; transition-duration: 0s; }
+}

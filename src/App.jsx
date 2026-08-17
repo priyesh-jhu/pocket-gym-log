@@ -6,7 +6,7 @@ import { dayOrder, dayTemplates, variantFor, allVariantNames, exerciseForVariant
 import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
-import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
+import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
 import { getProgressionIncrements, getProgressionRecommendation, setProgressionIncrement } from "./progression.js";
@@ -15,6 +15,7 @@ import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseT
 import { createWorkoutSummary } from "./workoutSummary.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness, readinessScore } from "./userFeatures.js";
+import { readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Cloud, Download, Home, History, Scale, Settings, SlidersHorizontal, Upload, X } from "lucide-react";
@@ -23,6 +24,7 @@ import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
 import ProgressScreen from "./screens/ProgressScreen.jsx";
+import HistoryScreen from "./screens/HistoryScreen.jsx";
 
 const NAV_ITEMS = [
   { id: "log",      label: "Home",     Icon: Home },
@@ -33,8 +35,8 @@ const NAV_ITEMS = [
 ];
 
 // ─── STORAGE ──────────────────────────────────────────────────────────────────
-const SESSION_PREFIX  = "workout-sessions:";
-const WEIGHT_PREFIX   = "workout-bodyweight:";
+// The session/weigh-in key builders live in localProfileData.js so the forgiving
+// reader below and the strict screen-owned reader can never drift apart.
 const TAB_KEY         = "workout-active-tab";
 const LEGACY_ACTIVE_KEY = "workout-active-profile";
 const LEGACY_OWNER_KEY = "workout-legacy-claimed-by";
@@ -46,8 +48,9 @@ const storage = {
   remove(key)     { try { window.localStorage.removeItem(key); return true; }    catch { return false; } },
 };
 
-function sessionKey(u) { return SESSION_PREFIX + u; }
-function weightKey(u)  { return WEIGHT_PREFIX  + u; }
+// Forgiving reader: any problem reads as "nothing stored". Correct for auth
+// reconciliation and import, where one bad blob must not block merging the rest.
+// Screens that show their own loading state use readLocalProfileResult instead.
 function readStoredArray(key) {
   try {
     const raw = storage.get(key);
@@ -312,6 +315,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => { try { return storage.get(TAB_KEY)||"log"; } catch { return "log"; } });
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Set only when this device's saved records could not be READ (storage threw,
+  // or the stored JSON is corrupt). History and Weight surface it as a retryable
+  // error so a failed read is never mistaken for an empty training log.
+  const [localLoadError, setLocalLoadError] = useState(null);
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
@@ -330,8 +337,6 @@ export default function App() {
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [confirmDiscardDraft, setConfirmDiscardDraft] = useState(false);
   const draftNamespaceRef = useRef("guest");
-  const [expandedHistory, setExpandedHistory] = useState(null);
-  const [confirmDelete, setConfirmDelete] = useState(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [showCoach, setShowCoach] = useState(true);
   const [showWarmup, setShowWarmup] = useState(true);
@@ -390,16 +395,26 @@ export default function App() {
   // Bootstrap
   useEffect(() => {
     let cancelled = false;
-    try {
-      if (!cancelled) {
+    const result = readLocalProfileResult({ storage, profile: "guest", loadPrefs });
+    if (!cancelled) {
+      if (result.ok) {
+        setSessions(result.data.sessions);
+        setBodyweights(result.data.bodyweights);
+        setEquipmentPrefs(result.data.equipmentPrefs);
+        restoreDraft("guest", result.data.equipmentPrefs);
+      } else {
+        // History and Weight own this failure and offer a retry. Every other
+        // destination keeps the long-standing forgiving behaviour so one corrupt
+        // blob cannot stop the rest of the app from starting.
+        setLocalLoadError(result.error);
         const prefs = loadPrefs(storage, "guest");
         setSessions(readStoredArray(sessionKey("guest")));
         setBodyweights(readStoredArray(weightKey("guest")));
         setEquipmentPrefs(prefs);
         restoreDraft("guest", prefs);
       }
-    } catch { /* Guest mode remains empty if device storage is unavailable. */ }
-    finally { if (!cancelled) setLoading(false); }
+      setLoading(false);
+    }
     return () => { cancelled = true; };
   }, []);
 
@@ -449,6 +464,18 @@ export default function App() {
 
   function localProfileData(profile) {
     return { sessions:readStoredArray(sessionKey(profile)), bodyweights:readStoredArray(weightKey(profile)), equipmentPrefs:loadPrefs(storage, profile) };
+  }
+
+  // Retry for the destinations that own their own loading/error state. It
+  // deliberately leaves the workout draft alone: this re-reads saved records, so
+  // it must not roll back anything the user is typing on the Log tab.
+  function retryLocalProfileLoad() {
+    runLocalProfileLoad({
+      readResult: () => readLocalProfileResult({ storage, profile:activeProfile, loadPrefs }),
+      setLoading,
+      setError: setLocalLoadError,
+      applyData: data => { setSessions(data.sessions); setBodyweights(data.bodyweights); setEquipmentPrefs(data.equipmentPrefs); },
+    });
   }
 
   async function syncProfileFromCloud(user, profile) {
@@ -795,7 +822,6 @@ export default function App() {
     leaveSession();
   }
 
-  function deleteSession(id) { const u=sessions.filter(s=>s.id!==id); setSessions(u); persist(u, firebaseUser ? ()=>deleteCloudSession(firebaseUser.uid, id) : null); setConfirmDelete(null); }
   function resetAll() { setSessions([]); persist([]); pushSnapshot({sessions:[],bodyweights,equipmentPrefs}, true); setConfirmReset(false); }
 
   function addWeight() {
@@ -929,13 +955,17 @@ export default function App() {
   const workoutTemplates = getWorkoutTemplates(equipmentPrefs);
   const trainingGoals = getGoals(equipmentPrefs);
   const allExNames = Array.from(new Set([...allVariantNames(),...customExercises.map(item=>item.name),...sessions.flatMap(session=>session.exercises.map(ex=>ex.name))])).sort();
-  const sortedSessions = [...sessions].sort((a,b)=>b.date.localeCompare(a.date));
   const dayMeta = dayTemplates[currentDay];
   const draftFilled = draft.exercises.reduce((n,ex)=>n+ex.sets.filter(set=>isCompleteSet(set,trackingForExercise(ex))).length,0);
   const progressionIncrements = getProgressionIncrements(equipmentPrefs);
   const restTimerDefault = getRestTimerSeconds(equipmentPrefs);
 
-  if (loading) return (
+  // History and Weight render their own loading and load-error states, so they
+  // are the only destinations allowed past this blocking hydration return.
+  // Progress keeps the root loading behaviour it already had.
+  const screenOwnsLoadingState = ["history", "weight"].includes(activeTab);
+
+  if (loading && !screenOwnsLoadingState) return (
     <div style={{background:"#08090E",minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:"#666",fontFamily:"sans-serif"}}>
       Loading your training log...
     </div>
@@ -1284,63 +1314,15 @@ export default function App() {
           </div>
         )}
 
-        {/* ── HISTORY TAB ── */}
+        {/* ── History destination ── */}
         {activeTab==="history" && (
-          <div>
-            {sortedSessions.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:"#444",fontSize:13}}>No sessions logged yet.</div>}
-            {sortedSessions.map(session=>{
-              const meta=dayTemplates[session.day]; const isExp=expandedHistory===session.id;
-              const vol=session.exercises.reduce((s,ex)=>s+ex.sets.reduce((s2,st)=>(parseFloat(st.weight)||0)*(parseFloat(st.reps)||0)+s2,0),0);
-              return (
-                <div key={session.id} style={{marginBottom:10}}>
-                  <div onClick={()=>setExpandedHistory(isExp?null:session.id)} style={{background:isExp?"#161723":"#0F1018",border:"1px solid "+(isExp?meta.color+"30":"#16172A"),borderRadius:isExp?"12px 12px 0 0":"12px",padding:"12px 16px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:12}}>
-                      <span style={{fontSize:18}}>{meta.emoji}</span>
-                      <div><div style={{fontWeight:700,fontSize:13}}>{meta.label}</div><div style={{fontSize:11,color:"#555"}}>{session.date}</div></div>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      {vol>0&&<span style={{fontSize:10,color:"#555"}}>{Math.round(vol).toLocaleString()} vol</span>}
-                      <span style={{fontSize:12,color:"#444"}}>{isExp?"▲":"▼"}</span>
-                    </div>
-                  </div>
-                  {isExp&&(
-                    <div style={{background:"#0C0D16",border:"1px solid "+meta.color+"20",borderTop:"none",borderRadius:"0 0 12px 12px",padding:"12px 16px"}}>
-                      {session.exercises.map((ex,i)=>(
-                        <div key={i} style={{marginBottom:10}}>
-                          <div style={{fontSize:12,fontWeight:700,color:meta.color,marginBottom:4}}>{ex.name}</div>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {ex.sets.map((s,j)=>{const type=trackingForExercise(ex);return <span key={j} style={{background:"#161723",borderRadius:6,padding:"3px 10px",fontSize:11,color:"#9CA3AF"}}>{s.weight?`${s.weight}${s.unit} × `:""}{s.reps||"0"}{type===TRACKING_TYPES.TIMED?" sec":type===TRACKING_TYPES.DISTANCE?" m":" reps"}</span>;})}
-                          </div>
-                        </div>
-                      ))}
-                      {session.notes&&<div style={{marginTop:8,fontSize:12,color:"#666",fontStyle:"italic",borderTop:"1px solid #1A1A28",paddingTop:8}}>"{session.notes}"</div>}
-                      <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
-                        {confirmDelete===session.id
-                          ? <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                              <span style={{fontSize:11,color:"#888"}}>Delete this session?</span>
-                              <button onClick={()=>deleteSession(session.id)} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Yes</button>
-                              <button onClick={()=>setConfirmDelete(null)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 10px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                            </div>
-                          : <button onClick={()=>setConfirmDelete(session.id)} style={{background:"none",border:"1px solid #2A2A35",borderRadius:6,padding:"4px 10px",color:"#666",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Delete</button>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {sessions.length>0&&(
-              <div style={{marginTop:24,textAlign:"center",display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-                <button onClick={exportData} style={{background:"none",border:"1px solid #2A2A35",borderRadius:8,padding:"6px 14px",color:"#666",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>⬇ Export all</button>
-                {confirmReset
-                  ? <div style={{display:"inline-flex",gap:8,alignItems:"center",background:"#0F1018",border:"1px solid #2A2A35",borderRadius:10,padding:"6px 14px"}}>
-                      <span style={{fontSize:12,color:"#888"}}>Delete ALL {sessions.length} sessions?</span>
-                      <button onClick={resetAll} style={{background:"#EF4444",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Yes</button>
-                      <button onClick={()=>setConfirmReset(false)} style={{background:"#1E2035",border:"none",borderRadius:6,padding:"4px 10px",color:"#888",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                    </div>
-                  : <button onClick={()=>setConfirmReset(true)} style={{background:"none",border:"none",color:"#3A3A45",fontSize:11,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>Reset all data</button>}
-              </div>
-            )}
-          </div>
+          <HistoryScreen
+            sessions={sessions}
+            loading={loading}
+            loadError={localLoadError}
+            onRetryLoad={retryLocalProfileLoad}
+            onStartWorkout={() => { switchTab("log"); startSession(); }}
+          />
         )}
 
         {/* ── PROGRESS TAB ── */}
@@ -1380,6 +1362,9 @@ export default function App() {
             sessions={sessions}
             equipmentPrefs={equipmentPrefs}
             saveAccountPrefs={saveAccountPrefs}
+            confirmReset={confirmReset}
+            setConfirmReset={setConfirmReset}
+            resetAll={resetAll}
           />
         )}
 

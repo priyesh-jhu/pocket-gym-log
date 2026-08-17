@@ -24,8 +24,10 @@ export default function SettingsScreen({
   goalTarget, setGoalTarget, goalUnit, setGoalUnit,
   goalMsg, createTrainingGoal, trainingGoals,
   sessions, equipmentPrefs, saveAccountPrefs,
+  confirmReset, setConfirmReset, resetAll,
 }) {
   const [theme, setTheme] = useState(getThemePref);
+  const workoutCount = Array.isArray(sessions) ? sessions.length : 0;
 
   function chooseTheme(preference) {
     setThemePref(preference);
@@ -107,6 +109,25 @@ export default function SettingsScreen({
           );
         })}
       </Card>
+
+      {/* Account-level reset. It used to sit under History; the Phase 2 History
+          destination is records-only, so it keeps its home here in Settings
+          rather than disappearing. Same two-step confirmation as before. */}
+      {resetAll && workoutCount > 0 && (
+        <Card className="settings__card">
+          <h2 className="settings__title">Reset workout history</h2>
+          <p className="settings__help">Export a backup first if you might want these workouts again. This clears every workout from this device and your synced account.</p>
+          {confirmReset ? (
+            <div className="settings__danger-actions">
+              <p className="settings__msg is-err">Delete all {workoutCount} workout{workoutCount === 1 ? "" : "s"}? This can’t be undone.</p>
+              <Button variant="filled" className="settings__danger" onClick={resetAll}>Delete all workouts</Button>
+              <Button variant="text" onClick={() => setConfirmReset(false)}>Keep my workouts</Button>
+            </div>
+          ) : (
+            <Button variant="text" onClick={() => setConfirmReset(true)}>Reset all data</Button>
+          )}
+        </Card>
+      )}
 
       <p className="settings__version">Pocket Gym Log · v{version}</p>
     </section>

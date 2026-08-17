@@ -68,6 +68,9 @@
   transition: width var(--dur-med) var(--ease-emph);
 }
 .settings__bar-fill.is-complete { background: var(--success); }
+.settings__danger-actions { display: grid; gap: var(--sp2); justify-items: start; }
+.settings__danger-actions .settings__msg { margin: 0; }
+.settings__danger { background: var(--error); color: var(--on-error); }
 .settings__version {
   margin: var(--sp6) 0 var(--sp5);
   text-align: center;
