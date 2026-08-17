@@ -14,3 +14,13 @@ One defect found and fixed: the CSS header comments ("no colour literals, no !im
 Full verify command passes: 238 tests / 0 fail across 6 timezones, build succeeds, lint-baseline matches the single pre-approved finding, source assertions and token/style grep all clean.
 
 Task 2 (human-verify checkpoint) untouched, left for the dev server review.
+
+## Task 2 — human-verify checkpoint
+
+Approved by user 2026-08-17: History and Weight confirmed at 360/390px, both
+themes, covering month/workout order, expanded detail, edit validation/discard/
+save/focus-return, delete cancel, Weight summary->trend->add->history order,
+unit switching, chart tooltip, focus/trap/dismiss behavior, 200% zoom, no
+horizontal scroll, no stale theme colors. No defects reported.
+
+Phase 2 complete.
