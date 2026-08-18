@@ -1,7 +1,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
-import { Button, Sheet } from "../components/index.js";
+import { Button, LibraryPickerSheet, Sheet } from "../components/index.js";
 import { dayOrder, dayTemplates, variantFor, exerciseForVariantName } from "../data/exercises.js";
 import { MUSCLES, formGuide } from "../data/formGuide.js";
+import { guideFor } from "../data/exerciseGuide.js";
 import { countEnteredSets } from "../draft.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "../exerciseTracking.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
@@ -110,8 +111,8 @@ export default function SessionScreen({
   confirmSwitch, setConfirmSwitch, requestEquipmentSwitch, applyEquipmentSwitch,
   toggleSetDone, updateSet, removeSet, addSet,
   plateFor, setPlateFor,
-  guideExercise, setGuideExercise,
-  customExercises, customExerciseId, setCustomExerciseId, addSavedCustomExercise,
+  guideExercise, setGuideExercise, guideImageIndex, toggleGuideImage, openGuide,
+  customExercises, customExerciseId, setCustomExerciseId, addSavedCustomExercise, addLibraryExercise,
   newExerciseName, setNewExerciseName, newExerciseTarget, setNewExerciseTarget, createAndAddExercise,
   templateName, setTemplateName, storeWorkoutTemplate, workoutTemplates, pendingTemplate, setPendingTemplate, applySavedWorkoutTemplate,
   workoutToolsMsg,
@@ -119,7 +120,8 @@ export default function SessionScreen({
   saveSession, draftHasContent, getProgressionRecommendation,
 }) {
   const draftFilledCount = draftFilled;
-  const guide = guideExercise && formGuide[guideExercise];
+  const draftGuideExercise = guideExercise && draft.exercises.find(ex => ex.name === guideExercise);
+  const guide = guideExercise && guideFor(guideExercise, draftGuideExercise);
 
   return (
     <div className="session-screen" style={{ "--day-accent": dayMeta.color }}>
@@ -233,9 +235,9 @@ export default function SessionScreen({
         return (
           <div className={`workout-card ${ei === activeExercise ? "is-active" : "is-collapsed"}`} key={ei}>
             <div className="exercise-head">
-              <button className="session-exercise-name" onClick={() => formGuide[ex.name] && setGuideExercise(ex.name)} disabled={!formGuide[ex.name]}>
+              <button className="session-exercise-name" onClick={() => (formGuide[ex.name] || ex.libraryId) && openGuide(ex.name)} disabled={!(formGuide[ex.name] || ex.libraryId)}>
                 <span className="session-exercise-name__label">{ex.name}</span>
-                {formGuide[ex.name] && <span className="session-exercise-name__badge">ⓘ form</span>}
+                {(formGuide[ex.name] || ex.libraryId) && <span className="session-exercise-name__badge">ⓘ form</span>}
               </button>
               <div className="exercise-actions">
                 <button className="session-open-exercise" onClick={() => setActiveExercise(ei)}>{ex.sets.filter(set => set.done).length}/{ex.sets.length} sets{ei === activeExercise ? "" : " · Open"}</button>
@@ -337,6 +339,9 @@ export default function SessionScreen({
           <select className="session-tools__select" value={customExerciseId} onChange={e => setCustomExerciseId(e.target.value)}><option value="">Add a saved exercise…</option>{customExercises.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
           <Button variant="filled" onClick={addSavedCustomExercise} disabled={!customExerciseId}>Add</Button>
         </div>}
+        <div className="session-tools__row">
+          <Button variant="text" onClick={() => setSessionSheet("library")}>Search exercise library</Button>
+        </div>
         <div className="session-tools__grid">
           <input className="session-tools__input" value={newExerciseName} onChange={e => setNewExerciseName(e.target.value)} placeholder="New exercise name" />
           <input className="session-tools__input" value={newExerciseTarget} onChange={e => setNewExerciseTarget(e.target.value)} placeholder="3 x 8-12" />
@@ -404,6 +409,12 @@ export default function SessionScreen({
         <div className="session-sheet-section"><h3>Draft</h3><p>Your workout is saved automatically on this device.</p><Button variant="text" onClick={() => { setSessionSheet(null); setConfirmDiscardDraft(true); }}>Discard workout</Button></div>
       </Sheet>
 
+      <LibraryPickerSheet
+        open={sessionSheet === "library"}
+        onClose={() => setSessionSheet(null)}
+        onSelect={entry => { addLibraryExercise(entry); setSessionSheet(null); }}
+      />
+
       {(restRunning || restComplete) && (
         <div className="rest-dock" data-complete={restComplete}>
           <div className="rest-dock__label">{restComplete ? "REST COMPLETE" : "REST"}</div>
@@ -437,20 +448,32 @@ export default function SessionScreen({
                       </div>
                       <div className="session-bodymap__caption">● primary ○ secondary</div>
                     </div>
+                    {g.kind === "library" && (
+                      <button type="button" className="session-guide-image" onClick={toggleGuideImage}>
+                        <img className="session-guide-image__img" src={g.images[guideImageIndex]} alt={`${guideExercise} demonstration`} />
+                        <div className="session-guide-image__hint">Tap to see {guideImageIndex === 0 ? "end" : "start"} position</div>
+                      </button>
+                    )}
                   </div>
                   <div>
-                    <GuideSection icon="🧩" title="SETUP & POSITION" items={g.setup} />
-                    <GuideSection icon="🎯" title="EXECUTION" items={g.execution} />
-                    <div className="session-guide-breathing">
-                      <div className="session-guide-breathing__title">💨 BREATHING</div>
-                      <div>{g.breathing}</div>
-                    </div>
-                    <div className="session-guide-mistakes">
-                      <div className="session-guide-mistakes__title">⚠️ COMMON MISTAKES</div>
-                      {g.mistakes.map((c, i) => (
-                        <div key={i} className="session-guide-mistakes__item"><span>✕</span><span>{c}</span></div>
-                      ))}
-                    </div>
+                    {g.kind === "authored" ? (
+                      <>
+                        <GuideSection icon="🧩" title="SETUP & POSITION" items={g.setup} />
+                        <GuideSection icon="🎯" title="EXECUTION" items={g.execution} />
+                        <div className="session-guide-breathing">
+                          <div className="session-guide-breathing__title">💨 BREATHING</div>
+                          <div>{g.breathing}</div>
+                        </div>
+                        <div className="session-guide-mistakes">
+                          <div className="session-guide-mistakes__title">⚠️ COMMON MISTAKES</div>
+                          {g.mistakes.map((c, i) => (
+                            <div key={i} className="session-guide-mistakes__item"><span>✕</span><span>{c}</span></div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <GuideSection icon="📋" title="INSTRUCTIONS" items={g.instructions} />
+                    )}
                   </div>
                 </div>
               </div>

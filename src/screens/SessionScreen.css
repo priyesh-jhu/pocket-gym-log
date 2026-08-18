@@ -397,3 +397,7 @@
 @media (prefers-reduced-motion: reduce) {
   .session-screen *, .session-screen *::before, .session-screen *::after { animation-duration: 0s; transition-duration: 0s; }
 }
+
+.session-guide-image { display: block; width: 100%; padding: 0; margin-top: var(--sp3); border: 1px solid var(--outline-variant); border-radius: var(--shape-md); background: var(--surface-container-highest); cursor: pointer; overflow: hidden; }
+.session-guide-image__img { display: block; width: 100%; height: auto; }
+.session-guide-image__hint { padding: var(--sp2) var(--sp3); font-size: var(--text-label-sm); color: var(--on-surface-dim); text-align: center; }
