@@ -11,7 +11,7 @@ import { getProgressionIncrements, getProgressionRecommendation, setProgressionI
 import { announceRestComplete, getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
-import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
+import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, createCustomExerciseFromLibrary, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness } from "./userFeatures.js";
 import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
 import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js";
@@ -143,6 +143,7 @@ export default function App() {
   const [weightDisplayUnit, setWeightDisplayUnit] = useState("lb");
 
   const [guideExercise, setGuideExercise] = useState(null);
+  const [guideImageIndex, setGuideImageIndex] = useState(0);
   const [plateFor, setPlateFor] = useState(null);
 
   const [equipmentPrefs, setEquipmentPrefs] = useState({});
@@ -485,6 +486,23 @@ export default function App() {
     if (!exercise) return;
     setDraft(prev=>addExerciseToDraft(prev,exercise));
     setWorkoutToolsMsg(`Added ${exercise.name}.`);
+  }
+
+  function addLibraryExercise(libraryEntry) {
+    const result = createCustomExerciseFromLibrary(equipmentPrefs, libraryEntry);
+    if (!result.ok) { setWorkoutToolsMsg(result.error); return; }
+    saveAccountPrefs(result.prefs);
+    setDraft(prev=>addExerciseToDraft(prev,result.exercise));
+    setWorkoutToolsMsg(`Added ${result.exercise.name}.`);
+  }
+
+  function openGuide(name) {
+    setGuideExercise(name);
+    setGuideImageIndex(0);
+  }
+
+  function toggleGuideImage() {
+    setGuideImageIndex(index => (index + 1) % 2);
   }
 
   function storeWorkoutTemplate() {
@@ -939,8 +957,8 @@ export default function App() {
             confirmSwitch={confirmSwitch} setConfirmSwitch={setConfirmSwitch} requestEquipmentSwitch={requestEquipmentSwitch} applyEquipmentSwitch={applyEquipmentSwitch}
             toggleSetDone={toggleSetDone} updateSet={updateSet} removeSet={removeSet} addSet={addSet}
             plateFor={plateFor} setPlateFor={setPlateFor}
-            guideExercise={guideExercise} setGuideExercise={setGuideExercise}
-            customExercises={customExercises} customExerciseId={customExerciseId} setCustomExerciseId={setCustomExerciseId} addSavedCustomExercise={addSavedCustomExercise}
+            guideExercise={guideExercise} setGuideExercise={setGuideExercise} guideImageIndex={guideImageIndex} toggleGuideImage={toggleGuideImage} openGuide={openGuide}
+            customExercises={customExercises} customExerciseId={customExerciseId} setCustomExerciseId={setCustomExerciseId} addSavedCustomExercise={addSavedCustomExercise} addLibraryExercise={addLibraryExercise}
             newExerciseName={newExerciseName} setNewExerciseName={setNewExerciseName} newExerciseTarget={newExerciseTarget} setNewExerciseTarget={setNewExerciseTarget} createAndAddExercise={createAndAddExercise}
             templateName={templateName} setTemplateName={setTemplateName} storeWorkoutTemplate={storeWorkoutTemplate} workoutTemplates={workoutTemplates} pendingTemplate={pendingTemplate} setPendingTemplate={setPendingTemplate} applySavedWorkoutTemplate={applySavedWorkoutTemplate}
             workoutToolsMsg={workoutToolsMsg}
