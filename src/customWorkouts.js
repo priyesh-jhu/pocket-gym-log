@@ -37,7 +37,12 @@ export function createCustomExerciseFromLibrary(prefs, libraryEntry, now=Date.no
   const name = text(libraryEntry?.name);
   if (!name) return { ok:false, error:"Choose an exercise from the library.", prefs:{...(prefs||{})} };
   const existing = getCustomExercises(prefs);
-  if (existing.some(item => item.name.toLowerCase() === name.toLowerCase()) || exerciseForVariantName(name)) {
+  const match = existing.find(item => item.name.toLowerCase() === name.toLowerCase());
+  if (match) {
+    if (match.libraryId === text(libraryEntry.id, 60)) return { ok:true, exercise:match, prefs:{...(prefs||{})} };
+    return { ok:false, error:"An exercise with that name already exists.", prefs:{...(prefs||{})} };
+  }
+  if (exerciseForVariantName(name)) {
     return { ok:false, error:"An exercise with that name already exists.", prefs:{...(prefs||{})} };
   }
   const exercise = {

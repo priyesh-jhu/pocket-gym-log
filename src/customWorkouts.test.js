@@ -56,6 +56,14 @@ describe("custom exercises and templates", () => {
     assert.equal(createCustomExerciseFromLibrary({}, { id: "c", name: "Overhead Press", primaryMuscles: ["chest"], secondaryMuscles: [] }, 2).ok, false);
   });
 
+  test("re-picking an already-saved library exercise reuses the existing record instead of erroring", () => {
+    const first = createCustomExerciseFromLibrary({}, { id: "a", name: "Sled Push", primaryMuscles: ["quads"], secondaryMuscles: [] }, 1);
+    const second = createCustomExerciseFromLibrary(first.prefs, { id: "a", name: "Sled Push", primaryMuscles: ["quads"], secondaryMuscles: [] }, 2);
+    assert.equal(second.ok, true);
+    assert.deepEqual(second.exercise, first.exercise);
+    assert.deepEqual(getCustomExercises(second.prefs), getCustomExercises(first.prefs));
+  });
+
   test("existing free-text custom exercises keep their original 4-key shape with no library fields", () => {
     const result = createCustomExercise({}, { name: "Farmer Walk", target: "3 x 40m" }, 1);
     assert.deepEqual(getCustomExercises(result.prefs), [{ id: "custom-1", name: "Farmer Walk", target: "3 x 40m", tip: "" }]);
