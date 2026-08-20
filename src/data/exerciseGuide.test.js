@@ -1,9 +1,14 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { guideFor } from "./exerciseGuide.js";
+import { loadExerciseLibrary } from "./exerciseLibraryLoader.js";
 import exerciseLibrary from "./exerciseLibrary.json" with { type: "json" };
 
 describe("guideFor", () => {
+  test("preloads the library cache", async () => {
+    await loadExerciseLibrary();
+  });
+
   test("returns the hand-authored guide when one exists, ignoring any draft libraryId", () => {
     const guide = guideFor("Barbell/DB Bench Press", { libraryId: "irrelevant" });
     assert.equal(guide.kind, "authored");

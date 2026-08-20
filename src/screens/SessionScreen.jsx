@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { Button, LibraryPickerSheet, Sheet } from "../components/index.js";
 import { dayOrder, dayTemplates, variantFor, exerciseForVariantName } from "../data/exercises.js";
 import { MUSCLES, formGuide } from "../data/formGuide.js";
 import { guideFor } from "../data/exerciseGuide.js";
+import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
 import { countEnteredSets } from "../draft.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "../exerciseTracking.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
@@ -122,6 +124,8 @@ export default function SessionScreen({
   const draftFilledCount = draftFilled;
   const draftGuideExercise = guideExercise && draft.exercises.find(ex => ex.name === guideExercise);
   const guide = guideExercise && guideFor(guideExercise, draftGuideExercise);
+
+  useEffect(() => { loadExerciseLibrary(); }, []);
 
   return (
     <div className="session-screen" style={{ "--day-accent": dayMeta.color }}>

@@ -1,15 +1,13 @@
 import { formGuide } from "./formGuide.js";
 import { viewForMuscles } from "./muscleMap.js";
-import exerciseLibrary from "./exerciseLibrary.json" with { type: "json" };
-
-const libraryById = new Map(exerciseLibrary.map(entry => [entry.id, entry]));
+import { getExerciseLibraryEntrySync } from "./exerciseLibraryLoader.js";
 
 export function guideFor(name, draftExercise) {
   const authored = formGuide[name];
   if (authored) return { kind: "authored", ...authored };
 
   const libraryId = draftExercise?.libraryId;
-  const entry = libraryId && libraryById.get(libraryId);
+  const entry = libraryId && getExerciseLibraryEntrySync(libraryId);
   if (!entry) return null;
 
   const primary = draftExercise.primaryMuscles?.length ? draftExercise.primaryMuscles : entry.primaryMuscles;
