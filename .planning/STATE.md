@@ -93,7 +93,12 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| *(none)* | | | |
+| UX | Re-picking an already-added library exercise (Exercise Library feature) shows "already exists" instead of re-adding it to the draft | Deferred | 2026-08-20 |
+| Perf/repo size | Exercise Library feature bundles ~97MB of committed exercise images (865 exercises x 2 poses); consider compression or off-repo hosting before wider release | Deferred | 2026-08-20 |
+
+### Post-milestone work: Exercise Library feature
+
+Shipped 2026-08-20 (commit 7e150bb), outside the v1.0 roadmap above — added a bundled 865-exercise library (free-exercise-db, public domain) with muscle-group data and pose images, a searchable picker for custom exercises, and library-sourced form guides alongside the existing hand-authored ones. Spec: `docs/superpowers/specs/2026-08-17-exercise-library-design.md`. Plan: `docs/superpowers/plans/2026-08-17-exercise-library.md`.
 
 ## Session Continuity
 
