@@ -11,7 +11,11 @@ export default function LibraryPickerSheet({ open, onClose, onSelect }) {
   const [exerciseLibrary, setExerciseLibrary] = useState(null);
 
   useEffect(() => {
-    if (open && !exerciseLibrary) loadExerciseLibrary().then(setExerciseLibrary);
+    if (open) setQuery("");
+  }, [open]);
+
+  useEffect(() => {
+    if (open && !exerciseLibrary) loadExerciseLibrary().then(setExerciseLibrary).catch(() => {});
   }, [open, exerciseLibrary]);
 
   const results = useMemo(() => {

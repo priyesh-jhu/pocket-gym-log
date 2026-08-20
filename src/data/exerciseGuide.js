@@ -14,7 +14,7 @@ export function guideFor(name, draftExercise) {
   const secondary = draftExercise.secondaryMuscles?.length ? draftExercise.secondaryMuscles : entry.secondaryMuscles;
   return {
     kind: "library",
-    view: viewForMuscles([...primary, ...secondary]),
+    view: viewForMuscles(primary),
     primary, secondary,
     instructions: entry.instructions,
     images: [`/exercise-images/${entry.id}/0.jpg`, `/exercise-images/${entry.id}/1.jpg`],

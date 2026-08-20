@@ -8,13 +8,12 @@ export function loadExerciseLibrary() {
       cache = module.default;
       byId = new Map(cache.map(entry => [entry.id, entry]));
       return cache;
+    }).catch(err => {
+      promise = null;
+      throw err;
     });
   }
   return promise;
-}
-
-export function getExerciseLibrarySync() {
-  return cache || [];
 }
 
 export function getExerciseLibraryEntrySync(id) {

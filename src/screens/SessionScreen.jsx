@@ -125,7 +125,9 @@ export default function SessionScreen({
   const draftGuideExercise = guideExercise && draft.exercises.find(ex => ex.name === guideExercise);
   const guide = guideExercise && guideFor(guideExercise, draftGuideExercise);
 
-  useEffect(() => { loadExerciseLibrary(); }, []);
+  useEffect(() => {
+    if (draft.exercises.some(ex => ex.libraryId)) loadExerciseLibrary().catch(() => {});
+  }, [draft.exercises]);
 
   return (
     <div className="session-screen" style={{ "--day-accent": dayMeta.color }}>
@@ -454,7 +456,7 @@ export default function SessionScreen({
                     </div>
                     {g.kind === "library" && (
                       <button type="button" className="session-guide-image" onClick={toggleGuideImage}>
-                        <img className="session-guide-image__img" src={g.images[guideImageIndex]} alt={`${guideExercise} demonstration`} />
+                        <img className="session-guide-image__img" src={g.images[guideImageIndex]} alt={`${guideExercise} demonstration`} onError={e => { e.target.style.display = "none"; }} />
                         <div className="session-guide-image__hint">Tap to see {guideImageIndex === 0 ? "end" : "start"} position</div>
                       </button>
                     )}
@@ -476,7 +478,7 @@ export default function SessionScreen({
                         </div>
                       </>
                     ) : (
-                      <GuideSection icon="📋" title="INSTRUCTIONS" items={g.instructions} />
+                      g.instructions.length > 0 && <GuideSection icon="📋" title="INSTRUCTIONS" items={g.instructions} />
                     )}
                   </div>
                 </div>

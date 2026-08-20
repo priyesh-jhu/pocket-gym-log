@@ -29,7 +29,8 @@ export function mapMuscles(names) {
   return [...out];
 }
 
-const BACK_ONLY_MUSCLES = new Set(["traps", "rearDelts", "midBack", "lats", "lowerBack", "glutes", "hamstrings"]);
+export const BACK_ONLY_MUSCLES = new Set(["traps", "rearDelts", "midBack", "lats", "lowerBack", "glutes", "hamstrings"]);
+export const BOTH_VIEW_MUSCLES = new Set(["triceps", "forearms", "calves"]);
 
 export function viewForMuscles(muscleKeys) {
   return (muscleKeys || []).some(key => BACK_ONLY_MUSCLES.has(key)) ? "back" : "front";
