@@ -13,7 +13,8 @@
     "android:sync": "npm run build && cap sync android",
     "android:open": "npm run android:sync && cap open android",
     "android:run": "npm run android:sync && cap run android",
-    "build:exercise-library": "node scripts/build-exercise-library.mjs"
+    "build:exercise-library": "node scripts/build-exercise-library.mjs",
+    "compress:exercise-images": "node scripts/compress-exercise-images.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "7.5.0",
@@ -37,6 +38,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "sharp": "^0.35.3",
     "vite": "^8.0.12"
   }
 }
