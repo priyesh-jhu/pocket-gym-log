@@ -93,8 +93,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| UX | Re-picking an already-added library exercise (Exercise Library feature) shows "already exists" instead of re-adding it to the draft | Deferred | 2026-08-20 |
-| Perf/repo size | Exercise Library feature bundles ~97MB of committed exercise images (865 exercises x 2 poses); consider compression or off-repo hosting before wider release | Deferred | 2026-08-20 |
+| UX | Re-picking an already-added library exercise (Exercise Library feature) shows "already exists" instead of re-adding it to the draft | Resolved 2026-08-20 (commit d0d0c52) | 2026-08-20 |
+| Perf/repo size | Exercise Library feature bundles ~97MB of committed exercise images (865 exercises x 2 poses) | Partially resolved 2026-08-20 (commit cf8c9a2): recompressed to ~71MB working-tree size, same dimensions, no visible quality loss. `.git` history still holds the original larger blobs — a full history rewrite (destructive, needs force-push) was explicitly not done; revisit only if repo size becomes a real problem. | 2026-08-20 |
 
 ### Post-milestone work: Exercise Library feature
 
