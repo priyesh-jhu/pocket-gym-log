@@ -968,4 +968,249 @@ Start the dev server (`npm run dev`) and manually verify, at 360px and 390px, in
 
 - [ ] **Step 4: Record the outcome**
 
-If all checks pass, this plan is complete. If a defect is found, fix it minimally and re-run Step 1 before re-checking.
+If all checks pass, proceed to Task 9. If a defect is found, fix it minimally and re-run Step 1 before re-checking.
+
+---
+
+### Task 9: Lazy-load the exercise library out of the main JS bundle
+
+**Added after Task 8's automated gate revealed a regression not anticipated by the original plan:** `src/data/exerciseLibrary.json` (836KB) was statically imported by both `LibraryPickerSheet.jsx` and `exerciseGuide.js`, and Vite/rolldown inlined it eagerly into the app's main JS chunk (227KB → 983KB) — loaded on every app open even though neither consumer is needed until a user opens the picker or a guide mid-session. This works against the project's phone-first performance goal, even though the original spec only explicitly required *images* (not the JSON) to stay out of the JS bundle.
+
+**Files:**
+- Create: `src/data/exerciseLibraryLoader.js`
+- Modify: `src/data/exerciseGuide.js`
+- Modify: `src/data/exerciseGuide.test.js`
+- Modify: `src/components/LibraryPickerSheet.jsx`
+- Modify: `src/screens/SessionScreen.jsx`
+
+**Interfaces:**
+- Produces: `loadExerciseLibrary() => Promise<Array>` — dynamically imports `exerciseLibrary.json` on first call only (cached promise thereafter), populating an internal cache and an internal `Map` keyed by `id`.
+- Produces: `getExerciseLibrarySync() => Array` — returns the cached array, or `[]` if not yet loaded.
+- Produces: `getExerciseLibraryEntrySync(id) => object | null` — O(1) lookup into the cached `Map`, or `null` if not yet loaded or not found.
+- `guideFor`'s existing public signature and return shape (from Task 4) are UNCHANGED — it stays synchronous. Internally it now reads from `getExerciseLibraryEntrySync` instead of a module-level static import.
+
+**Accepted trade-off (documented, not silently introduced):** since `guideFor` stays synchronous and reads a cache that may not be populated yet, there is a narrow race: if a user opens a library-sourced exercise's guide before the prefetch (triggered on `SessionScreen` mount, Step 5 below) resolves, `guideFor` returns `null` for that exercise and the guide modal simply doesn't open on that click (`guide && (...)` already gates the modal — no crash, just a silent no-op). Given the prefetch starts as soon as a workout session becomes active — well before a user can plausibly tap a specific exercise's guide badge — this window is a few hundred milliseconds at most. This is judged an acceptable trade-off for eliminating an 836KB eager load on every app open; call it out during Task 9's human-verification pass (Step 8) rather than engineering around it with added state in `SessionScreen`/`App.jsx`, which would reintroduce the complexity this fix is trying to avoid.
+
+- [ ] **Step 1: Write the lazy-loader module**
+
+```js
+// src/data/exerciseLibraryLoader.js
+let cache = null;
+let byId = null;
+let promise = null;
+
+export function loadExerciseLibrary() {
+  if (!promise) {
+    promise = import("./exerciseLibrary.json", { with: { type: "json" } }).then(module => {
+      cache = module.default;
+      byId = new Map(cache.map(entry => [entry.id, entry]));
+      return cache;
+    });
+  }
+  return promise;
+}
+
+export function getExerciseLibrarySync() {
+  return cache || [];
+}
+
+export function getExerciseLibraryEntrySync(id) {
+  return byId?.get(id) || null;
+}
+```
+
+- [ ] **Step 2: Update `exerciseGuide.js` to use the loader instead of a static import**
+
+Replace:
+
+```js
+import { formGuide } from "./formGuide.js";
+import { viewForMuscles } from "./muscleMap.js";
+import exerciseLibrary from "./exerciseLibrary.json" with { type: "json" };
+
+const libraryById = new Map(exerciseLibrary.map(entry => [entry.id, entry]));
+
+export function guideFor(name, draftExercise) {
+  const authored = formGuide[name];
+  if (authored) return { kind: "authored", ...authored };
+
+  const libraryId = draftExercise?.libraryId;
+  const entry = libraryId && libraryById.get(libraryId);
+  if (!entry) return null;
+```
+
+with:
+
+```js
+import { formGuide } from "./formGuide.js";
+import { viewForMuscles } from "./muscleMap.js";
+import { getExerciseLibraryEntrySync } from "./exerciseLibraryLoader.js";
+
+export function guideFor(name, draftExercise) {
+  const authored = formGuide[name];
+  if (authored) return { kind: "authored", ...authored };
+
+  const libraryId = draftExercise?.libraryId;
+  const entry = libraryId && getExerciseLibraryEntrySync(libraryId);
+  if (!entry) return null;
+```
+
+The rest of the function (the `primary`/`secondary`/`view`/`instructions`/`images` construction below `if (!entry) return null;`) is unchanged.
+
+- [ ] **Step 3: Update `exerciseGuide.test.js` to load the data before testing the library branch**
+
+The existing "library guide" test currently reads `exerciseLibrary[0]` from its own static test-only import (fine — this is a Node test file, not part of the app bundle, so a static import here has no bundle-size effect) and calls `guideFor` synchronously assuming the data is already available. Since `guideFor` now reads from a cache that starts empty, this test must load the cache first.
+
+Change the top of the file from:
+
+```js
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { guideFor } from "./exerciseGuide.js";
+import exerciseLibrary from "./exerciseLibrary.json" with { type: "json" };
+
+describe("guideFor", () => {
+```
+
+to:
+
+```js
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
+import { guideFor } from "./exerciseGuide.js";
+import { loadExerciseLibrary } from "./exerciseLibraryLoader.js";
+import exerciseLibrary from "./exerciseLibrary.json" with { type: "json" };
+
+describe("guideFor", () => {
+  test("preloads the library cache", async () => {
+    await loadExerciseLibrary();
+  });
+
+```
+
+(This adds one `await`-based setup test that runs first and populates the shared cache before the "returns a library guide" test runs later in the same file — `node --test` runs a file's tests in declaration order within a `describe` block.)
+
+- [ ] **Step 4: Update `LibraryPickerSheet.jsx` to load data asynchronously**
+
+Replace the whole file with:
+
+```jsx
+import { useEffect, useMemo, useState } from "react";
+import { Chip, ListItem, Sheet, TextField } from "./index.js";
+import { MUSCLES } from "../data/formGuide.js";
+import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
+import "./LibraryPickerSheet.css";
+
+const MAX_RESULTS = 50;
+
+export default function LibraryPickerSheet({ open, onClose, onSelect }) {
+  const [query, setQuery] = useState("");
+  const [exerciseLibrary, setExerciseLibrary] = useState(null);
+
+  useEffect(() => {
+    if (open && !exerciseLibrary) loadExerciseLibrary().then(setExerciseLibrary);
+  }, [open, exerciseLibrary]);
+
+  const results = useMemo(() => {
+    if (!exerciseLibrary) return [];
+    const q = query.trim().toLowerCase();
+    const matches = q ? exerciseLibrary.filter(item => item.name.toLowerCase().includes(q)) : exerciseLibrary;
+    return matches.slice(0, MAX_RESULTS);
+  }, [query, exerciseLibrary]);
+
+  return (
+    <Sheet open={open} title="Exercise library" onClose={onClose}>
+      <TextField label="Search exercises" value={query} onChange={e => setQuery(e.target.value)} placeholder="e.g. Romanian deadlift" />
+      {!exerciseLibrary ? (
+        <div className="library-picker__count">Loading exercises…</div>
+      ) : (
+        <>
+          <div className="library-picker__count">
+            {query
+              ? `${results.length}${results.length === MAX_RESULTS ? "+" : ""} match${results.length === 1 ? "" : "es"}`
+              : `${exerciseLibrary.length} exercises — type to search`}
+          </div>
+          <div className="library-picker__list">
+            {results.map(item => (
+              <button key={item.id} type="button" className="library-picker__row" onClick={() => onSelect(item)}>
+                <ListItem
+                  title={item.name}
+                  subtitle={item.equipment || undefined}
+                  trailing={<Chip>{MUSCLES[item.primaryMuscles[0]] || item.primaryMuscles[0]}</Chip>}
+                />
+              </button>
+            ))}
+            {results.length === 0 && <div className="library-picker__empty">No exercises match "{query}".</div>}
+          </div>
+        </>
+      )}
+    </Sheet>
+  );
+}
+```
+
+- [ ] **Step 5: Add an early prefetch in `SessionScreen.jsx`**
+
+At the top of `src/screens/SessionScreen.jsx`, change:
+
+```js
+import { CalendarDays, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+```
+
+to:
+
+```js
+import { useEffect } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+```
+
+and change:
+
+```js
+import { guideFor } from "../data/exerciseGuide.js";
+```
+
+to:
+
+```js
+import { guideFor } from "../data/exerciseGuide.js";
+import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
+```
+
+Then, inside the `SessionScreen` component body, immediately after the existing lines:
+
+```js
+  const draftFilledCount = draftFilled;
+  const draftGuideExercise = guideExercise && draft.exercises.find(ex => ex.name === guideExercise);
+  const guide = guideExercise && guideFor(guideExercise, draftGuideExercise);
+```
+
+add:
+
+```js
+
+  useEffect(() => { loadExerciseLibrary(); }, []);
+```
+
+This is a deliberate, narrow, one-time exception to this component's established "no local state, all state lives in `App.jsx`" convention — it introduces exactly one `useEffect` with no state of its own, purely to kick off the prefetch as early as possible (as soon as a workout session becomes active). Do not add any other state or effects to this component beyond this one line.
+
+- [ ] **Step 6: Run the full test suite**
+
+Run: `npm test`
+Expected: PASS, same count as before plus the one new "preloads the library cache" setup test.
+
+- [ ] **Step 7: Run the build and confirm the chunk-size regression is fixed**
+
+Run: `npm run build`
+Expected: clean build, and the main `index-*.js` chunk should be back down near its pre-feature size (~230KB, not ~980KB) — confirm via `ls -la dist/assets/*.js` that no single chunk is anywhere near 800KB+, and that `exerciseLibrary.json`'s content now appears in its own separate, lazily-loaded chunk instead.
+
+- [ ] **Step 8: Manual verification**
+
+Using the dev server, confirm: starting a session and immediately (as fast as possible) opening a library-sourced exercise's guide still works correctly (sanity-checking the accepted prefetch-race trade-off above); the picker shows a brief "Loading exercises…" state then populates; everything from Task 8's Step 3 checklist still behaves identically.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src/data/exerciseLibraryLoader.js src/data/exerciseGuide.js src/data/exerciseGuide.test.js src/components/LibraryPickerSheet.jsx src/screens/SessionScreen.jsx
+git commit -m "Lazy-load the exercise library out of the main JS bundle"
+```
