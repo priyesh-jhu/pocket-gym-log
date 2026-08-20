@@ -148,12 +148,12 @@ export default function SessionScreen({
         <Button variant="text" icon={<SlidersHorizontal size={17} />} onClick={() => setSessionSheet("options")}>Session options</Button>
       </div>
 
-      <div className="day-switcher">
+      <div className="day-switcher" role="group" aria-label="Choose workout day">
         {dayOrder.map(k => {
           const t = dayTemplates[k]; const active = currentDay === k;
           return (
-            <button key={k} className={`day-switcher__btn${active ? " is-active" : ""}`} style={active ? { "--btn-accent": t.color } : undefined} onClick={() => switchDay(k)}>
-              <div className="day-switcher__key">{k}</div>{t.emoji} {t.label}
+            <button key={k} className={`day-switcher__btn${active ? " is-active" : ""}`} style={{ "--btn-accent": t.color }} onClick={() => switchDay(k)} aria-pressed={active} aria-label={`${k} · ${t.label}`}>
+              <span className="day-switcher__emoji">{t.emoji}</span>{k}
             </button>
           );
         })}

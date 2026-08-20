@@ -20,24 +20,30 @@
 .session-exit-confirm strong { color: var(--on-surface); font-size: var(--text-body); }
 .session-exit-confirm span { margin-top: 2px; color: var(--on-surface-variant); font-size: var(--text-label-sm); }
 
-.day-switcher { display: flex; gap: var(--sp2); margin-bottom: var(--sp4); overflow-x: auto; padding-bottom: var(--sp1); scroll-snap-type: x proximity; }
-.day-switcher::-webkit-scrollbar { display: none; }
+.day-switcher { display: flex; gap: 2px; margin-bottom: var(--sp4); padding: 3px; background: var(--surface-container-highest); border-radius: var(--shape-full); }
 .day-switcher__btn {
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  min-height: 56px;
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  border: 1px solid var(--outline-variant);
-  border-radius: var(--shape-md);
-  padding: var(--sp2) var(--sp3);
+  flex: 1;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--btn-accent) 12%, transparent);
+  color: var(--btn-accent);
+  border: 0;
+  border-radius: var(--shape-full);
   font: inherit;
   font-weight: 700;
   font-size: var(--text-label);
   cursor: pointer;
+  transition: background var(--dur-short) var(--ease-std), color var(--dur-short) var(--ease-std), box-shadow var(--dur-short) var(--ease-std);
 }
-.day-switcher__btn.is-active { background: var(--btn-accent); color: var(--on-primary); border-color: var(--btn-accent); }
-.day-switcher__key { font-size: var(--text-label-sm); opacity: .8; margin-bottom: 1px; }
+.day-switcher__btn.is-active {
+  background: linear-gradient(135deg, color-mix(in srgb, white 25%, var(--btn-accent)), var(--btn-accent));
+  color: var(--on-primary);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--btn-accent) 55%, transparent);
+}
+.day-switcher__emoji { font-size: var(--text-body); line-height: 1; }
 
 .session-draft-banner {
   background: var(--surface-container-high);
