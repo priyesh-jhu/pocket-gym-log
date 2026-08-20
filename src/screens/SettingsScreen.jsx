@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Card, ListItem, SegmentedButtons, TextField } from "../components/index.js";
 import { getThemePref, setThemePref } from "../design/theme.js";
+import { checkForAppUpdate } from "../pwa.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
 import { goalProgress, removeGoal } from "../userFeatures.js";
 import "./SettingsScreen.css";
@@ -27,6 +28,14 @@ export default function SettingsScreen({
   confirmReset, setConfirmReset, resetAll,
 }) {
   const [theme, setTheme] = useState(getThemePref);
+  const [updateCheckMsg, setUpdateCheckMsg] = useState(null);
+
+  async function handleCheckForUpdate() {
+    setUpdateCheckMsg("Checking…");
+    const result = await checkForAppUpdate();
+    if (!result.ok) setUpdateCheckMsg(result.reason === "not-registered" ? "Updates aren't available in this environment." : "Couldn't check for updates — check your connection.");
+    else setUpdateCheckMsg(result.upToDate ? "You're on the latest version." : "Update found — see the banner at the top to apply it.");
+  }
   const workoutCount = Array.isArray(sessions) ? sessions.length : 0;
 
   function chooseTheme(preference) {
@@ -129,7 +138,11 @@ export default function SettingsScreen({
         </Card>
       )}
 
-      <p className="settings__version">Pocket Gym Log · v{version}</p>
+      <div className="settings__update">
+        <p className="settings__version">Pocket Gym Log · v{version}</p>
+        <Button variant="text" onClick={handleCheckForUpdate}>Check for updates</Button>
+        {updateCheckMsg && <span className="settings__update-msg">{updateCheckMsg}</span>}
+      </div>
     </section>
   );
 }
