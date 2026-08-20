@@ -5,6 +5,14 @@ import { mapMuscles } from "../src/data/muscleMap.js";
 const SOURCE_JSON = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json";
 const IMAGE_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 const OUT_JSON = resolve(import.meta.dirname, "../src/data/exerciseLibrary.json");
+// The app's runtime code fetches this public copy at runtime (see
+// src/data/exerciseLibraryLoader.js) instead of dynamically importing the
+// src/data/ copy — a dynamic `import(..., { with: { type: "json" } })` looks
+// like the natural choice, but Node requires that import attribute while
+// Vite's bundler doesn't reliably rewrite the specifier to its hashed output
+// path when the attribute is present, producing a 404 in production. A plain
+// runtime fetch() against a public/ static asset has none of that risk.
+const OUT_PUBLIC_JSON = resolve(import.meta.dirname, "../public/exercise-library.json");
 const OUT_IMAGES_DIR = resolve(import.meta.dirname, "../public/exercise-images");
 
 async function main() {
@@ -51,8 +59,11 @@ async function main() {
   console.log(`Downloaded ${imageCount} images.`);
 
   const output = kept.map(({ _images, ...rest }) => rest);
-  await writeFile(OUT_JSON, JSON.stringify(output, null, 2) + "\n");
+  const json = JSON.stringify(output, null, 2) + "\n";
+  await writeFile(OUT_JSON, json);
   console.log(`Wrote ${OUT_JSON}`);
+  await writeFile(OUT_PUBLIC_JSON, JSON.stringify(output));
+  console.log(`Wrote ${OUT_PUBLIC_JSON}`);
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
