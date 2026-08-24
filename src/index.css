@@ -39,6 +39,7 @@
 .workout-summary__stat-label { font-size: 9px; color: var(--on-surface-dim); margin-top: 2px; }
 .workout-summary__prs { font-size: var(--text-label-sm); color: var(--warn); line-height: 1.55; margin-top: var(--sp2); }
 .workout-summary__improvements { font-size: var(--text-label-sm); color: var(--secondary); line-height: 1.55; margin-top: var(--sp2); }
+.workout-summary__sameday { font-size: var(--text-label-sm); color: var(--on-surface-variant); line-height: 1.55; margin-top: var(--sp2); }
 .workout-summary__notes { font-size: var(--text-label-sm); color: var(--on-surface-variant); line-height: 1.5; margin-top: var(--sp3); padding-top: var(--sp2); border-top: 1px solid var(--outline-variant); }
 
 .import-confirm { background: var(--surface-container); border: 1px solid var(--outline-variant); border-radius: var(--shape-lg); padding: var(--sp4); margin-bottom: var(--sp4); }

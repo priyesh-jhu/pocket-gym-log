@@ -11,6 +11,7 @@ import { getProgressionIncrements, getProgressionRecommendation, setProgressionI
 import { announceRestComplete, getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
+import { lastSameDaySummary, toLb } from "./stats.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, createCustomExerciseFromLibrary, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness } from "./userFeatures.js";
 import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
@@ -115,6 +116,7 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [toastPRs, setToastPRs] = useState(null);
+  const [sameDayCompare, setSameDayCompare] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [confirmExitSession, setConfirmExitSession] = useState(false);
   const [activeExercise, setActiveExercise] = useState(0);
@@ -619,6 +621,21 @@ export default function App() {
     const summary = createWorkoutSummary(saved, sessions, completedAt);
     setWorkoutSummary(summary);
     setToastPRs(summary.prs.length > 0 ? summary.prs : null);
+    const priorSameDay = lastSameDaySummary(sessions, saved.day, saved.date);
+    if (priorSameDay) {
+      const currentTopSets = saved.exercises.map(exercise => {
+        let best = null;
+        for (const set of exercise.sets) {
+          const weightLb = toLb(set.weight, set.unit);
+          if (weightLb <= 0) continue;
+          if (!best || weightLb > best.weightLb) best = { weightLb, weight: Number(set.weight), unit: set.unit === "kg" ? "kg" : "lb" };
+        }
+        return best ? { name: exercise.name, weight: best.weight, unit: best.unit, weightLb: best.weightLb } : null;
+      }).filter(Boolean);
+      setSameDayCompare({ priorSameDay, volumeLb: summary.volumeLb, currentTopSets });
+    } else {
+      setSameDayCompare(null);
+    }
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
@@ -907,6 +924,27 @@ export default function App() {
             </div>
             {workoutSummary.prs.length>0&&<div className="workout-summary__prs">🏆 New PR{workoutSummary.prs.length!==1?"s":""}: {workoutSummary.prs.map(pr=>`${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}</div>}
             {workoutSummary.improvements.length>0&&<div className="workout-summary__improvements">↗ Heavier than last time: {workoutSummary.improvements.map(item=>`${item.name} +${item.increaseLb} lb`).join(" · ")}</div>}
+            {sameDayCompare && (() => {
+              const { priorSameDay, volumeLb, currentTopSets } = sameDayCompare;
+              const volumeDeltaPct = priorSameDay.volume > 0 ? Math.round(((volumeLb - priorSameDay.volume) / priorSameDay.volume) * 100) : null;
+              const priorByName = new Map(priorSameDay.exercises.map(ex => [ex.name, ex]));
+              const exerciseDeltas = currentTopSets
+                .filter(current => priorByName.has(current.name))
+                .map(current => {
+                  const prior = priorByName.get(current.name);
+                  const priorLb = toLb(String(prior.weight), prior.unit);
+                  const deltaLb = Math.round((current.weightLb - priorLb) * 10) / 10;
+                  return { name: current.name, deltaLb };
+                })
+                .filter(item => Math.abs(item.deltaLb) >= 0.1);
+              return (
+                <div className="workout-summary__sameday">
+                  vs last {dayTemplates[workoutSummary.day]?.label || workoutSummary.day} day ({priorSameDay.date}):{" "}
+                  {volumeDeltaPct === null ? "no prior volume to compare" : `volume ${volumeDeltaPct >= 0 ? "up" : "down"} ${Math.abs(volumeDeltaPct)}%`}
+                  {exerciseDeltas.length > 0 && " · " + exerciseDeltas.map(item => `${item.name} ${item.deltaLb >= 0 ? "+" : ""}${item.deltaLb}lb`).join(" · ")}
+                </div>
+              );
+            })()}
             {workoutSummary.notes&&<div className="workout-summary__notes">“{workoutSummary.notes}”</div>}
           </div>
         )}
