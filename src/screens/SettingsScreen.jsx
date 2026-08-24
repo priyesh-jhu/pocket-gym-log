@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Card, ListItem, SegmentedButtons, TextField } from "../components/index.js";
+import { Button, Card, ListItem, Sheet, SegmentedButtons, TextField } from "../components/index.js";
 import { getThemePref, setThemePref } from "../design/theme.js";
 import { checkForAppUpdate } from "../pwa.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
@@ -28,6 +28,9 @@ export default function SettingsScreen({
   confirmReset, setConfirmReset, resetAll,
 }) {
   const [theme, setTheme] = useState(getThemePref);
+  const [resetConfirmText, setResetConfirmText] = useState("");
+
+  function closeResetSheet() { setConfirmReset(false); setResetConfirmText(""); }
   const [updateCheckMsg, setUpdateCheckMsg] = useState(null);
 
   async function handleCheckForUpdate() {
@@ -121,22 +124,26 @@ export default function SettingsScreen({
 
       {/* Account-level reset. It used to sit under History; the Phase 2 History
           destination is records-only, so it keeps its home here in Settings
-          rather than disappearing. Same two-step confirmation as before. */}
+          rather than disappearing. The most destructive action in the app —
+          confirmed via a dedicated modal requiring the user to type DELETE,
+          matching (and exceeding) the confirmation strength already used for
+          deleting a single workout in History. */}
       {resetAll && workoutCount > 0 && (
         <Card className="settings__card">
           <h2 className="settings__title">Reset workout history</h2>
           <p className="settings__help">Export a backup first if you might want these workouts again. This clears every workout from this device and your synced account.</p>
-          {confirmReset ? (
-            <div className="settings__danger-actions">
-              <p className="settings__msg is-err">Delete all {workoutCount} workout{workoutCount === 1 ? "" : "s"}? This can’t be undone.</p>
-              <Button variant="filled" className="settings__danger" onClick={resetAll}>Delete all workouts</Button>
-              <Button variant="text" onClick={() => setConfirmReset(false)}>Keep my workouts</Button>
-            </div>
-          ) : (
-            <Button variant="text" onClick={() => setConfirmReset(true)}>Reset all data</Button>
-          )}
+          <Button variant="text" onClick={() => setConfirmReset(true)}>Reset all data</Button>
         </Card>
       )}
+
+      <Sheet open={confirmReset} title="Delete all workouts?" onClose={closeResetSheet}>
+        <div className="settings__danger-actions">
+          <p className="settings__msg is-err">This permanently deletes all {workoutCount} workout{workoutCount === 1 ? "" : "s"} from this device and your synced account. This can’t be undone.</p>
+          <TextField label="Type DELETE to confirm" value={resetConfirmText} onChange={e => setResetConfirmText(e.target.value)} placeholder="DELETE" />
+          <Button variant="filled" className="settings__danger" disabled={resetConfirmText.trim().toUpperCase() !== "DELETE"} onClick={() => { resetAll(); setResetConfirmText(""); }}>Delete all workouts</Button>
+          <Button variant="text" onClick={closeResetSheet}>Keep my workouts</Button>
+        </div>
+      </Sheet>
 
       <div className="settings__update">
         <p className="settings__version">Pocket Gym Log · v{version}</p>

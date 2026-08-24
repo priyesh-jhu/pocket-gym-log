@@ -70,6 +70,7 @@
 .settings__bar-fill.is-complete { background: var(--success); }
 .settings__danger-actions { display: grid; gap: var(--sp2); justify-items: start; }
 .settings__danger-actions .settings__msg { margin: 0; }
+.settings__danger-actions .m3-field { width: 100%; }
 .settings .settings__danger { background: var(--error); color: var(--on-error); }
 .settings__update { margin: var(--sp6) 0 var(--sp5); display: flex; flex-direction: column; align-items: center; gap: var(--sp1); }
 .settings__version {
