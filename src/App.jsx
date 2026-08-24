@@ -991,6 +991,7 @@ export default function App() {
         {activeTab==="log" && sessionActive && (
           <SessionScreen
             draft={draft} setDraft={setDraft} dayMeta={dayMeta} currentDay={currentDay} switchDay={switchDay}
+            sessions={sessions}
             confirmExitSession={confirmExitSession} setConfirmExitSession={setConfirmExitSession} leaveSession={leaveSession} sessionHistoryRef={sessionHistoryRef}
             draftSavedAt={draftSavedAt} confirmDiscardDraft={confirmDiscardDraft} setConfirmDiscardDraft={setConfirmDiscardDraft} discardDraft={discardDraft}
             showCoach={showCoach} setShowCoach={setShowCoach} showWarmup={showWarmup} setShowWarmup={setShowWarmup}

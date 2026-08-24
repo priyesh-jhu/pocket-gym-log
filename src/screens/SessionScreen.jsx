@@ -108,7 +108,7 @@ export default function SessionScreen({
   restRunning, restSeconds, restTarget, setRestTarget, setRestSeconds, restComplete, setRestComplete, setRestRunning,
   startRestTimer, stopRestTimer, addRestTime, updateRestTimerDefault,
   activeExercise, setActiveExercise, draftFilled,
-  prMap, getLastTime, copyLastTime, progressionIncrements,
+  prMap, getLastTime, copyLastTime, progressionIncrements, sessions,
   moveDraftExercise, removeDraftExercise,
   confirmSwitch, setConfirmSwitch, requestEquipmentSwitch, applyEquipmentSwitch,
   toggleSetDone, updateSet, removeSet, addSet,
@@ -419,6 +419,7 @@ export default function SessionScreen({
         open={sessionSheet === "library"}
         onClose={() => setSessionSheet(null)}
         onSelect={entry => { addLibraryExercise(entry); setSessionSheet(null); }}
+        sessions={sessions}
       />
 
       {(restRunning || restComplete) && (

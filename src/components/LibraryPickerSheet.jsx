@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Chip, ListItem, Sheet, TextField } from "./index.js";
+import { Chip, ExerciseSparkline, ListItem, Sheet, TextField } from "./index.js";
 import { MUSCLES } from "../data/formGuide.js";
 import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
+import { exerciseE1RMSeries } from "../stats.js";
 import "./LibraryPickerSheet.css";
 
 const MAX_RESULTS = 50;
 
-export default function LibraryPickerSheet({ open, onClose, onSelect }) {
+export default function LibraryPickerSheet({ open, onClose, onSelect, sessions }) {
   const [query, setQuery] = useState("");
   const [exerciseLibrary, setExerciseLibrary] = useState(null);
 
@@ -43,7 +44,12 @@ export default function LibraryPickerSheet({ open, onClose, onSelect }) {
                 <ListItem
                   title={item.name}
                   subtitle={item.equipment || undefined}
-                  trailing={<Chip>{MUSCLES[item.primaryMuscles[0]] || item.primaryMuscles[0]}</Chip>}
+                  trailing={
+                    <div className="library-picker__trailing">
+                      <ExerciseSparkline series={exerciseE1RMSeries(sessions, item.name)} />
+                      <Chip>{MUSCLES[item.primaryMuscles[0]] || item.primaryMuscles[0]}</Chip>
+                    </div>
+                  }
                 />
               </button>
             ))}
