@@ -149,6 +149,19 @@ export function monthSummary(sessions, todayIso = todayISO()) {
   return { sessions: sessionsCount, volume, prevVolume, deltaPct };
 }
 
+/** The heaviest set in an exercise, in lb, or null if none. */
+export function topSetForExercise(exercise) {
+  let best = null;
+  for (const set of Array.isArray(exercise?.sets) ? exercise.sets : []) {
+    const weightLb = toLb(set?.weight, set?.unit);
+    if (weightLb <= 0) continue;
+    if (!best || weightLb > best.weightLb) {
+      best = { weightLb, weight: Number(set.weight), unit: set.unit === "kg" ? "kg" : "lb", reps: Number(set?.reps) || 0 };
+    }
+  }
+  return best;
+}
+
 /** The most recent prior session sharing `day`, strictly before `beforeDate`, with each exercise's top set. */
 export function lastSameDaySummary(sessions, day, beforeDate) {
   const list = Array.isArray(sessions) ? sessions : [];
@@ -160,15 +173,8 @@ export function lastSameDaySummary(sessions, day, beforeDate) {
   if (!match) return null;
 
   const exercises = (Array.isArray(match.exercises) ? match.exercises : []).map(exercise => {
-    let best = null;
-    for (const set of Array.isArray(exercise?.sets) ? exercise.sets : []) {
-      const weightLb = toLb(set?.weight, set?.unit);
-      if (weightLb <= 0) continue;
-      if (!best || weightLb > best.weightLb) {
-        best = { weightLb, weight: Number(set.weight), unit: set.unit === "kg" ? "kg" : "lb", reps: Number(set.reps) || 0 };
-      }
-    }
-    return best ? { name: exercise.name, weight: best.weight, unit: best.unit, reps: best.reps } : null;
+    const best = topSetForExercise(exercise);
+    return best ? { name: exercise.name, weight: best.weight, unit: best.unit, reps: best.reps, weightLb: best.weightLb } : null;
   }).filter(Boolean);
 
   return { date: match.date, volume: Math.round(sessionVolume(match)), exercises };

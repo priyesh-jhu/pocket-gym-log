@@ -4,4 +4,3 @@
 .library-picker__row:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .library-picker__row .m3-list-item { background: var(--surface-container); border-radius: var(--shape-md); padding: var(--sp3); }
 .library-picker__empty { padding: var(--sp5) var(--sp4); text-align: center; color: var(--on-surface-dim); font-size: var(--text-body-sm); }
-.library-picker__trailing { display: flex; align-items: center; gap: var(--sp2); }

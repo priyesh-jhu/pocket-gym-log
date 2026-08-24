@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { todayISO, todaysDayKey } from "./dateUtils.js";
 import { dayTemplates, variantFor, allVariantNames, exerciseForVariantName } from "./data/exercises.js";
 import { emptySets, hasEnteredData, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
@@ -11,7 +11,7 @@ import { getProgressionIncrements, getProgressionRecommendation, setProgressionI
 import { announceRestComplete, getRestTimerSeconds, setRestTimerSeconds } from "./restTimer.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "./exerciseTracking.js";
 import { createWorkoutSummary } from "./workoutSummary.js";
-import { lastSameDaySummary, toLb } from "./stats.js";
+import { lastSameDaySummary, topSetForExercise } from "./stats.js";
 import { addExerciseToDraft, applyWorkoutTemplate, createCustomExercise, createCustomExerciseFromLibrary, getCustomExercises, getWorkoutTemplates, saveWorkoutTemplate } from "./customWorkouts.js";
 import { addGoal, getGoals, normalizeReadiness } from "./userFeatures.js";
 import { profileLoadErrors, readLocalProfileResult, runLocalProfileLoad, sessionKey, weightKey } from "./localProfileData.js";
@@ -101,6 +101,10 @@ function buildPRMap(sessions) {
 
 function fmtRest(sec) { return Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0"); }
 
+function formatPRs(prs) {
+  return `🏆 New PR${prs.length !== 1 ? "s" : ""}: ${prs.map(pr => `${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}`;
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => { try { return storage.get(TAB_KEY)||"log"; } catch { return "log"; } });
@@ -116,6 +120,7 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [toastPRs, setToastPRs] = useState(null);
+  const closeToast = useCallback(() => setToastPRs(null), []);
   const [sameDayCompare, setSameDayCompare] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [confirmExitSession, setConfirmExitSession] = useState(false);
@@ -624,12 +629,7 @@ export default function App() {
     const priorSameDay = lastSameDaySummary(sessions, saved.day, saved.date);
     if (priorSameDay) {
       const currentTopSets = saved.exercises.map(exercise => {
-        let best = null;
-        for (const set of exercise.sets) {
-          const weightLb = toLb(set.weight, set.unit);
-          if (weightLb <= 0) continue;
-          if (!best || weightLb > best.weightLb) best = { weightLb, weight: Number(set.weight), unit: set.unit === "kg" ? "kg" : "lb" };
-        }
+        const best = topSetForExercise(exercise);
         return best ? { name: exercise.name, weight: best.weight, unit: best.unit, weightLb: best.weightLb } : null;
       }).filter(Boolean);
       setSameDayCompare({ priorSameDay, volumeLb: summary.volumeLb, currentTopSets });
@@ -904,8 +904,8 @@ export default function App() {
 
       <main className="app-content">
 
-        <Toast open={!!toastPRs} onClose={() => setToastPRs(null)}>
-          {toastPRs && `🏆 New PR${toastPRs.length !== 1 ? "s" : ""}: ${toastPRs.map(pr => `${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}`}
+        <Toast open={!!toastPRs} onClose={closeToast}>
+          {toastPRs && formatPRs(toastPRs)}
         </Toast>
 
         {/* Status banners */}
@@ -922,7 +922,7 @@ export default function App() {
             <div className={`workout-summary__stats${workoutSummary.prs.length||workoutSummary.improvements.length||workoutSummary.notes?" workout-summary__stats--tight":""}`}>
               {[[workoutSummary.durationMinutes?workoutSummary.durationMinutes+"m":"—","Duration"],[workoutSummary.exercises,"Exercises"],[workoutSummary.sets,"Sets"],[workoutSummary.volumeLb.toLocaleString(),"Volume (lb)"]].map(([value,label])=><div key={label} className="workout-summary__stat"><div className="workout-summary__stat-value">{value}</div><div className="workout-summary__stat-label">{label}</div></div>)}
             </div>
-            {workoutSummary.prs.length>0&&<div className="workout-summary__prs">🏆 New PR{workoutSummary.prs.length!==1?"s":""}: {workoutSummary.prs.map(pr=>`${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}</div>}
+            {workoutSummary.prs.length>0&&<div className="workout-summary__prs">{formatPRs(workoutSummary.prs)}</div>}
             {workoutSummary.improvements.length>0&&<div className="workout-summary__improvements">↗ Heavier than last time: {workoutSummary.improvements.map(item=>`${item.name} +${item.increaseLb} lb`).join(" · ")}</div>}
             {sameDayCompare && (() => {
               const { priorSameDay, volumeLb, currentTopSets } = sameDayCompare;
@@ -932,8 +932,7 @@ export default function App() {
                 .filter(current => priorByName.has(current.name))
                 .map(current => {
                   const prior = priorByName.get(current.name);
-                  const priorLb = toLb(String(prior.weight), prior.unit);
-                  const deltaLb = Math.round((current.weightLb - priorLb) * 10) / 10;
+                  const deltaLb = Math.round((current.weightLb - prior.weightLb) * 10) / 10;
                   return { name: current.name, deltaLb };
                 })
                 .filter(item => Math.abs(item.deltaLb) >= 0.1);

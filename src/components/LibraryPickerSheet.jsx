@@ -3,6 +3,7 @@ import { Chip, ExerciseSparkline, ListItem, Sheet, TextField } from "./index.js"
 import { MUSCLES } from "../data/formGuide.js";
 import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
 import { exerciseE1RMSeries } from "../stats.js";
+import useThemeTokens from "../charts/useThemeTokens.js";
 import "./LibraryPickerSheet.css";
 
 const MAX_RESULTS = 50;
@@ -10,6 +11,7 @@ const MAX_RESULTS = 50;
 export default function LibraryPickerSheet({ open, onClose, onSelect, sessions }) {
   const [query, setQuery] = useState("");
   const [exerciseLibrary, setExerciseLibrary] = useState(null);
+  const chartTheme = useThemeTokens();
 
   useEffect(() => {
     if (open) setQuery("");
@@ -45,10 +47,10 @@ export default function LibraryPickerSheet({ open, onClose, onSelect, sessions }
                   title={item.name}
                   subtitle={item.equipment || undefined}
                   trailing={
-                    <div className="library-picker__trailing">
-                      <ExerciseSparkline series={exerciseE1RMSeries(sessions, item.name)} />
+                    <>
+                      <ExerciseSparkline series={exerciseE1RMSeries(sessions, item.name)} color={chartTheme.primary} />
                       <Chip>{MUSCLES[item.primaryMuscles[0]] || item.primaryMuscles[0]}</Chip>
-                    </div>
+                    </>
                   }
                 />
               </button>

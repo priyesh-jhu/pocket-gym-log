@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary,
+  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -140,12 +140,19 @@ describe("lastSameDaySummary", () => {
     const result = lastSameDaySummary(sessions, "PUSH", "2026-08-15");
     assert.equal(result.date, "2026-08-08");
     assert.equal(result.exercises.length, 1);
-    assert.deepEqual(result.exercises[0], { name: "Bench Press", weight: 145, unit: "lb", reps: 6 });
+    assert.deepEqual(result.exercises[0], { name: "Bench Press", weight: 145, unit: "lb", reps: 6, weightLb: 145 });
   });
 
   test("returns null when no prior session matches the day", () => {
     const sessions = [mkSession("2026-08-01", [{ name: "Squat", sets: [mkSet("200", "5")] }], "LEGS")];
     assert.equal(lastSameDaySummary(sessions, "PUSH", "2026-08-15"), null);
+  });
+});
+
+describe("topSetForExercise", () => {
+  test("returns the heaviest set converted to lb", () => {
+    const exercise = { name: "Bench Press", sets: [mkSet("135", "8"), mkSet("155", "5"), mkSet("0", "10")] };
+    assert.deepEqual(topSetForExercise(exercise), { weightLb: 155, weight: 155, unit: "lb", reps: 5 });
   });
 });
 

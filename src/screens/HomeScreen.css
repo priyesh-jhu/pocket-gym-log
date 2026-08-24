@@ -4,7 +4,6 @@
 .home-screen__intro h2 { margin: var(--sp1) 0 0; font-size: var(--text-headline); }
 .home-hero { background-image: var(--hero-glow); }
 .home-hero__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp2); margin-bottom: var(--sp1); }
-.home-plan__lastday { display: block; margin-top: var(--sp2); color: var(--on-surface-dim); font-size: var(--text-label-sm); }
 .home-hero strong { display: inline-block; margin-top: var(--sp2); color: var(--on-surface); font-size: var(--text-display); line-height: 1; font-variant-numeric: tabular-nums; }
 .home-hero > span { margin-left: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body-lg); }
 .home-hero .m3-chip { display: flex; width: fit-content; margin-top: var(--sp3); }

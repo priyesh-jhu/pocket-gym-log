@@ -1,6 +1,6 @@
 .m3-toast {
   position: fixed;
-  top: var(--sp4);
+  top: calc(72px + env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   z-index: 60;
