@@ -37,12 +37,16 @@ describe("in-progress draft storage", () => {
     assert.equal(loadDraft(storage, "user-a"), null);
   });
 
-  test("machine selection, extra sets, completed sets, and notes count as content", () => {
-    const machine = newSession("MON"); machine.exercises[0].equipment = "machine"; machine.exercises[0].name = "Chest Press Machine";
+  test("extra sets, completed sets, and notes count as content", () => {
     const extra = newSession("MON"); extra.exercises[0].sets.push({weight:"",reps:"",unit:"lb",done:false});
     const done = newSession("MON"); done.exercises[0].sets[0].done = true;
     const notes = newSession("MON"); notes.notes = "Low energy";
-    for (const draft of [machine, extra, done, notes]) assert.equal(draftHasContent(draft), true);
+    for (const draft of [extra, done, notes]) assert.equal(draftHasContent(draft), true);
+  });
+
+  test("a machine-equipment default alone is not content (sticky per-exercise preference, not user action this session)", () => {
+    const draft = newSession("MON"); draft.exercises[0].equipment = "machine"; draft.exercises[0].name = "Chest Press Machine";
+    assert.equal(draftHasContent(draft), false);
   });
 
   test("clear removes the saved draft", () => {

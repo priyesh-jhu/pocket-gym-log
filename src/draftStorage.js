@@ -20,10 +20,15 @@ export function validateDraft(value) {
 export function draftHasContent(draft) {
   if (!validateDraft(draft)) return false;
   const plan = dayTemplates[draft.day].exercises;
+  // Equipment alone is never content: newSession() honours each exercise's
+  // remembered (sticky) equipment preference, so a brand-new, untouched draft
+  // can already default to a "machine" variant. Only an exercise whose name
+  // doesn't match what that plan slot + equipment would naturally produce is
+  // a real customisation (e.g. a custom/added exercise, not a plain default).
   const customShape = draft.exercises.length !== plan.length || draft.exercises.some((exercise,index) =>
     !plan[index] || variantFor(plan[index], exercise.equipment).name !== exercise.name);
   return draft.notes.trim() !== "" || draft.exercises.some(exercise =>
-    exercise.equipment === "machine" || exercise.sets.length > 1 || exercise.sets.some(set =>
+    exercise.sets.length > 1 || exercise.sets.some(set =>
       String(set.weight).trim() !== "" || String(set.reps).trim() !== "" || set.done === true)) || customShape;
 }
 
