@@ -19,7 +19,7 @@ import { commitWeightMutation, createWeightCloudOperation, prepareWeightMutation
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
-import { AppBar, Button, NavBar } from "./components/index.js";
+import { AppBar, Button, NavBar, Toast } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
@@ -114,6 +114,7 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("idle");
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
+  const [toastPRs, setToastPRs] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [confirmExitSession, setConfirmExitSession] = useState(false);
   const [activeExercise, setActiveExercise] = useState(0);
@@ -615,7 +616,9 @@ export default function App() {
     if (!cleaned.exercises.length) { setSaveStatus("error"); setStatusMsg("Complete at least one valid set. Weighted sets need weight and reps; bodyweight, timed, and distance sets need their result."); setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500); return; }
     const completedAt = new Date().toISOString();
     const saved = { ...cleaned, readiness:normalizeReadiness(readiness), completedAt };
-    setWorkoutSummary(createWorkoutSummary(saved, sessions, completedAt));
+    const summary = createWorkoutSummary(saved, sessions, completedAt);
+    setWorkoutSummary(summary);
+    setToastPRs(summary.prs.length > 0 ? summary.prs : null);
     const updated = [...sessions, saved].sort((a,b)=>a.date.localeCompare(b.date));
     setSessions(updated); persist(updated, firebaseUser ? ()=>saveCloudSession(firebaseUser.uid, saved) : null);
     clearDraft(storage, activeProfile);
@@ -883,6 +886,10 @@ export default function App() {
       />
 
       <main className="app-content">
+
+        <Toast open={!!toastPRs} onClose={() => setToastPRs(null)}>
+          {toastPRs && `🏆 New PR${toastPRs.length !== 1 ? "s" : ""}: ${toastPRs.map(pr => `${pr.name} ${pr.weight}${pr.unit} × ${pr.reps}`).join(" · ")}`}
+        </Toast>
 
         {/* Status banners */}
         {saveStatus==="saving"&&<div className="status-banner status-banner--info">Saving...</div>}
