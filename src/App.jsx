@@ -602,6 +602,11 @@ export default function App() {
       setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500);
       return;
     }
+    if(becomingDone&&!selectedSet?.rpe) {
+      setSaveStatus("error"); setStatusMsg("Rate this set's RPE (6-10) before marking it done.");
+      setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2500);
+      return;
+    }
     setDraft(prev => ({ ...prev, startedAt:prev.startedAt || new Date().toISOString(), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,done:becomingDone}) }) }));
     if (becomingDone) startRestTimer(getRestTimerSeconds(equipmentPrefs));
   }

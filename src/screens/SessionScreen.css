@@ -217,7 +217,7 @@
 }
 .session-plate-btn:not(:disabled) { color: var(--on-surface-variant); cursor: pointer; }
 .session-plate-btn.is-open { background: var(--day-accent); border-color: var(--day-accent); color: var(--on-primary); }
-.session-set-unit {
+.session-set-unit, .session-set-rpe {
   background: var(--surface-container-highest);
   border: 1px solid var(--outline-variant);
   border-radius: var(--shape-sm);
@@ -227,6 +227,7 @@
   font-size: var(--text-body-sm);
   flex-shrink: 0;
 }
+.session-set-rpe { width: 56px; }
 .session-set-remove { background: none; border: 0; color: var(--error); font-size: var(--text-title); cursor: pointer; flex-shrink: 0; padding: 0 var(--sp1); }
 .session-set-remove:disabled { color: var(--on-surface-dim); cursor: default; }
 

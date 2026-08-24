@@ -5,7 +5,7 @@ import { dayOrder, dayTemplates, variantFor, exerciseForVariantName } from "../d
 import { MUSCLES, formGuide } from "../data/formGuide.js";
 import { guideFor } from "../data/exerciseGuide.js";
 import { loadExerciseLibrary } from "../data/exerciseLibraryLoader.js";
-import { countEnteredSets } from "../draft.js";
+import { countEnteredSets, RPE_OPTIONS } from "../draft.js";
 import { trackingForExercise, trackingLabels, TRACKING_TYPES } from "../exerciseTracking.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
 import { readinessScore } from "../userFeatures.js";
@@ -315,6 +315,10 @@ export default function SessionScreen({
                       <option value="lb">lb</option><option value="kg">kg</option>
                     </select>
                     <input className="session-set-input" type="number" inputMode="numeric" placeholder={trackingCopy.measure} value={set.reps} onChange={e => updateSet(ei, si, "reps", e.target.value)} />
+                    <select className="session-set-rpe" aria-label={`RPE for set ${si + 1}`} value={set.rpe ?? ""} onChange={e => updateSet(ei, si, "rpe", e.target.value ? Number(e.target.value) : null)}>
+                      <option value="">RPE</option>
+                      {RPE_OPTIONS.map(value => <option key={value} value={value}>{value}</option>)}
+                    </select>
                     <button className="session-set-remove" onClick={() => removeSet(ei, si)} disabled={ex.sets.length <= 1}>×</button>
                   </div>
                   {pOpen && pData && (
