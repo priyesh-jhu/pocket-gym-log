@@ -58,14 +58,15 @@ function setDisplay(set, tracking) {
   const weight = numberOrNull(set.weight);
   const measure = numberOrNull(set.reps);
   const unit = unitOf(set);
+  const rpe = numberOrNull(set.rpe);
   const measureText = measure === null ? "" :
     tracking === TRACKING_TYPES.TIMED ? `${measure} sec` :
     tracking === TRACKING_TYPES.DISTANCE ? `${measure} m` :
     `${measure} reps`;
   // A missing optional weight is omitted rather than rendered as a misleading 0.
   const weightText = weight === null ? "" : `${weight} ${unit}`;
-  if (weightText && measureText) return `${weightText} × ${measureText}`;
-  return weightText || measureText;
+  const base = weightText && measureText ? `${weightText} × ${measureText}` : (weightText || measureText);
+  return rpe === null ? base : `${base} · RPE ${rpe}`;
 }
 
 function normalizeSet(set, tracking) {
@@ -73,7 +74,7 @@ function normalizeSet(set, tracking) {
   const weight = numberOrNull(set.weight);
   const reps = numberOrNull(set.reps);
   if (weight === null && reps === null) return null;
-  return { weight, reps, unit: unitOf(set), display: setDisplay(set, tracking) };
+  return { weight, reps, unit: unitOf(set), rpe: numberOrNull(set.rpe), display: setDisplay(set, tracking) };
 }
 
 function normalizeExercise(exercise) {
@@ -197,6 +198,7 @@ export function createHistoryDraft(session) {
           weight: set?.weight === null || set?.weight === undefined ? "" : String(set.weight),
           reps: set?.reps === null || set?.reps === undefined ? "" : String(set.reps),
           unit: unitOf(set),
+          rpe: set?.rpe === null || set?.rpe === undefined ? "" : String(set.rpe),
         })),
       };
     }),
@@ -206,18 +208,20 @@ export function createHistoryDraft(session) {
 /** A blank set row for the edit sheet, carrying the exercise's stored unit. */
 export function createDraftSet(exercise, key) {
   const lastUnit = exercise?.sets?.at(-1)?.unit;
-  return { key, sourceIndex: null, weight: "", reps: "", unit: lastUnit === "kg" ? "kg" : "lb" };
+  return { key, sourceIndex: null, weight: "", reps: "", unit: lastUnit === "kg" ? "kg" : "lb", rpe: "" };
 }
 
 function preparedSet(originalSet, draftSet) {
   const base = isPlainObject(originalSet) ? { ...originalSet } : {};
   // `done` is a live-workout flag; completed records never store it.
   delete base.done;
+  const rpe = text(draftSet.rpe).trim();
   return {
     ...base,
     weight: text(draftSet.weight).trim(),
     reps: text(draftSet.reps).trim(),
     unit: draftSet.unit === "kg" ? "kg" : "lb",
+    rpe: rpe === "" ? null : Number(rpe),
   };
 }
 

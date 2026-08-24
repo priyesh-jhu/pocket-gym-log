@@ -166,6 +166,37 @@ const confirmed = () => ({
   ],
 });
 
+test("a normalized set includes rpe and its display text includes it when present", () => {
+  const record = normalizeHistorySessions([confirmed()])[0];
+  const rated = record.exercises[1].sets[0];
+  assert.equal(rated.rpe, 7);
+  assert.equal(rated.display.includes("RPE 7"), true);
+});
+
+test("a set without rpe displays with no RPE text", () => {
+  const record = normalizeHistorySessions([confirmed()])[0];
+  const unrated = record.exercises[0].sets[0];
+  assert.equal(unrated.rpe, null);
+  assert.equal(unrated.display.includes("RPE"), false);
+});
+
+test("a draft's set rpe is editable and round-trips through an update", () => {
+  const original = confirmed();
+  const draft = createHistoryDraft(original);
+  assert.equal(draft.exercises[1].sets[0].rpe, "7");
+  draft.exercises[1].sets[0].rpe = "9";
+  const { session } = prepareHistoryUpdate(original, draft);
+  assert.equal(session.exercises[1].sets[0].rpe, 9);
+});
+
+test("clearing a draft's rpe stores null", () => {
+  const original = confirmed();
+  const draft = createHistoryDraft(original);
+  draft.exercises[1].sets[0].rpe = "";
+  const { session } = prepareHistoryUpdate(original, draft);
+  assert.equal(session.exercises[1].sets[0].rpe, null);
+});
+
 test("a draft is a deep copy: editing it never touches the confirmed record", () => {
   const original = confirmed();
   const snapshot = JSON.parse(JSON.stringify(original));

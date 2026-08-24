@@ -3,6 +3,7 @@ import { ChevronDown } from "lucide-react";
 import { Button, Card, Sheet, TextField } from "../components/index.js";
 import { HISTORY_DAY_OPTIONS, createDraftSet, createHistoryDraft, groupSessionsByMonth } from "../historyRecords.js";
 import { TRACKING_TYPES, trackingLabels } from "../exerciseTracking.js";
+import { RPE_OPTIONS } from "../draft.js";
 import "./HistoryScreen.css";
 
 // Presentation only. This screen never reads storage and never talks to
@@ -383,6 +384,18 @@ export default function HistoryScreen({
                         aria-describedby={saveError?.field === "sets" && index === 0 ? errorId : undefined}
                         onChange={event => updateSet(exercise.key, set.key, { reps: event.target.value })}
                       />
+                      <label className="history-field">
+                        <span className="history-field__label">RPE</span>
+                        <select
+                          className="history-select"
+                          value={set.rpe}
+                          aria-label={`RPE for ${exercise.name || "exercise"} set ${index + 1}`}
+                          onChange={event => updateSet(exercise.key, set.key, { rpe: event.target.value })}
+                        >
+                          <option value="">—</option>
+                          {RPE_OPTIONS.map(value => <option key={value} value={value}>{value}</option>)}
+                        </select>
+                      </label>
                       <Button
                         variant="text"
                         aria-label={`Remove set ${index + 1} of ${exercise.name || "this exercise"}`}
