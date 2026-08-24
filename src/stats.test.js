@@ -164,6 +164,17 @@ describe("activity calendar and consistency", () => {
     assert.equal(calendar[1][6].future, true);
   });
 
+  test("levels reflect volume, not just whether a session was logged", () => {
+    const heavyDay = mkSession("2026-08-10", [{sets:[mkSet(200,10)]}]);
+    const lightDay = mkSession("2026-08-11", [{sets:[mkSet(20,10)]}]);
+    const calendar = activityCalendar([heavyDay, lightDay], 2, "2026-08-13");
+    const week = calendar[1];
+    assert.equal(week[0].count, 1);
+    assert.equal(week[1].count, 1);
+    assert.ok(week[0].level > week[1].level, "a heavier day should reach a higher level than a lighter day");
+    assert.equal(week[2].level, 0, "an untrained day is level 0");
+  });
+
   test("summarizes unique workout days over the rolling last 28 days", () => {
     const sessions = [mkSession("2026-08-13", []), mkSession("2026-08-13", []), mkSession("2026-08-10", []), mkSession("2026-07-01", [])];
     assert.deepEqual(consistencySummary(sessions, "2026-08-13"), { workouts:2, activeWeeks:1, goalPct:10 });

@@ -256,17 +256,33 @@ export function muscleBalance(sessions, weeks = 4, todayIso = todayISO()) {
     .sort((a, b) => b.volume - a.volume);
 }
 
-/** Twelve-week Monday→Sunday activity grid. Each inner array is one week. */
+/**
+ * Twelve-week Monday→Sunday activity grid. Each inner array is one week.
+ * `level` (0-4) buckets each day's total volume relative to the busiest day
+ * in the window, so the heatmap reflects how much was actually lifted that
+ * day rather than merely whether a session was logged — a day with one light
+ * session and a day with three heavy ones should not render identically.
+ */
 export function activityCalendar(sessions, weeks = 12, todayIso = todayISO()) {
   const countByDate = new Map();
+  const volumeByDate = new Map();
   for (const session of Array.isArray(sessions) ? sessions : []) {
     if (!session?.date || session.date > todayIso) continue;
     countByDate.set(session.date, (countByDate.get(session.date) || 0) + 1);
+    volumeByDate.set(session.date, (volumeByDate.get(session.date) || 0) + sessionVolume(session));
   }
   const firstMonday = addDaysISO(weekStartISO(todayIso), -7*(weeks-1));
+  const maxVolume = Math.max(0, ...volumeByDate.values());
+  const levelFor = volume => {
+    if (!volume) return 0;
+    if (!maxVolume) return 1;
+    const ratio = volume / maxVolume;
+    return ratio >= 0.75 ? 4 : ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
+  };
   return Array.from({length:weeks}, (_,week) => Array.from({length:7}, (_,day) => {
     const date = addDaysISO(firstMonday, week*7+day);
-    return { date, count:countByDate.get(date) || 0, future:date>todayIso };
+    const volume = volumeByDate.get(date) || 0;
+    return { date, count:countByDate.get(date) || 0, volume, level:levelFor(volume), future:date>todayIso };
   }));
 }
 

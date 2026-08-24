@@ -179,7 +179,10 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           <div className="progress-calendar-days">{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
           <div className="progress-calendar-scroll" role="region" aria-label="Scrollable 12-week training calendar" tabIndex="0">
           <div aria-label="12-week training calendar" className="progress-calendar-grid">
-            {calendar.map((week,wi)=><div key={wi} className="progress-calendar-week">{week.map(day=><button ref={node => { if (node) dateButtonRefs.current.set(day.date, node); else dateButtonRefs.current.delete(day.date); }} key={day.date} onClick={()=>day.count&&setSelectedDate(day.date)} disabled={!day.count} aria-label={`${day.date}: ${day.count} session${day.count===1?"":"s"}${day.count?". View details.":""}`} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}`} className={`progress-calendar-day${selectedDate===day.date?" is-selected":""}${day.future?" is-future":""}`} data-count={day.count} />)}</div>)}
+            {calendar.map((week,wi)=><div key={wi} className="progress-calendar-week">{week.map(day=>{
+              const volumeLabel = day.count ? `, ${fmtVolume(day.volume,unit)} ${unit} volume` : "";
+              return <button ref={node => { if (node) dateButtonRefs.current.set(day.date, node); else dateButtonRefs.current.delete(day.date); }} key={day.date} onClick={()=>day.count&&setSelectedDate(day.date)} disabled={!day.count} aria-label={`${day.date}: ${day.count} session${day.count===1?"":"s"}${volumeLabel}${day.count?". View details.":""}`} title={`${day.date}: ${day.count} session${day.count===1?"":"s"}${volumeLabel}`} className={`progress-calendar-day${selectedDate===day.date?" is-selected":""}${day.future?" is-future":""}`} data-level={day.level} />;
+            })}</div>)}
           </div>
           </div>
         </div>
