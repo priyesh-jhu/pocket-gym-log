@@ -4,6 +4,7 @@ import { getThemePref, setThemePref } from "../design/theme.js";
 import { checkForAppUpdate } from "../pwa.js";
 import { REST_TIMER_OPTIONS } from "../restTimer.js";
 import { goalProgress, removeGoal } from "../userFeatures.js";
+import { getStandardsSex, setStandardsSex } from "../strengthStandards.js";
 import "./SettingsScreen.css";
 
 const THEME_OPTIONS = [
@@ -91,6 +92,17 @@ export default function SettingsScreen({
           title="Default duration"
           subtitle={`${restTimerDefault} seconds after each set`}
           trailing={<SegmentedButtons ariaLabel="Default rest duration" options={REST_TIMER_OPTIONS.map(value => ({ value, label: `${value}s` }))} value={restTimerDefault} onChange={updateRestTimerDefault} />}
+        />
+      </Card>
+
+      <Card className="settings__card">
+        <h2 className="settings__title">Strength standards</h2>
+        <p className="settings__help">Used to show your strength tier (novice → elite) on the Progress dashboard. These are rough public averages, not a medical or competition standard.</p>
+        <SegmentedButtons
+          ariaLabel="Strength standards"
+          options={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }]}
+          value={getStandardsSex(equipmentPrefs) || "male"}
+          onChange={sex => saveAccountPrefs(setStandardsSex(equipmentPrefs, sex))}
         />
       </Card>
 
