@@ -1,9 +1,11 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Button, Card, SegmentedButtons, Sheet } from "../components/index.js";
+import { Button, Card, Chip, SegmentedButtons, Sheet } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
-import { dominantUnit, exerciseE1RMSeries } from "../stats.js";
+import { dominantUnit, exerciseE1RMSeries, toLb } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
+import { bigLiftSummary, getStandardsSex } from "../strengthStandards.js";
+import { normalizeBodyweights } from "../weightRecords.js";
 import { DASHBOARD_KEY, PROGRESS_GROUP_IDS, PROGRESS_GROUP_LABELS, normalizeDashboardSettings, updateDashboardSettings } from "../progressDashboardSettings.js";
 import { BalanceGroup, BodyHeatmapGroup, DailyTrendGroup } from "../ProgressDashboard.jsx";
 import "./ProgressScreen.css";
@@ -104,7 +106,50 @@ function E1RMGroup({ sessions, reducedMotion }) {
   </Card>;
 }
 
-export default function ProgressScreen({ sessions = [], preferences = {}, onSavePreferences, onAddExercise, onGoHome, loading = false }) {
+const LIFT_LABELS = { bench: "Bench", squat: "Squat", deadlift: "Deadlift" };
+
+function StrengthGroup({ sessions, bodyweights, sex }) {
+  const unit = dominantUnit(sessions);
+  const entries = normalizeBodyweights(bodyweights);
+  const latestWeighIn = [...entries].sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+  const bodyweightLb = latestWeighIn ? toLb(latestWeighIn.weight, latestWeighIn.unit) : null;
+  const displayValue = value => (unit === "kg" ? Math.round((value / 2.20462) * 10) / 10 : Math.round(value));
+
+  return (
+    <Card variant="raised" className="progress-group progress-strength">
+      <div className="progress-section-heading">
+        <div><p className="progress-eyebrow">Strength standards</p><h2>Strength levels</h2></div>
+      </div>
+      {!bodyweightLb ? (
+        <div className="progress-chart-empty"><strong>Log your weight to see strength levels.</strong></div>
+      ) : (() => {
+        const lifts = bigLiftSummary(sessions, bodyweightLb, sex);
+        return lifts.length === 0 ? (
+          <div className="progress-chart-empty"><strong>Log a bench, squat, or deadlift set to see your strength levels.</strong></div>
+        ) : (
+          <>
+            {lifts.map(item => (
+              <div key={item.lift} className="progress-strength-row">
+                <div className="progress-strength-row__head">
+                  <strong>{LIFT_LABELS[item.lift]}</strong>
+                  {item.tier ? <Chip>{item.tier}</Chip> : <span className="progress-strength-row__notier">Set your sex in Settings to see your tier</span>}
+                </div>
+                <div className="progress-strength-row__body">
+                  <span>{displayValue(item.e1rmLb)} {unit} e1RM</span>
+                  <span>{item.ratio}× bodyweight</span>
+                </div>
+                {item.isFallback && <small className="progress-strength-row__fallback">(from {item.exerciseName} — no {LIFT_LABELS[item.lift]} logged yet)</small>}
+              </div>
+            ))}
+            <small className="progress-strength-disclaimer">Rough public averages, not a medical or competition standard.</small>
+          </>
+        );
+      })()}
+    </Card>
+  );
+}
+
+export default function ProgressScreen({ sessions = [], preferences = {}, bodyweights = [], onSavePreferences, onAddExercise, onGoHome, loading = false }) {
   const normalized = useMemo(() => normalizeDashboardSettings(preferences), [preferences]);
   const confirmedRef = useRef(normalized);
   const customizeInitialRef = useRef(null);
@@ -115,6 +160,7 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
   const reducedMotion = useReducedMotion();
 
   const settings = normalized;
+  const sex = getStandardsSex(preferences);
   useEffect(() => { confirmedRef.current = normalized; }, [normalized]);
   useEffect(() => { if (saveError) saveErrorRef.current?.focus(); }, [saveError]);
 
@@ -142,6 +188,7 @@ export default function ProgressScreen({ sessions = [], preferences = {}, onSave
     trend: <DailyTrendGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} reducedMotion={reducedMotion} />,
     heatmap: <BodyHeatmapGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} onAddExercise={onAddExercise} reducedMotion={reducedMotion} />,
     balance: <BalanceGroup sessions={sessions} settings={settings} reducedMotion={reducedMotion} />,
+    strength: <StrengthGroup sessions={sessions} bodyweights={bodyweights} sex={sex} />,
   };
 
   return <section className="progress-screen" aria-labelledby="progress-title">

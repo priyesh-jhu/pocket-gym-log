@@ -6,12 +6,12 @@ const prefs = value => ({ [DASHBOARD_KEY]: value });
 
 test("migrates all five legacy cards and uses the earliest daily position", () => {
   const settings = normalizeDashboardSettings(prefs({ cardOrder: ["heatmap", "calendar", "summary", "trend", "balance"] }));
-  assert.deepEqual(settings.cardOrder, ["e1rm", "heatmap", "trend", "balance"]);
+  assert.deepEqual(settings.cardOrder, ["e1rm", "heatmap", "trend", "balance", "strength"]);
 });
 
 test("repairs duplicate and missing identifiers", () => {
   const settings = normalizeDashboardSettings(prefs({ cardOrder: ["balance", "balance", "unknown"] }));
-  assert.deepEqual(settings.cardOrder, ["e1rm", "balance", "trend", "heatmap"]);
+  assert.deepEqual(settings.cardOrder, ["e1rm", "balance", "trend", "heatmap", "strength"]);
   assert.deepEqual([...settings.cardOrder].sort(), [...PROGRESS_GROUP_IDS].sort());
 });
 
@@ -27,7 +27,7 @@ test("preserves normalized hidden Daily trend through repeated normalization", (
   const first = normalizeDashboardSettings(raw);
   const second = normalizeDashboardSettings(prefs(first));
   assert.deepEqual(first, second);
-  assert.deepEqual(second.cardOrder, ["e1rm", "trend", "heatmap", "balance"]);
+  assert.deepEqual(second.cardOrder, ["e1rm", "trend", "heatmap", "balance", "strength"]);
   assert.deepEqual(second.hiddenCards, ["trend"]);
 });
 

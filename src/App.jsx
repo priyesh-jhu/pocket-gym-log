@@ -1027,7 +1027,7 @@ export default function App() {
 
         {/* ── PROGRESS TAB ── */}
         {activeTab==="progress" && (
-          <ProgressScreen sessions={sessions} preferences={equipmentPrefs} onSavePreferences={saveProgressPreferences} onAddExercise={addDashboardExercise} onGoHome={() => switchTab("log")} loading={loading}/>
+          <ProgressScreen sessions={sessions} preferences={equipmentPrefs} bodyweights={bodyweights} onSavePreferences={saveProgressPreferences} onAddExercise={addDashboardExercise} onGoHome={() => switchTab("log")} loading={loading}/>
         )}
 
         {/* ── Weight destination ── */}
