@@ -110,41 +110,42 @@ const LIFT_LABELS = { bench: "Bench", squat: "Squat", deadlift: "Deadlift" };
 
 function StrengthGroup({ sessions, bodyweights, sex }) {
   const unit = dominantUnit(sessions);
-  const entries = normalizeBodyweights(bodyweights);
-  const latestWeighIn = [...entries].sort((a, b) => a.date.localeCompare(b.date)).at(-1);
-  const bodyweightLb = latestWeighIn ? toLb(latestWeighIn.weight, latestWeighIn.unit) : null;
   const displayValue = value => (unit === "kg" ? Math.round((value / 2.20462) * 10) / 10 : Math.round(value));
+  const { bodyweightLb, lifts } = useMemo(() => {
+    const entries = normalizeBodyweights(bodyweights);
+    const latestWeighIn = [...entries].sort((a, b) => a.date.localeCompare(b.date)).at(-1);
+    const bwLb = latestWeighIn ? toLb(latestWeighIn.weight, latestWeighIn.unit) : null;
+    return { bodyweightLb: bwLb, lifts: bwLb ? bigLiftSummary(sessions, bwLb, sex) : [] };
+  }, [sessions, bodyweights, sex]);
 
   return (
-    <Card variant="raised" className="progress-group progress-strength">
+    <Card variant="raised" className="progress-group">
       <div className="progress-section-heading">
         <div><p className="progress-eyebrow">Strength standards</p><h2>Strength levels</h2></div>
       </div>
       {!bodyweightLb ? (
         <div className="progress-chart-empty"><strong>Log your weight to see strength levels.</strong></div>
-      ) : (() => {
-        const lifts = bigLiftSummary(sessions, bodyweightLb, sex);
-        return lifts.length === 0 ? (
-          <div className="progress-chart-empty"><strong>Log a bench, squat, or deadlift set to see your strength levels.</strong></div>
-        ) : (
-          <>
-            {lifts.map(item => (
-              <div key={item.lift} className="progress-strength-row">
-                <div className="progress-strength-row__head">
-                  <strong>{LIFT_LABELS[item.lift]}</strong>
-                  {item.tier ? <Chip>{item.tier}</Chip> : <span className="progress-strength-row__notier">Set your sex in Settings to see your tier</span>}
-                </div>
-                <div className="progress-strength-row__body">
-                  <span>{displayValue(item.e1rmLb)} {unit} e1RM</span>
-                  <span>{item.ratio}× bodyweight</span>
-                </div>
-                {item.isFallback && <small className="progress-strength-row__fallback">(from {item.exerciseName} — no {LIFT_LABELS[item.lift]} logged yet)</small>}
+      ) : lifts.length === 0 ? (
+        <div className="progress-chart-empty"><strong>Log a bench, squat, or deadlift set to see your strength levels.</strong></div>
+      ) : (
+        <>
+          {lifts.map(item => (
+            <div key={item.lift} className="progress-strength-row">
+              <div className="progress-strength-row__head">
+                <strong>{LIFT_LABELS[item.lift]}</strong>
+                {item.tier && <Chip>{item.tier.charAt(0).toUpperCase() + item.tier.slice(1)}</Chip>}
               </div>
-            ))}
-            <small className="progress-strength-disclaimer">Rough public averages, not a medical or competition standard.</small>
-          </>
-        );
-      })()}
+              <div className="progress-strength-row__body">
+                <span>{displayValue(item.e1rmLb)} {unit} e1RM</span>
+                <span>{item.ratio}× bodyweight</span>
+              </div>
+              {item.isFallback && <small className="progress-strength-row__fallback">(from {item.exerciseName} — no {LIFT_LABELS[item.lift]} logged yet)</small>}
+            </div>
+          ))}
+          {!sex && lifts.length > 0 && <p className="progress-strength-row__notier">Set your sex in Settings to see your tier.</p>}
+          <small className="progress-strength-disclaimer">Rough public averages, not a medical or competition standard.</small>
+        </>
+      )}
     </Card>
   );
 }

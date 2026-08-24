@@ -101,7 +101,7 @@ export default function SettingsScreen({
         <SegmentedButtons
           ariaLabel="Strength standards"
           options={[{ value: "male", label: "Male" }, { value: "female", label: "Female" }]}
-          value={getStandardsSex(equipmentPrefs) || "male"}
+          value={getStandardsSex(equipmentPrefs)}
           onChange={sex => saveAccountPrefs(setStandardsSex(equipmentPrefs, sex))}
         />
       </Card>

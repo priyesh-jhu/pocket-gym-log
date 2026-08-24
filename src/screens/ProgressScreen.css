@@ -194,8 +194,8 @@
 .progress-screen .m3-btn, .progress-screen .m3-seg button { min-height: 48px; font-size: var(--text-label-sm); font-weight: 600; }
 .progress-screen .m3-sheet { padding: var(--sp2) var(--sp4) var(--sp6); font-size: var(--text-body); }
 
-.progress-strength-row { padding: var(--sp3) 0; border-top: 1px solid var(--outline-variant); }
-.progress-strength-row:first-of-type { border-top: none; padding-top: 0; }
+.progress-strength-row { padding: var(--sp3) 0; }
+.progress-strength-row + .progress-strength-row { border-top: 1px solid var(--outline-variant); }
 .progress-strength-row__head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp2); }
 .progress-strength-row__body { display: flex; gap: var(--sp4); margin-top: var(--sp1); color: var(--on-surface-variant); font-size: var(--text-body-sm); }
 .progress-strength-row__notier { color: var(--on-surface-dim); font-size: var(--text-label-sm); }

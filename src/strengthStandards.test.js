@@ -12,6 +12,20 @@ describe("bigLiftSummary", () => {
     const deadlift = result.find(item => item.lift === "deadlift");
     assert.equal(deadlift.exerciseName, "Smith Machine Deadlift");
     assert.equal(deadlift.isFallback, true);
+    // Fallback variants aren't calibrated against STANDARDS, so tier must stay
+    // null even though a sex is provided and the ratio would otherwise clear
+    // a threshold (300/200 = 1.5, which would be "advanced" for a real deadlift).
+    assert.equal(deadlift.tier, null);
+  });
+
+  test("uses the best e1RM in the last 90 days, not just the latest point", () => {
+    const sessions = [
+      mkSession("2026-08-01", [{ name: "Barbell/DB Bench Press", sets: [mkSet("200", "1")] }]),
+      mkSession("2026-08-15", [{ name: "Barbell/DB Bench Press", sets: [mkSet("100", "1")] }]),
+    ];
+    const result = bigLiftSummary(sessions, 200, "male");
+    const bench = result.find(item => item.lift === "bench");
+    assert.equal(bench.e1rmLb, 200);
   });
 
   test("assigns the correct tier at a threshold boundary", () => {

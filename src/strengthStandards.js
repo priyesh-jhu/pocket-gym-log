@@ -5,9 +5,10 @@
 // own name. LIFT_VARIANTS lists each big lift's canonical name first, then
 // fallback variants to use when the canonical name has no logged data yet.
 import { exerciseE1RMSeries } from "./stats.js";
+import { addDaysISO } from "./dateUtils.js";
 
 export const LIFT_VARIANTS = {
-  bench: ["Barbell/DB Bench Press", "Incline DB Press", "Chest Press Machine", "Incline Chest Press Machine"],
+  bench: ["Barbell/DB Bench Press", "Chest Press Machine", "Incline DB Press", "Incline Chest Press Machine"],
   squat: ["Back Squat/Goblet Squat", "Leg Press Machine", "Bulgarian Split Squat", "Single-Leg Leg Press"],
   deadlift: ["Conventional Deadlift", "Smith Machine Deadlift", "Romanian Deadlift"],
 };
@@ -49,10 +50,15 @@ function tierFor(ratio, thresholds) {
 }
 
 /**
- * Current strength summary for the big 3 lifts. Each lift uses the latest
- * point of exerciseE1RMSeries for the first name in its fallback chain that
- * has any logged data; lifts with zero data across their whole chain are
- * omitted entirely (never shown as a zeroed-out row).
+ * Current strength summary for the big 3 lifts. Each lift uses the best
+ * e1RM in the last 90 days of exerciseE1RMSeries for the first name in its
+ * fallback chain that has any logged data (falling back to the single latest
+ * point if there's only one data point, or if all points are more than 90
+ * days old relative to the most recent one); lifts with zero data across
+ * their whole chain are omitted entirely (never shown as a zeroed-out row).
+ * When the match is a fallback variant rather than the canonical lift, tier
+ * is always null — the STANDARDS thresholds are calibrated for the
+ * canonical lift and are meaningless against a different exercise's scale.
  */
 export function bigLiftSummary(sessions, bodyweightLb, sex) {
   if (!bodyweightLb || bodyweightLb <= 0) return [];
@@ -65,10 +71,15 @@ export function bigLiftSummary(sessions, bodyweightLb, sex) {
       if (series.length > 0) { match = { name, series }; break; }
     }
     if (!match) continue;
-    const e1rmLb = match.series.at(-1).value;
+    const mostRecentDate = match.series.at(-1).date;
+    const windowStart = addDaysISO(mostRecentDate, -90);
+    const recentPoints = match.series.filter(point => point.date >= windowStart);
+    const e1rmLb = Math.max(...recentPoints.map(point => point.value));
     const ratio = Math.round((e1rmLb / bodyweightLb) * 100) / 100;
-    const thresholds = sex ? STANDARDS[sex]?.[lift] : null;
-    results.push({ lift, exerciseName: match.name, isFallback: match.name !== chain[0], e1rmLb, ratio, tier: tierFor(ratio, thresholds) });
+    const isFallback = match.name !== chain[0];
+    const thresholds = (sex && !isFallback) ? STANDARDS[sex]?.[lift] : null;
+    const tier = tierFor(ratio, thresholds);
+    results.push({ lift, exerciseName: match.name, isFallback, e1rmLb, ratio, tier });
   }
   return results;
 }
