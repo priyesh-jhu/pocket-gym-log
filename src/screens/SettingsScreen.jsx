@@ -32,12 +32,20 @@ export default function SettingsScreen({
 
   function closeResetSheet() { setConfirmReset(false); setResetConfirmText(""); }
   const [updateCheckMsg, setUpdateCheckMsg] = useState(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   async function handleCheckForUpdate() {
     setUpdateCheckMsg("Checking…");
+    setUpdateAvailable(false);
     const result = await checkForAppUpdate();
-    if (!result.ok) setUpdateCheckMsg(result.reason === "not-registered" ? "Updates aren't available in this environment." : "Couldn't check for updates — check your connection.");
-    else setUpdateCheckMsg(result.upToDate ? "You're on the latest version." : "Update found — see the banner at the top to apply it.");
+    if (!result.ok) {
+      setUpdateCheckMsg(result.reason === "not-registered" ? "Updates aren't available in this environment." : "Couldn't check for updates — check your connection.");
+    } else if (result.upToDate) {
+      setUpdateCheckMsg("You're on the latest version.");
+    } else {
+      setUpdateCheckMsg(`Version ${result.latestVersion} is available.`);
+      setUpdateAvailable(true);
+    }
   }
   const workoutCount = Array.isArray(sessions) ? sessions.length : 0;
 
@@ -153,6 +161,7 @@ export default function SettingsScreen({
         <div className="settings__update">
           <Button variant="text" onClick={handleCheckForUpdate}>Check for updates</Button>
           {updateCheckMsg && <span className="settings__update-msg">{updateCheckMsg}</span>}
+          {updateAvailable && <Button variant="filled" onClick={() => window.location.reload()}>Reload now</Button>}
         </div>
       </Card>
     </section>

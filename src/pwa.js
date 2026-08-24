@@ -37,17 +37,32 @@ export function registerWorkoutPWA({onUpdate}={}) {
 }
 
 /**
- * Forces an immediate check against the network for a newer service worker,
- * instead of waiting for the browser's own periodic check. If a new version
- * is found, the existing registerWorkoutPWA() update-found listener fires as
- * usual and the app's update banner appears — this just triggers that check
- * on demand. Returns { ok, upToDate } on success, { ok:false, reason } otherwise.
+ * Checks whether a newer version has been deployed than the one currently
+ * running. `registration.update()` alone cannot answer this: it only
+ * re-fetches the ALREADY-REGISTERED service worker script, and sw.js's own
+ * file content never changes between releases (it reads its cache-busting
+ * version from the registration URL's query string at runtime, not from its
+ * own bytes) — so once a page is running an old cached build, update() will
+ * report "no update" forever, even after several real deploys. The one
+ * reliable signal is a fresh, no-store fetch of public/version.json (written
+ * at build time by scripts/write-version.mjs) compared against this running
+ * build's own packageInfo.version.
+ *
+ * Returns { ok:true, upToDate, latestVersion } on success,
+ * { ok:false, reason } otherwise ("not-registered" outside a real PWA
+ * context, or "error" on a network/parse failure).
  */
 export async function checkForAppUpdate() {
   if (!currentRegistration) return { ok:false, reason:"not-registered" };
   try {
-    await currentRegistration.update();
-    return { ok:true, upToDate: !currentRegistration.installing && !currentRegistration.waiting };
+    const res = await fetch("/version.json", { cache:"no-store" });
+    if (!res.ok) throw new Error(`version.json fetch failed: ${res.status}`);
+    const { version: latestVersion } = await res.json();
+    const upToDate = latestVersion === packageInfo.version;
+    // Also kick off the normal SW update check — harmless, and picks up the
+    // case where the SW itself changed (not just the app version).
+    currentRegistration.update().catch(() => {});
+    return { ok:true, upToDate, latestVersion };
   } catch (error) {
     return { ok:false, reason:"error", error };
   }
