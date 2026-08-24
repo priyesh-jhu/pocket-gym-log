@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities,
+  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
-function mkSession(date, exercises) { return { id: date, date, day: "MON", notes: "", exercises }; }
+function mkSession(date, exercises, day = "MON") { return { id: date, date, day, notes: "", exercises }; }
 
 describe("toLb", () => {
   test("converts kg to lb", () => {
@@ -105,6 +105,47 @@ describe("home dashboard analytics", () => {
     assert.equal(freshness.chest, 30);
     assert.equal(freshness.calves, 100);
     assert.deepEqual(pushPullRatio(sessions, 7, "2026-08-13"), { push: 1, pull: 1, pushPct: 50, pullPct: 50 });
+  });
+});
+
+describe("monthSummary", () => {
+  test("computes current-month sessions/volume and delta vs previous month", () => {
+    const sessions = [
+      mkSession("2026-07-15", [{ name: "A", sets: [mkSet("100", "10")] }]), // prev month: 1000 lb
+      mkSession("2026-08-05", [{ name: "A", sets: [mkSet("110", "10")] }]), // current month
+      mkSession("2026-08-20", [{ name: "A", sets: [mkSet("110", "10")] }]), // current month
+    ];
+    const result = monthSummary(sessions, "2026-08-24");
+    assert.equal(result.sessions, 2);
+    assert.equal(result.volume, 2200);
+    assert.equal(result.prevVolume, 1000);
+    assert.equal(result.deltaPct, 120);
+  });
+
+  test("deltaPct is null with no prior-month baseline", () => {
+    const sessions = [mkSession("2026-08-05", [{ name: "A", sets: [mkSet("100", "10")] }])];
+    const result = monthSummary(sessions, "2026-08-24");
+    assert.equal(result.prevVolume, 0);
+    assert.equal(result.deltaPct, null);
+  });
+});
+
+describe("lastSameDaySummary", () => {
+  test("finds the most recent prior session with a matching day and reports top sets", () => {
+    const sessions = [
+      mkSession("2026-08-01", [{ name: "Bench Press", sets: [mkSet("135", "8"), mkSet("155", "5")] }], "PUSH"),
+      mkSession("2026-08-03", [{ name: "Squat", sets: [mkSet("200", "5")] }], "LEGS"),
+      mkSession("2026-08-08", [{ name: "Bench Press", sets: [mkSet("145", "6")] }], "PUSH"),
+    ];
+    const result = lastSameDaySummary(sessions, "PUSH", "2026-08-15");
+    assert.equal(result.date, "2026-08-08");
+    assert.equal(result.exercises.length, 1);
+    assert.deepEqual(result.exercises[0], { name: "Bench Press", weight: 145, unit: "lb", reps: 6 });
+  });
+
+  test("returns null when no prior session matches the day", () => {
+    const sessions = [mkSession("2026-08-01", [{ name: "Squat", sets: [mkSet("200", "5")] }], "LEGS")];
+    assert.equal(lastSameDaySummary(sessions, "PUSH", "2026-08-15"), null);
   });
 });
 

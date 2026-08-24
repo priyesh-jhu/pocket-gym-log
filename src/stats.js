@@ -121,6 +121,59 @@ export function weekVolumeDelta(sessions, todayIso = todayISO()) {
   return { ...summary, direction };
 }
 
+function monthKey(iso) { return iso.slice(0, 7); }
+
+function prevMonthKey(iso) {
+  const [year, month] = iso.slice(0, 7).split("-").map(Number);
+  const date = new Date(year, month - 2, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Current calendar month vs the immediately preceding one. deltaPct is null if prevVolume is 0. */
+export function monthSummary(sessions, todayIso = todayISO()) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const currentKey = monthKey(todayIso);
+  const prevKey = prevMonthKey(todayIso);
+  let sessionsCount = 0, volume = 0, prevVolume = 0;
+  for (const s of list) {
+    if (!s?.date) continue;
+    const key = monthKey(s.date);
+    if (key === currentKey) {
+      sessionsCount += 1;
+      volume += sessionVolume(s);
+    } else if (key === prevKey) {
+      prevVolume += sessionVolume(s);
+    }
+  }
+  const deltaPct = prevVolume > 0 ? Math.round(((volume - prevVolume) / prevVolume) * 100) : null;
+  return { sessions: sessionsCount, volume, prevVolume, deltaPct };
+}
+
+/** The most recent prior session sharing `day`, strictly before `beforeDate`, with each exercise's top set. */
+export function lastSameDaySummary(sessions, day, beforeDate) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  let match = null;
+  for (const session of list) {
+    if (!session?.date || session.day !== day || session.date >= beforeDate) continue;
+    if (!match || session.date > match.date) match = session;
+  }
+  if (!match) return null;
+
+  const exercises = (Array.isArray(match.exercises) ? match.exercises : []).map(exercise => {
+    let best = null;
+    for (const set of Array.isArray(exercise?.sets) ? exercise.sets : []) {
+      const weightLb = toLb(set?.weight, set?.unit);
+      if (weightLb <= 0) continue;
+      if (!best || weightLb > best.weightLb) {
+        best = { weightLb, weight: Number(set.weight), unit: set.unit === "kg" ? "kg" : "lb", reps: Number(set.reps) || 0 };
+      }
+    }
+    return best ? { name: exercise.name, weight: best.weight, unit: best.unit, reps: best.reps } : null;
+  }).filter(Boolean);
+
+  return { date: match.date, volume: Math.round(sessionVolume(match)), exercises };
+}
+
 /** Consecutive unique training days ending today or yesterday, plus the all-time best. */
 export function currentStreak(sessions, todayIso = todayISO()) {
   const dates = [...new Set((Array.isArray(sessions) ? sessions : [])
