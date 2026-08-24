@@ -1,11 +1,15 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { emptySets, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
+import { emptySets, RPE_OPTIONS, hasEnteredData, countEnteredSets, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { dayTemplates, variantFor } from "./data/exercises.js";
 
 describe("draft construction", () => {
   test("emptySets returns one blank set defaulting to lb", () => {
-    assert.deepEqual(emptySets(), [{ weight: "", reps: "", unit: "lb", done: false }]);
+    assert.deepEqual(emptySets(), [{ weight: "", reps: "", unit: "lb", done: false, rpe: null }]);
+  });
+
+  test("RPE_OPTIONS is the whole-number 6-10 scale", () => {
+    assert.deepEqual(RPE_OPTIONS, [6, 7, 8, 9, 10]);
   });
 
   test("emptySets returns a fresh array each call", () => {
@@ -64,7 +68,7 @@ describe("draft construction", () => {
     const v = { equipment: "machine", name: "Chest Press Machine", target: "3 x 10-12" };
     assert.deepEqual(buildDraftExercise(v), {
       name: "Chest Press Machine", equipment: "machine",
-      sets: [{ weight: "", reps: "", unit: "lb", done: false }],
+      sets: [{ weight: "", reps: "", unit: "lb", done: false, rpe: null }],
     });
   });
 

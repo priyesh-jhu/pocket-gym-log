@@ -5,6 +5,10 @@ import { todayISO } from "./dateUtils.js";
 import { TRACKING_TYPES } from "./exerciseTracking.js";
 
 const filled = s => String(s.weight ?? "").trim() !== "" || String(s.reps ?? "").trim() !== "";
+
+/** Whole-number RPE scale this app supports, lowest to highest effort. */
+export const RPE_OPTIONS = [6, 7, 8, 9, 10];
+
 export const isCompleteSet = (s,tracking=TRACKING_TYPES.WEIGHTED) => {
   const measure=String(s?.reps??"").trim();
   if(!measure||!Number.isFinite(Number(measure))||Number(measure)<=0) return false;
@@ -13,7 +17,7 @@ export const isCompleteSet = (s,tracking=TRACKING_TYPES.WEIGHTED) => {
   return Boolean(weight)&&Number.isFinite(Number(weight))&&Number(weight)>=0;
 };
 
-export function emptySets() { return [{ weight:"", reps:"", unit:"lb", done:false }]; }
+export function emptySets() { return [{ weight:"", reps:"", unit:"lb", done:false, rpe:null }]; }
 
 /** True if the user has typed any weight or reps into these sets. */
 export function hasEnteredData(sets) { return (sets || []).some(filled); }
