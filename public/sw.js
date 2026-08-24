@@ -55,6 +55,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // version.json must always be network-fresh: it's the one signal
+  // checkForAppUpdate() (src/pwa.js) has for detecting a new deploy, and a
+  // cache-first response here would freeze "latest version" at whatever was
+  // live the first time this file was ever fetched. Never cache it.
+  if (new URL(request.url).pathname === "/version.json") {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   // Static assets (JS/CSS/images): cache first, then network, then cache the result.
   event.respondWith(
     caches.match(request).then((cached) => {
