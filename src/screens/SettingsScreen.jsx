@@ -145,11 +145,16 @@ export default function SettingsScreen({
         </div>
       </Sheet>
 
-      <div className="settings__update">
+      <Card className="settings__card settings__about">
+        <h2 className="settings__title">About</h2>
         <p className="settings__version">Pocket Gym Log · v{version}</p>
-        <Button variant="text" onClick={handleCheckForUpdate}>Check for updates</Button>
-        {updateCheckMsg && <span className="settings__update-msg">{updateCheckMsg}</span>}
-      </div>
+        <p className="settings__about-line">Made by Prateek M</p>
+        <p className="settings__about-line">Exercise library data from <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noreferrer">free-exercise-db</a> (public domain).</p>
+        <div className="settings__update">
+          <Button variant="text" onClick={handleCheckForUpdate}>Check for updates</Button>
+          {updateCheckMsg && <span className="settings__update-msg">{updateCheckMsg}</span>}
+        </div>
+      </Card>
     </section>
   );
 }
