@@ -1,8 +1,10 @@
 import { ArrowRight, Flame, Play, Trophy } from "lucide-react";
-import { Button, Card, Chip, StatTile } from "../components/index.js";
+import { Button, Card, Chip, SegmentedButtons, StatTile } from "../components/index.js";
 import MuscleHeatmap from "../MuscleHeatmap.jsx";
-import { currentStreak, dominantUnit, muscleFreshness, personalRecords, weekVolumeDelta } from "../stats.js";
+import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, personalRecords, weekVolumeDelta } from "../stats.js";
+import { todayISO } from "../dateUtils.js";
 import { trainingInsights } from "../trainingInsights.js";
+import { useState } from "react";
 import "./HomeScreen.css";
 
 function displayVolume(value, unit) {
@@ -10,7 +12,7 @@ function displayVolume(value, unit) {
   return Math.round(converted).toLocaleString();
 }
 
-export default function HomeScreen({ sessions, dayMeta, displayName, hasDraft, draftSavedAt, onStart, onProgress }) {
+export default function HomeScreen({ sessions, dayMeta, currentDay, displayName, hasDraft, draftSavedAt, onStart, onProgress }) {
   const week = weekVolumeDelta(sessions);
   const streak = currentStreak(sessions);
   const unit = dominantUnit(sessions);
@@ -18,7 +20,14 @@ export default function HomeScreen({ sessions, dayMeta, displayName, hasDraft, d
   const records = personalRecords(sessions, 3);
   const insight = trainingInsights(sessions, 1)[0];
   const firstName = displayName?.trim().split(/\s+/)[0];
-  const delta = week.deltaPct === null ? "No prior-week baseline" : `${week.deltaPct >= 0 ? "+" : ""}${week.deltaPct}% vs last week`;
+  const [range, setRange] = useState("week");
+  const month = monthSummary(sessions);
+  const activeSummary = range === "week" ? week : month;
+  const activeLabel = range === "week" ? "week" : "month";
+  const activeDelta = activeSummary.deltaPct === null
+    ? "No prior-period baseline"
+    : `${activeSummary.deltaPct >= 0 ? "+" : ""}${activeSummary.deltaPct}% volume vs last ${activeLabel}`;
+  const sameDay = lastSameDaySummary(sessions, currentDay, todayISO());
 
   return (
     <section className="home-screen" aria-labelledby="home-greeting">
@@ -28,15 +37,24 @@ export default function HomeScreen({ sessions, dayMeta, displayName, hasDraft, d
       </div>
 
       <Card variant="raised" className="home-hero">
-        <p>This week's volume</p>
-        <strong>{displayVolume(week.volume, unit)}</strong><span>{unit}</span>
-        <Chip>{delta}</Chip>
+        <div className="home-hero__head">
+          <p>You trained {activeSummary.sessions}× this {activeLabel}</p>
+          <SegmentedButtons
+            ariaLabel="Summary range"
+            options={[{ value: "week", label: "Week" }, { value: "month", label: "Month" }]}
+            value={range}
+            onChange={setRange}
+          />
+        </div>
+        <strong>{displayVolume(activeSummary.volume, unit)}</strong><span>{unit}</span>
+        <Chip>{activeDelta}</Chip>
       </Card>
 
       <Card variant="raised" className="home-plan">
         <div className="home-plan__head"><div><p>Today's plan</p><h3>{dayMeta.emoji} {dayMeta.label}</h3><span>{dayMeta.focus}</span></div><span className="home-plan__dot" style={{ background: dayMeta.color }} /></div>
         <Button block onClick={onStart} icon={<Play size={19} fill="currentColor" />}>{hasDraft ? "Resume workout" : "Start workout"}</Button>
         {hasDraft && draftSavedAt && <small>Draft saved {new Date(draftSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</small>}
+        {sameDay && <small className="home-plan__lastday">Last {dayMeta.label} day ({sameDay.date}): {displayVolume(sameDay.volume, unit)} {unit} total</small>}
       </Card>
 
       <button type="button" className="home-heatmap" onClick={onProgress}>

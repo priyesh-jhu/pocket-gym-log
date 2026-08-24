@@ -940,6 +940,7 @@ export default function App() {
           <HomeScreen
             sessions={sessions}
             dayMeta={dayMeta}
+            currentDay={currentDay}
             displayName={firebaseUser?.displayName}
             hasDraft={draftHasContent(draft)}
             draftSavedAt={draftSavedAt}
