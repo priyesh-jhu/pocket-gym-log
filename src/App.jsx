@@ -5,6 +5,7 @@ import { emptySets, hasEnteredData, buildDraftExercise, isCompleteSet, newSessio
 import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
 import { downloadText } from "./download.js";
+import { sessionsToCsv } from "./csvExport.js";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
@@ -20,7 +21,7 @@ import { commitHistoryMutation, prepareHistoryUpdate } from "./historyRecords.js
 import { commitWeightMutation, createWeightCloudOperation, prepareWeightMutation } from "./weightRecords.js";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { BarChart3, Cloud, Download, Home, History, Scale, Settings, Upload, X } from "lucide-react";
+import { BarChart3, Cloud, Download, FileSpreadsheet, Home, History, Scale, Settings, Upload, X } from "lucide-react";
 import { AppBar, Button, NavBar, Toast } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
@@ -748,6 +749,12 @@ export default function App() {
     setTimeout(()=>{setSaveStatus("idle");setStatusMsg(null);},2000);
   }
 
+  function exportCsv() {
+    const ok = downloadText(sessionsToCsv(sessions), "workout-log-" + todayISO() + ".csv", "text/csv");
+    setSaveStatus(ok ? "saved" : "error"); setStatusMsg(ok ? "CSV downloaded ✓" : "CSV export failed.");
+    setTimeout(() => { setSaveStatus("idle"); setStatusMsg(null); }, 2000);
+  }
+
   function triggerImport() { if (importInputRef.current) importInputRef.current.click(); }
 
   function handleImportFile(e) {
@@ -894,6 +901,9 @@ export default function App() {
                 </Button>)}
             <Button variant="text" onClick={exportData} aria-label="Export workout data">
               <Download size={16} />
+            </Button>
+            <Button variant="text" onClick={exportCsv} aria-label="Export workout data as CSV">
+              <FileSpreadsheet size={16} />
             </Button>
             <Button variant="text" onClick={triggerImport} aria-label="Import workout data">
               <Upload size={16} />
