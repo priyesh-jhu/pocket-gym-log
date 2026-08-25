@@ -20,7 +20,7 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
   const streak = currentStreak(sessions);
   const unit = dominantUnit(sessions);
   const freshness = muscleFreshness(sessions);
-  const overdue = musclePriorities(muscleSetVolume(sessions, 7))
+  const overdue = musclePriorities(muscleSetVolume(sessions, 28))
     .filter(item => item.daysSince !== null && item.daysSince >= 4)
     .sort((a, b) => b.daysSince - a.daysSince)
     .slice(0, 2);
@@ -69,7 +69,7 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
       <button type="button" className="home-heatmap" onClick={onProgress}>
         <div className="home-section-title"><div><h3>Muscle freshness</h3><p>Volt areas are ready to train</p></div><ArrowRight size={19} /></div>
         <MuscleHeatmap scores={freshness} mode="freshness" height={172} />
-        {overdue.length === 2 && (
+        {overdue.length >= 2 && (
           <div className="home-heatmap__overdue">
             <span>Overdue:</span>
             {overdue.map(item => <Chip key={item.muscle}>{MUSCLES[item.muscle] || item.muscle} ({item.daysSince}d)</Chip>)}
@@ -79,7 +79,7 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
 
       {insight && <Card className="home-insight"><p>Training insight</p><strong>{insight.name}</strong><span>{insight.message}</span></Card>}
       {grinding && <Card className="home-insight"><p>Effort check</p><strong>{grinding.name}</strong><span>{grinding.message}</span></Card>}
-      {deload && <Card className="home-insight"><p>Recovery signal</p><span>{deload.message}</span></Card>}
+      {deload && insight?.type !== "deload" && <Card className="home-insight"><p>Deload signal</p><span>{deload.message}</span><span>Next step: {deload.action}</span></Card>}
 
       <div className="home-section-title"><div><h3>Recent records</h3><p>Your newest all-time bests</p></div><Trophy size={19} /></div>
       {records.length ? <div className="home-records">{records.map(record => <StatTile key={`${record.date}-${record.name}`} value={`${record.weight} ${record.unit}`} label={record.name} supporting={`${record.reps} reps · ${record.date}`} accent />)}</div> : <Card variant="outlined" className="home-empty">Save workouts to begin tracking records.</Card>}

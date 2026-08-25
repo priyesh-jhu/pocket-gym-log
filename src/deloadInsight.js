@@ -21,6 +21,6 @@ export function deloadReminder(sessions, todayIso = todayISO()) {
     type: "deload-week",
     weeks: completed.map(week => ({ weekStart: week.weekStart, volume: week.volume })),
     action: "Take one week at ~40-50% less volume.",
-    message: "Volume's climbed for 4 weeks straight with no lighter week. Consider a deload week.",
+    message: "Volume held or climbed across your last 4 full weeks (not counting this week in progress), with no lighter week. Consider a deload week.",
   };
 }
