@@ -147,6 +147,21 @@ describe("lastSameDaySummary", () => {
     const sessions = [mkSession("2026-08-01", [{ name: "Squat", sets: [mkSet("200", "5")] }], "LEGS")];
     assert.equal(lastSameDaySummary(sessions, "PUSH", "2026-08-15"), null);
   });
+
+  test("sums volume and merges exercises across multiple session records sharing the same date and day", () => {
+    // Reproduces a real user's data shape: each exercise saved as its own
+    // session record, all sharing one date/day (e.g. saving one exercise at
+    // a time instead of building a full multi-exercise session before saving).
+    const sessions = [
+      mkSession("2026-08-18", [{ name: "Bent-Over Barbell Row", sets: [mkSet("40", "12"), mkSet("40", "12"), mkSet("40", "11")] }], "TUE"),
+      mkSession("2026-08-18", [{ name: "Single-Arm DB Row", sets: [mkSet("40", "12"), mkSet("40", "12"), mkSet("40", "12")] }], "TUE"),
+      mkSession("2026-08-18", [{ name: "Bicep Curls", sets: [mkSet("25", "12"), mkSet("25", "11"), mkSet("25", "11")] }], "TUE"),
+    ];
+    const result = lastSameDaySummary(sessions, "TUE", "2026-08-25");
+    assert.equal(result.date, "2026-08-18");
+    assert.equal(result.volume, 1400 + 1440 + 850);
+    assert.equal(result.exercises.length, 3);
+  });
 });
 
 describe("topSetForExercise", () => {

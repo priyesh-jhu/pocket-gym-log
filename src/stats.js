@@ -162,22 +162,39 @@ export function topSetForExercise(exercise) {
   return best;
 }
 
-/** The most recent prior session sharing `day`, strictly before `beforeDate`, with each exercise's top set. */
+/**
+ * The most recent prior date sharing `day`, strictly before `beforeDate`,
+ * aggregated across every session record stored for that date — a single
+ * training day is not always one session record (e.g. saving one exercise
+ * at a time creates several same-date records for what is really one
+ * workout), so volume is summed and each exercise's best set is taken
+ * across all of that date's records, not just the first one found.
+ */
 export function lastSameDaySummary(sessions, day, beforeDate) {
   const list = Array.isArray(sessions) ? sessions : [];
-  let match = null;
+  let targetDate = null;
   for (const session of list) {
     if (!session?.date || session.day !== day || session.date >= beforeDate) continue;
-    if (!match || session.date > match.date) match = session;
+    if (!targetDate || session.date > targetDate) targetDate = session.date;
   }
-  if (!match) return null;
+  if (!targetDate) return null;
 
-  const exercises = (Array.isArray(match.exercises) ? match.exercises : []).map(exercise => {
-    const best = topSetForExercise(exercise);
-    return best ? { name: exercise.name, weight: best.weight, unit: best.unit, reps: best.reps, weightLb: best.weightLb } : null;
-  }).filter(Boolean);
+  const sameDaySessions = list.filter(session => session?.date === targetDate && session.day === day);
+  const volume = Math.round(sameDaySessions.reduce((total, session) => total + sessionVolume(session), 0));
 
-  return { date: match.date, volume: Math.round(sessionVolume(match)), exercises };
+  const bestByName = new Map();
+  for (const session of sameDaySessions) {
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      const best = topSetForExercise(exercise);
+      if (!best) continue;
+      const existing = bestByName.get(exercise.name);
+      if (!existing || best.weightLb > existing.weightLb) {
+        bestByName.set(exercise.name, { name: exercise.name, weight: best.weight, unit: best.unit, reps: best.reps, weightLb: best.weightLb });
+      }
+    }
+  }
+
+  return { date: targetDate, volume, exercises: [...bestByName.values()] };
 }
 
 /** Consecutive unique training days ending today or yesterday, plus the all-time best. */
