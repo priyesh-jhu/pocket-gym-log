@@ -1,7 +1,9 @@
 import { ArrowRight, Flame, Play, Trophy } from "lucide-react";
 import { Button, Card, Chip, SegmentedButtons, StatTile } from "../components/index.js";
 import MuscleHeatmap from "../MuscleHeatmap.jsx";
-import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, personalRecords, weekVolumeDelta } from "../stats.js";
+import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, weekVolumeDelta } from "../stats.js";
+import { MUSCLES } from "../data/formGuide.js";
+import { deloadReminder } from "../deloadInsight.js";
 import { todayISO } from "../dateUtils.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { grindingInsights } from "../rpeInsights.js";
@@ -18,6 +20,11 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
   const streak = currentStreak(sessions);
   const unit = dominantUnit(sessions);
   const freshness = muscleFreshness(sessions);
+  const overdue = musclePriorities(muscleSetVolume(sessions, 7))
+    .filter(item => item.daysSince !== null && item.daysSince >= 4)
+    .sort((a, b) => b.daysSince - a.daysSince)
+    .slice(0, 2);
+  const deload = deloadReminder(sessions);
   const records = personalRecords(sessions, 3);
   const insight = trainingInsights(sessions, 1)[0];
   const grinding = grindingInsights(sessions, 1)[0];
@@ -62,10 +69,17 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
       <button type="button" className="home-heatmap" onClick={onProgress}>
         <div className="home-section-title"><div><h3>Muscle freshness</h3><p>Volt areas are ready to train</p></div><ArrowRight size={19} /></div>
         <MuscleHeatmap scores={freshness} mode="freshness" height={172} />
+        {overdue.length === 2 && (
+          <div className="home-heatmap__overdue">
+            <span>Overdue:</span>
+            {overdue.map(item => <Chip key={item.muscle}>{MUSCLES[item.muscle] || item.muscle} ({item.daysSince}d)</Chip>)}
+          </div>
+        )}
       </button>
 
       {insight && <Card className="home-insight"><p>Training insight</p><strong>{insight.name}</strong><span>{insight.message}</span></Card>}
       {grinding && <Card className="home-insight"><p>Effort check</p><strong>{grinding.name}</strong><span>{grinding.message}</span></Card>}
+      {deload && <Card className="home-insight"><p>Recovery signal</p><span>{deload.message}</span></Card>}
 
       <div className="home-section-title"><div><h3>Recent records</h3><p>Your newest all-time bests</p></div><Trophy size={19} /></div>
       {records.length ? <div className="home-records">{records.map(record => <StatTile key={`${record.date}-${record.name}`} value={`${record.weight} ${record.unit}`} label={record.name} supporting={`${record.reps} reps · ${record.date}`} accent />)}</div> : <Card variant="outlined" className="home-empty">Save workouts to begin tracking records.</Card>}
