@@ -4,6 +4,7 @@ import { dayTemplates, variantFor, allVariantNames, exerciseForVariantName } fro
 import { emptySets, hasEnteredData, buildDraftExercise, isCompleteSet, newSession } from "./draft.js";
 import { loadPrefs, savePrefs, setPref, prefFor } from "./equipmentPrefs.js";
 import { buildBackup, validateBackup, mergeBackup, replaceBackup } from "./backup.js";
+import { downloadText } from "./download.js";
 import { firebaseConfigured, observeAuth, signInWithGoogle, signOutFirebase, loadCloudData, saveCloudSession, deleteCloudSession, saveCloudBodyweight, deleteCloudBodyweight, saveCloudSettings, saveCloudSnapshot } from "./firebase.js";
 import { reconcileCloudData } from "./cloudData.js";
 import { clearDraft, draftHasContent, loadDraft, saveDraft } from "./draftStorage.js";
@@ -78,13 +79,7 @@ function firebaseErrorMessage(error, fallback) {
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function downloadJSON(data, filename) {
-  try {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)], {type:"application/json"}));
-    const a = Object.assign(document.createElement("a"), { href:url, download:filename });
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    return true;
-  } catch { return false; }
+  return downloadText(JSON.stringify(data, null, 2), filename, "application/json");
 }
 
 function buildPRMap(sessions) {
