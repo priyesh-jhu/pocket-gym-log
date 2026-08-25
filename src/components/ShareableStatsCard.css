@@ -1,0 +1,19 @@
+.shareable-stats-card {
+  width: 1080px;
+  height: 1920px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 64px;
+  padding: 96px;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-sans);
+  box-sizing: border-box;
+}
+.shareable-stats-card__brand { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); }
+.shareable-stats-card__range { margin: 0; font-size: 32px; color: var(--on-surface-variant); }
+.shareable-stats-card__stat { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.shareable-stats-card__stat strong { font-size: 96px; font-weight: 800; line-height: 1; }
+.shareable-stats-card__stat span { font-size: 32px; color: var(--on-surface-variant); }

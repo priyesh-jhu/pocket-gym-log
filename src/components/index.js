@@ -10,5 +10,6 @@ export { default as FAB } from "./FAB.jsx";
 export { default as ExerciseSparkline } from "./ExerciseSparkline.jsx";
 export { default as LibraryPickerSheet } from "./LibraryPickerSheet.jsx";
 export { default as Sheet } from "./Sheet.jsx";
+export { default as ShareableStatsCard } from "./ShareableStatsCard.jsx";
 export { default as StatTile } from "./StatTile.jsx";
 export { default as Toast } from "./Toast.jsx";

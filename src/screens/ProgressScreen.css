@@ -1,6 +1,8 @@
 .progress-screen { display: grid; gap: var(--sp4); }
 .progress-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp4); }
 .progress-toolbar .m3-seg { flex: 1; }
+.progress-toolbar__share-status { color: var(--on-surface-variant); font-size: var(--text-label-sm); }
+.progress-share-offscreen { position: fixed; left: -9999px; top: 0; pointer-events: none; }
 .progress-live { min-height: 0; color: var(--error); font-size: var(--text-body); }
 .progress-live:empty { display: none; }
 .progress-group-slot { min-width: 0; }

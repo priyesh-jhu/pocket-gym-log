@@ -1,7 +1,8 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Button, Card, Chip, SegmentedButtons, Sheet } from "../components/index.js";
+import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
+import { shareElementAsImage } from "../imageShare.js";
 import { dominantUnit, exerciseE1RMSeries, toLb } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { bigLiftSummary, getStandardsSex } from "../strengthStandards.js";
@@ -43,7 +44,7 @@ class ProgressGroupBoundary extends Component {
   }
 }
 
-function ProgressToolbar({ settings, onChange, onCustomize }) {
+function ProgressToolbar({ settings, onChange, onCustomize, onShare, shareStatus }) {
   return <div className="progress-toolbar">
     <SegmentedButtons ariaLabel="Progress range" value={settings.rangeDays} onChange={rangeDays => onChange({ rangeDays })} options={[
       { value: 7, label: "7 days", ariaLabel: "Show last 7 days" },
@@ -51,6 +52,8 @@ function ProgressToolbar({ settings, onChange, onCustomize }) {
       { value: 90, label: "90 days", ariaLabel: "Show last 90 days" },
     ]} />
     <Button variant="text" onClick={onCustomize}>Customize dashboard</Button>
+    <Button variant="text" onClick={onShare}>Share</Button>
+    {shareStatus && <span className="progress-toolbar__share-status" role="status">{shareStatus}</span>}
   </div>;
 }
 
@@ -159,6 +162,17 @@ export default function ProgressScreen({ sessions = [], preferences = {}, bodywe
   const [customizing, setCustomizing] = useState(false);
   const [saveError, setSaveError] = useState("");
   const reducedMotion = useReducedMotion();
+  const shareCardRef = useRef(null);
+  const [shareStatus, setShareStatus] = useState("");
+
+  async function handleShare() {
+    setShareStatus("Preparing image…");
+    const result = await shareElementAsImage(shareCardRef.current, `pocket-gym-log-${settings.rangeDays}d.png`);
+    if (!result.ok) setShareStatus("Couldn't create the share image. Try again.");
+    else if (result.method === "download") setShareStatus("Image downloaded ✓");
+    else setShareStatus("");
+    setTimeout(() => setShareStatus(""), 2500);
+  }
 
   const settings = normalized;
   const sex = getStandardsSex(preferences);
@@ -194,7 +208,10 @@ export default function ProgressScreen({ sessions = [], preferences = {}, bodywe
 
   return <section className="progress-screen" aria-labelledby="progress-title">
     <h1 id="progress-title" className="sr-only">Training progress</h1>
-    <ProgressToolbar settings={settings} onChange={saveChanges} onCustomize={event => { customizeReturnRef.current=event.currentTarget; setCustomizing(true); }} />
+    <ProgressToolbar settings={settings} onChange={saveChanges} onCustomize={event => { customizeReturnRef.current=event.currentTarget; setCustomizing(true); }} onShare={handleShare} shareStatus={shareStatus} />
+    <div className="progress-share-offscreen" aria-hidden="true">
+      <ShareableStatsCard ref={shareCardRef} sessions={sessions} rangeDays={settings.rangeDays} />
+    </div>
     <div ref={saveErrorRef} tabIndex={-1} className="progress-live" role="status" aria-live="polite">{saveError}</div>
     <Sheet open={customizing} title="Customize dashboard" closeLabel="Close Customize dashboard" initialFocusRef={customizeInitialRef} returnFocusRef={customizeReturnRef} dismissOnHistory onClose={() => setCustomizing(false)}>
       <p className="progress-sheet-copy">Choose which analytics groups appear and adjust their order.</p>
