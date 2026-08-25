@@ -1,4 +1,5 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
@@ -52,8 +53,13 @@ function ProgressToolbar({ settings, onChange, onCustomize, onShare, shareStatus
       { value: 90, label: "90 days", ariaLabel: "Show last 90 days" },
     ]} />
     <Button variant="text" onClick={onCustomize}>Customize dashboard</Button>
-    <Button variant="text" onClick={onShare}>Share</Button>
-    {shareStatus && <span className="progress-toolbar__share-status" role="status">{shareStatus}</span>}
+    <Button
+      variant="text"
+      onClick={onShare}
+      disabled={shareStatus === "Preparing image…" || Capacitor.isNativePlatform()}
+      title={Capacitor.isNativePlatform() ? "Sharing isn't available in the app version yet — try the web version" : undefined}
+    >Share</Button>
+    <span className="progress-toolbar__share-status" aria-live="polite">{shareStatus}</span>
   </div>;
 }
 

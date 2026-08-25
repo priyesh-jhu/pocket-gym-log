@@ -9,7 +9,7 @@
   padding: 96px;
   background: var(--surface);
   color: var(--on-surface);
-  font-family: var(--font-sans);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   box-sizing: border-box;
 }
 .shareable-stats-card__brand { margin: 0; font-size: 40px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); }
