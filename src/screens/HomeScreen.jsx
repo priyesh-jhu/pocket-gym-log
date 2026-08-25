@@ -4,6 +4,7 @@ import MuscleHeatmap from "../MuscleHeatmap.jsx";
 import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, personalRecords, weekVolumeDelta } from "../stats.js";
 import { todayISO } from "../dateUtils.js";
 import { trainingInsights } from "../trainingInsights.js";
+import { grindingInsights } from "../rpeInsights.js";
 import { useState } from "react";
 import "./HomeScreen.css";
 
@@ -19,6 +20,7 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
   const freshness = muscleFreshness(sessions);
   const records = personalRecords(sessions, 3);
   const insight = trainingInsights(sessions, 1)[0];
+  const grinding = grindingInsights(sessions, 1)[0];
   const firstName = displayName?.trim().split(/\s+/)[0];
   const [range, setRange] = useState("week");
   const month = monthSummary(sessions);
@@ -63,6 +65,7 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
       </button>
 
       {insight && <Card className="home-insight"><p>Training insight</p><strong>{insight.name}</strong><span>{insight.message}</span></Card>}
+      {grinding && <Card className="home-insight"><p>Effort check</p><strong>{grinding.name}</strong><span>{grinding.message}</span></Card>}
 
       <div className="home-section-title"><div><h3>Recent records</h3><p>Your newest all-time bests</p></div><Trophy size={19} /></div>
       {records.length ? <div className="home-records">{records.map(record => <StatTile key={`${record.date}-${record.name}`} value={`${record.weight} ${record.unit}`} label={record.name} supporting={`${record.reps} reps · ${record.date}`} accent />)}</div> : <Card variant="outlined" className="home-empty">Save workouts to begin tracking records.</Card>}
