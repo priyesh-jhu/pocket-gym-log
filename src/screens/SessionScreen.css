@@ -389,15 +389,15 @@
   .exercise-head > button { max-width: 100%; }
   .exercise-actions { width: 100%; justify-content: flex-end; }
   .exercise-actions > div:first-child { margin-right: auto; }
-  .set-row { display: grid; grid-template-columns: 54px minmax(72px,1fr) 38px 50px minmax(62px,.8fr) 22px; gap: var(--sp1); }
+  .set-row { display: grid; grid-template-columns: 54px minmax(72px,1fr) 38px 50px minmax(62px,.8fr) 40px 22px; gap: var(--sp1); }
   .session-set-input { padding: var(--sp2) var(--sp1); font-size: var(--text-body-sm); }
-  .session-set-unit { padding: var(--sp1) 3px; font-size: var(--text-label-sm); }
+  .session-set-unit, .session-set-rpe { padding: var(--sp1) 3px; font-size: var(--text-label-sm); }
   .rest-dock { padding: var(--sp2) var(--sp3); gap: var(--sp2); overflow-x: auto; justify-content: flex-start; }
   .session-guide__cols { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 390px) {
-  .set-row { grid-template-columns: 50px minmax(60px,1fr) 34px 44px minmax(54px,.72fr) 18px; }
+  .set-row { grid-template-columns: 50px minmax(60px,1fr) 34px 44px minmax(54px,.72fr) 34px 18px; }
   .workout-card { padding: var(--sp3); }
 }
 

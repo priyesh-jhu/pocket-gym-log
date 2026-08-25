@@ -589,7 +589,7 @@ export default function App() {
   }
 
   function updateSet(ei, si, field, val) {
-    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || (String(val).trim()!=="" ? new Date().toISOString() : null), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
+    setDraft(prev => ({ ...prev, startedAt:prev.startedAt || (String(val ?? "").trim()!=="" ? new Date().toISOString() : null), exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets: ex.sets.map((s,j)=>j!==si?s:{...s,[field]:val}) }) }));
   }
 
   function toggleSetDone(ei, si) {
@@ -612,7 +612,7 @@ export default function App() {
   }
 
   function addSet(ei) {
-    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => { if(i!==ei)return ex; const last=ex.sets[ex.sets.length-1]; return {...ex,sets:[...ex.sets,last?{weight:last.weight,reps:"",unit:last.unit,done:false}:emptySets()[0]]}; }) }));
+    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => { if(i!==ei)return ex; const last=ex.sets[ex.sets.length-1]; return {...ex,sets:[...ex.sets,last?{weight:last.weight,reps:"",unit:last.unit,done:false,rpe:null}:emptySets()[0]]}; }) }));
   }
 
   function removeSet(ei, si) {
@@ -856,7 +856,7 @@ export default function App() {
   function copyLastTime(ei, name) {
     const last = getLastTime(name);
     if (!last) return;
-    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets:last.sets.map(s=>({weight:String(s.weight??""),reps:"",unit:s.unit||"lb",done:false})) }) }));
+    setDraft(prev => ({ ...prev, exercises: prev.exercises.map((ex,i) => i!==ei?ex:{ ...ex, sets:last.sets.map(s=>({weight:String(s.weight??""),reps:"",unit:s.unit||"lb",done:false,rpe:null})) }) }));
   }
 
   const customExercises = getCustomExercises(equipmentPrefs);

@@ -69,7 +69,7 @@
 .history-editor__error { margin: 0; padding: var(--sp3) var(--sp4); border-radius: var(--shape-md); background: var(--surface-container-highest); color: var(--error); font-size: var(--text-body); overflow-wrap: anywhere; }
 .history-editor__exercise { display: grid; gap: var(--sp2); padding: var(--sp4); border: 1px solid var(--outline-variant); border-radius: var(--shape-md); background: var(--surface-container); }
 .history-editor__sets { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp2); }
-.history-editor__set { display: grid; grid-template-columns: minmax(0, 1fr) 84px minmax(0, 1fr) auto; align-items: end; gap: var(--sp2); }
+.history-editor__set { display: grid; grid-template-columns: minmax(0, 1fr) 84px minmax(0, 1fr) 84px auto; align-items: end; gap: var(--sp2); }
 .history-editor__actions { display: flex; flex-wrap: wrap; gap: var(--sp2); align-items: center; }
 
 .history-field { display: grid; gap: var(--sp1); min-width: 0; }

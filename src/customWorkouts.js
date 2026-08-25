@@ -56,7 +56,7 @@ export function createCustomExerciseFromLibrary(prefs, libraryEntry, now=Date.no
 
 export function addExerciseToDraft(draft, exercise) {
   if (!draft || !exercise?.name) return draft;
-  const entry = { name:exercise.name, equipment:"custom", target:exercise.target||"3 x 8-12", tip:exercise.tip||"", sets:[{weight:"",reps:"",unit:"lb",done:false}] };
+  const entry = { name:exercise.name, equipment:"custom", target:exercise.target||"3 x 8-12", tip:exercise.tip||"", sets:[{weight:"",reps:"",unit:"lb",done:false,rpe:null}] };
   if (exercise.libraryId) {
     entry.libraryId = exercise.libraryId;
     entry.primaryMuscles = exercise.primaryMuscles || [];
@@ -90,5 +90,5 @@ export function saveWorkoutTemplate(prefs, name, draft, nowOrDefaults=Date.now()
 
 export function applyWorkoutTemplate(draft, template) {
   if (!draft || !template?.exercises?.length) return draft;
-  return { ...draft, day:template.day||draft.day, startedAt:null, notes:"", exercises:template.exercises.map(ex=>({ ...ex, sets:Array.from({length:ex.setCount||1},()=>({weight:"",reps:"",unit:"lb",done:false})) })) };
+  return { ...draft, day:template.day||draft.day, startedAt:null, notes:"", exercises:template.exercises.map(ex=>({ ...ex, sets:Array.from({length:ex.setCount||1},()=>({weight:"",reps:"",unit:"lb",done:false,rpe:null})) })) };
 }
