@@ -1,7 +1,9 @@
-import { ArrowRight, Flame, Play, Trophy } from "lucide-react";
+import { ArrowRight, Check, Flame, Play, Trophy } from "lucide-react";
 import { Button, Card, Chip, SegmentedButtons, StatTile } from "../components/index.js";
 import MuscleHeatmap from "../MuscleHeatmap.jsx";
-import { currentStreak, dominantUnit, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, recentDaysHeat, sameDayTrend, weekVolumeDelta } from "../stats.js";
+import useReducedMotion from "../hooks/useReducedMotion.js";
+import { currentStreak, dominantUnit, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, recentDaysHeat, sameDayTrend, sessionVolume, weekVolumeDelta } from "../stats.js";
+import { todayISO } from "../dateUtils.js";
 import { MUSCLES } from "../data/formGuide.js";
 import { deloadReminder } from "../deloadInsight.js";
 import { trainingInsights } from "../trainingInsights.js";
@@ -18,6 +20,19 @@ function weekdayLetter(iso) {
   return new Date(iso + "T12:00:00").toLocaleDateString([], { weekday: "narrow" });
 }
 
+function timeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 5) return "Still up";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Winding down";
+}
+
+function todayLabel() {
+  return new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+}
+
 function DayTrendSparkline({ points, unit }) {
   const max = Math.max(1, ...points.map(point => point.volume));
   return (
@@ -32,6 +47,9 @@ function DayTrendSparkline({ points, unit }) {
 }
 
 export default function HomeScreen({ sessions, dayMeta, currentDay, displayName, hasDraft, draftSavedAt, onStart, onProgress }) {
+  const reducedMotion = useReducedMotion();
+  const enterClass = reducedMotion ? "" : " home-enter";
+  const enterDelay = index => reducedMotion ? undefined : { animationDelay: `${index * 55}ms` };
   const week = weekVolumeDelta(sessions);
   const streak = currentStreak(sessions);
   const unit = dominantUnit(sessions);
@@ -58,10 +76,14 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
     ? Math.round(((lastTwo[1].volume - lastTwo[0].volume) / lastTwo[0].volume) * 100)
     : null;
   const weekHeat = recentDaysHeat(sessions, 7);
+  const todayIso = todayISO();
+  const trainedToday = sessions.filter(session => session?.date === todayIso);
+  const todayVolume = trainedToday.reduce((total, session) => total + sessionVolume(session), 0);
+  const alreadyTrainedToday = !hasDraft && trainedToday.length > 0;
 
   return (
     <section className="home-screen" aria-labelledby="home-greeting">
-      <button type="button" className="home-week-heat" onClick={onProgress} aria-label={`Last 7 days of training volume: ${weekHeat.map(day => `${day.date}, ${displayVolume(day.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
+      <button type="button" className={`home-week-heat${enterClass}`} style={enterDelay(0)} onClick={onProgress} aria-label={`Last 7 days of training volume: ${weekHeat.map(day => `${day.date}, ${displayVolume(day.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
         <div className="home-week-heat__row">
           {weekHeat.map(day => (
             <div key={day.date} className="home-week-heat__day">
@@ -72,12 +94,12 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
         </div>
       </button>
 
-      <div className="home-screen__intro">
-        <div><p className="home-screen__eyebrow">Ready when you are</p><h2 id="home-greeting">{firstName ? `Hi, ${firstName}` : "Your training, today"}</h2></div>
+      <div className={`home-screen__intro${enterClass}`} style={enterDelay(1)}>
+        <div><p className="home-screen__eyebrow">{todayLabel()}</p><h2 id="home-greeting">{firstName ? `${timeOfDayGreeting()}, ${firstName}` : timeOfDayGreeting()}</h2></div>
         <Chip selected><Flame size={14} /> {streak.current} day streak</Chip>
       </div>
 
-      <Card variant="raised" className="home-hero">
+      <Card variant="raised" className={`home-hero${enterClass}`} style={enterDelay(2)}>
         <div className="home-hero__head">
           <p>You trained {activeSummary.sessions}× this {activeLabel}</p>
           <SegmentedButtons
@@ -91,21 +113,34 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
         <Chip>{activeDelta}</Chip>
       </Card>
 
-      <Card variant="raised" className="home-plan">
+      <Card
+        variant="raised"
+        className={`home-plan${alreadyTrainedToday ? " home-plan--done" : ""}${enterClass}`}
+        style={{ "--day-accent": dayMeta.color, ...enterDelay(3) }}
+      >
         <div className="home-plan__head"><div><p>Today's plan</p><h3>{dayMeta.emoji} {dayMeta.label}</h3><span>{dayMeta.focus}</span></div><span className="home-plan__dot" style={{ background: dayMeta.color }} /></div>
-        <Button block onClick={onStart} icon={<Play size={19} fill="currentColor" />}>{hasDraft ? "Resume workout" : "Start workout"}</Button>
-        {hasDraft && draftSavedAt && <small>Draft saved {new Date(draftSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</small>}
+        {alreadyTrainedToday ? (
+          <>
+            <div className="home-plan__done"><Check size={19} /> {dayMeta.label} day complete — {displayVolume(todayVolume, unit)} {unit} logged</div>
+            <Button block variant="tonal" onClick={onStart} icon={<Play size={19} fill="currentColor" />}>Log another workout</Button>
+          </>
+        ) : (
+          <>
+            <Button block onClick={onStart} icon={<Play size={19} fill="currentColor" />}>{hasDraft ? "Resume workout" : "Start workout"}</Button>
+            {hasDraft && draftSavedAt && <small>Draft saved {new Date(draftSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</small>}
+          </>
+        )}
       </Card>
 
       {dayTrend.length >= 2 && (
-        <button type="button" className="home-day-trend" onClick={onProgress} aria-label={`${dayMeta.label} day trend over your last ${dayTrend.length} ${dayMeta.label} days: ${dayTrend.map(point => `${point.date}, ${displayVolume(point.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
+        <button type="button" className={`home-day-trend${enterClass}`} style={enterDelay(4)} onClick={onProgress} aria-label={`${dayMeta.label} day trend over your last ${dayTrend.length} ${dayMeta.label} days: ${dayTrend.map(point => `${point.date}, ${displayVolume(point.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
           <div className="home-section-title"><div><h3>{dayMeta.label} day trend</h3><p>Last {dayTrend.length} {dayMeta.label} days</p></div></div>
           <DayTrendSparkline points={dayTrend} unit={unit} />
           {dayTrendDelta !== null && <span className="home-day-trend__delta">{dayTrendDelta >= 0 ? "+" : ""}{dayTrendDelta}% vs previous {dayMeta.label} day</span>}
         </button>
       )}
 
-      <button type="button" className="home-heatmap" onClick={onProgress}>
+      <button type="button" className={`home-heatmap${enterClass}`} style={enterDelay(5)} onClick={onProgress}>
         <div className="home-section-title"><div><h3>Muscle freshness</h3><p>Volt areas are ready to train</p></div><ArrowRight size={19} /></div>
         <MuscleHeatmap scores={freshness} mode="freshness" height={172} />
         {overdue.length >= 2 && (
@@ -116,11 +151,11 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
         )}
       </button>
 
-      {insight && <Card className="home-insight"><p>Training insight</p><strong>{insight.name}</strong><span>{insight.message}</span></Card>}
-      {grinding && <Card className="home-insight"><p>Effort check</p><strong>{grinding.name}</strong><span>{grinding.message}</span></Card>}
-      {deload && insight?.type !== "deload" && <Card className="home-insight"><p>Deload signal</p><span>{deload.message}</span><span>Next step: {deload.action}</span></Card>}
+      {insight && <Card className={`home-insight${enterClass}`} style={enterDelay(6)}><p>Training insight</p><strong>{insight.name}</strong><span>{insight.message}</span></Card>}
+      {grinding && <Card className={`home-insight${enterClass}`} style={enterDelay(6)}><p>Effort check</p><strong>{grinding.name}</strong><span>{grinding.message}</span></Card>}
+      {deload && insight?.type !== "deload" && <Card className={`home-insight${enterClass}`} style={enterDelay(6)}><p>Deload signal</p><span>{deload.message}</span><span>Next step: {deload.action}</span></Card>}
 
-      <div className="home-section-title"><div><h3>Recent records</h3><p>Your newest all-time bests</p></div><Trophy size={19} /></div>
+      <div className={`home-section-title${enterClass}`} style={enterDelay(7)}><div><h3>Recent records</h3><p>Your newest all-time bests</p></div><Trophy size={19} /></div>
       {records.length ? <div className="home-records">{records.map(record => <StatTile key={`${record.date}-${record.name}`} value={`${record.weight} ${record.unit}`} label={record.name} supporting={`${record.reps} reps · ${record.date}`} accent />)}</div> : <Card variant="outlined" className="home-empty">Save workouts to begin tracking records.</Card>}
     </section>
   );

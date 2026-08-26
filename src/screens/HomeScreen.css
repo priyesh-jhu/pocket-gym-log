@@ -1,4 +1,6 @@
 .home-screen { display: grid; gap: var(--sp3); }
+@keyframes home-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.home-enter { animation: home-enter .4s ease both; }
 .home-week-heat { width: 100%; padding: var(--sp3) var(--sp4); border: 0; border-radius: var(--shape-lg); background: var(--surface-container); cursor: pointer; }
 .home-week-heat__row { display: flex; justify-content: space-between; gap: var(--sp1); }
 .home-week-heat__day { display: grid; justify-items: center; gap: var(--sp1); flex: 1; }
@@ -16,11 +18,18 @@
 .home-hero strong { display: inline-block; margin-top: var(--sp2); color: var(--on-surface); font-size: var(--text-display); line-height: 1; font-variant-numeric: tabular-nums; }
 .home-hero > span { margin-left: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body-lg); }
 .home-hero .m3-chip { display: flex; width: fit-content; margin-top: var(--sp3); }
+.home-plan {
+  border-top: 3px solid var(--day-accent, var(--primary));
+  background-image: radial-gradient(140% 100% at 100% 0%, color-mix(in srgb, var(--day-accent, var(--primary)) 16%, transparent) 0%, transparent 65%);
+}
 .home-plan__head { display: flex; justify-content: space-between; gap: var(--sp3); margin-bottom: var(--sp4); }
 .home-plan h3 { margin: var(--sp1) 0; font-size: var(--text-title-lg); }
 .home-plan__head span { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
 .home-plan__dot { width: 10px; height: 10px; margin-top: var(--sp1); border-radius: var(--shape-full); }
 .home-plan small { display: block; margin-top: var(--sp2); text-align: center; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.home-plan--done { border-top-color: var(--success, var(--day-accent, var(--primary))); }
+.home-plan__done { display: flex; align-items: center; gap: var(--sp2); margin-bottom: var(--sp4); padding: var(--sp3) var(--sp4); border-radius: var(--shape-md); background: var(--surface-container-highest); color: var(--on-surface); font-size: var(--text-body-sm); font-weight: 600; }
+.home-plan__done svg { flex-shrink: 0; color: var(--success, var(--primary)); }
 .home-day-trend { width: 100%; padding: var(--sp4) var(--sp5); border: 0; border-radius: var(--shape-xxl); background: var(--surface-container); color: var(--on-surface); text-align: left; cursor: pointer; box-shadow: var(--elev-1); }
 .home-day-trend__bars { display: flex; align-items: flex-end; gap: var(--sp1); height: 56px; margin-top: var(--sp3); }
 .home-day-trend__bar-wrap { display: flex; align-items: flex-end; flex: 1; height: 100%; }
