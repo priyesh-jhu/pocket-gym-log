@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import useReducedMotion from "../hooks/useReducedMotion.js";
 import "./Confetti.css";
 
-const COLORS = ["#C8F065", "#A8C7FA", "#F4A6A0", "#D9B8FF", "#7EE8C0", "#F0C36D"];
+const COLORS = ["#FF6B4A", "#A8C7FA", "#8FD17A", "#D9B8FF", "#7EE8C0", "#F0C36D"];
 const PIECE_COUNT = 28;
 const LIFETIME_MS = 2200;
 
