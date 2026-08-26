@@ -1,6 +1,7 @@
 {
   "name": "workout-tracker",
   "private": true,
+  "license": "UNLICENSED",
   "version": "2.9.0",
   "type": "module",
   "scripts": {
