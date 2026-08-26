@@ -1,0 +1,17 @@
+.confetti { position: fixed; inset: 0; z-index: 70; overflow: hidden; pointer-events: none; }
+.confetti__piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(.25, .46, .45, .94);
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--confetti-drift), 110vh) rotate(var(--confetti-spin)); opacity: 0; }
+}

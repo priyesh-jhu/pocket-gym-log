@@ -22,7 +22,7 @@ import { commitWeightMutation, createWeightCloudOperation, prepareWeightMutation
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { BarChart3, Cloud, Download, FileSpreadsheet, Home, History, Scale, Settings, Upload, X } from "lucide-react";
-import { AppBar, Button, NavBar, Toast } from "./components/index.js";
+import { AppBar, Button, Confetti, NavBar, Toast } from "./components/index.js";
 import SettingsScreen from "./screens/SettingsScreen.jsx";
 import packageInfo from "../package.json";
 import HomeScreen from "./screens/HomeScreen.jsx";
@@ -116,6 +116,7 @@ export default function App() {
   const [statusMsg, setStatusMsg] = useState(null);
   const [workoutSummary, setWorkoutSummary] = useState(null);
   const [toastPRs, setToastPRs] = useState(null);
+  const [celebratingPR, setCelebratingPR] = useState(false);
   const closeToast = useCallback(() => setToastPRs(null), []);
   const [sameDayCompare, setSameDayCompare] = useState(null);
   const [sessionActive, setSessionActive] = useState(false);
@@ -627,6 +628,7 @@ export default function App() {
     const summary = createWorkoutSummary(saved, sessions, completedAt);
     setWorkoutSummary(summary);
     setToastPRs(summary.prs.length > 0 ? summary.prs : null);
+    if (summary.prs.length > 0) setCelebratingPR(true);
     const priorSameDay = lastSameDaySummary(sessions, saved.day, saved.date);
     if (priorSameDay) {
       const currentTopSets = saved.exercises.map(exercise => {
@@ -917,6 +919,7 @@ export default function App() {
         <Toast open={!!toastPRs} onClose={closeToast}>
           {toastPRs && formatPRs(toastPRs)}
         </Toast>
+        <Confetti active={celebratingPR} onDone={() => setCelebratingPR(false)} />
 
         {/* Status banners */}
         {saveStatus==="saving"&&<div className="status-banner status-banner--info">Saving...</div>}

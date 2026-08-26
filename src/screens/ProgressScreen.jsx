@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
+import useReducedMotion from "../hooks/useReducedMotion.js";
 import { shareElementAsImage } from "../imageShare.js";
 import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, monthlyVolume, MUSCLE_GROUP_ORDER, muscleBalanceTrend, rpeTrend, toLb, weeklyVolume } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
@@ -11,18 +12,6 @@ import { bodyweightOnOrNearest, normalizeBodyweights } from "../weightRecords.js
 import { DASHBOARD_KEY, PROGRESS_GROUP_IDS, PROGRESS_GROUP_LABELS, normalizeDashboardSettings, updateDashboardSettings } from "../progressDashboardSettings.js";
 import { BalanceGroup, BodyHeatmapGroup, DailyTrendGroup } from "../ProgressDashboard.jsx";
 import "./ProgressScreen.css";
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-  useEffect(() => {
-    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!query) return undefined;
-    const update = () => setReduced(query.matches);
-    query.addEventListener?.("change", update);
-    return () => query.removeEventListener?.("change", update);
-  }, []);
-  return reduced;
-}
 
 class ProgressGroupBoundary extends Component {
   state = { failed: false, retryKey: 0 };

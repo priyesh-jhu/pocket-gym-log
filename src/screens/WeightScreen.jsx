@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, SegmentedButtons, Sheet, TextField } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
+import useReducedMotion from "../hooks/useReducedMotion.js";
 import { buildWeightView, createWeightDraft } from "../weightRecords.js";
 import "./WeightScreen.css";
 
@@ -12,18 +13,6 @@ import "./WeightScreen.css";
 const LOAD_ERROR = "Weigh-ins couldn’t be shown. Your entries are still saved. Try again.";
 const SAVE_ERROR = "This weigh-in couldn’t be saved. Your previous entry is unchanged. Try again.";
 const DELETE_ERROR = "This weigh-in couldn’t be deleted. It’s still saved on this device. Try again.";
-
-function useReducedMotion() {
-  const [reduced, setReduced] = useState(() => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
-  useEffect(() => {
-    const query = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    if (!query) return undefined;
-    const update = () => setReduced(query.matches);
-    query.addEventListener?.("change", update);
-    return () => query.removeEventListener?.("change", update);
-  }, []);
-  return reduced;
-}
 
 export default function WeightScreen({
   bodyweights = [],
