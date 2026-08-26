@@ -335,6 +335,28 @@ export function lastSameDaySummary(sessions, day, beforeDate) {
   return { date: targetDate, volume, exercises: [...bestByName.values()] };
 }
 
+/**
+ * The last `occurrences` training days sharing `day`, strictly before
+ * `beforeDate`, oldest first — a trend series version of lastSameDaySummary.
+ * Same-date records sharing `day` are aggregated into one occurrence (see
+ * lastSameDaySummary for why). Fewer than `occurrences` are returned if
+ * there isn't enough history yet.
+ */
+export function sameDayTrend(sessions, day, occurrences = 8, beforeDate = todayISO()) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const byDate = new Map();
+  for (const session of list) {
+    if (!session?.date || session.day !== day || session.date >= beforeDate) continue;
+    const entry = byDate.get(session.date) || { date: session.date, volume: 0 };
+    entry.volume += sessionVolume(session);
+    byDate.set(session.date, entry);
+  }
+  return [...byDate.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-Math.max(1, occurrences))
+    .map(entry => ({ date: entry.date, volume: Math.round(entry.volume) }));
+}
+
 /** Consecutive unique training days ending today or yesterday, plus the all-time best. */
 export function currentStreak(sessions, todayIso = todayISO()) {
   const dates = [...new Set((Array.isArray(sessions) ? sessions : [])

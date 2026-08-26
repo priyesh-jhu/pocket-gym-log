@@ -1,10 +1,9 @@
 import { ArrowRight, Flame, Play, Trophy } from "lucide-react";
 import { Button, Card, Chip, SegmentedButtons, StatTile } from "../components/index.js";
 import MuscleHeatmap from "../MuscleHeatmap.jsx";
-import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, recentDaysHeat, weekVolumeDelta } from "../stats.js";
+import { currentStreak, dominantUnit, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, recentDaysHeat, sameDayTrend, weekVolumeDelta } from "../stats.js";
 import { MUSCLES } from "../data/formGuide.js";
 import { deloadReminder } from "../deloadInsight.js";
-import { todayISO } from "../dateUtils.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { grindingInsights } from "../rpeInsights.js";
 import { useState } from "react";
@@ -17,6 +16,19 @@ function displayVolume(value, unit) {
 
 function weekdayLetter(iso) {
   return new Date(iso + "T12:00:00").toLocaleDateString([], { weekday: "narrow" });
+}
+
+function DayTrendSparkline({ points, unit }) {
+  const max = Math.max(1, ...points.map(point => point.volume));
+  return (
+    <div className="home-day-trend__bars">
+      {points.map(point => (
+        <div key={point.date} className="home-day-trend__bar-wrap" title={`${point.date}: ${displayVolume(point.volume, unit)} ${unit}`}>
+          <div className="home-day-trend__bar" style={{ height: `${Math.max(6, Math.round((point.volume / max) * 100))}%` }} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function HomeScreen({ sessions, dayMeta, currentDay, displayName, hasDraft, draftSavedAt, onStart, onProgress }) {
@@ -40,7 +52,11 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
   const activeDelta = activeSummary.deltaPct === null
     ? "No prior-period baseline"
     : `${activeSummary.deltaPct >= 0 ? "+" : ""}${activeSummary.deltaPct}% volume vs last ${activeLabel}`;
-  const sameDay = lastSameDaySummary(sessions, currentDay, todayISO());
+  const dayTrend = sameDayTrend(sessions, currentDay, 8);
+  const lastTwo = dayTrend.slice(-2);
+  const dayTrendDelta = lastTwo.length === 2 && lastTwo[0].volume > 0
+    ? Math.round(((lastTwo[1].volume - lastTwo[0].volume) / lastTwo[0].volume) * 100)
+    : null;
   const weekHeat = recentDaysHeat(sessions, 7);
 
   return (
@@ -79,8 +95,15 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
         <div className="home-plan__head"><div><p>Today's plan</p><h3>{dayMeta.emoji} {dayMeta.label}</h3><span>{dayMeta.focus}</span></div><span className="home-plan__dot" style={{ background: dayMeta.color }} /></div>
         <Button block onClick={onStart} icon={<Play size={19} fill="currentColor" />}>{hasDraft ? "Resume workout" : "Start workout"}</Button>
         {hasDraft && draftSavedAt && <small>Draft saved {new Date(draftSavedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</small>}
-        {sameDay && <small className="home-plan__lastday">Last {dayMeta.label} day ({sameDay.date}): {displayVolume(sameDay.volume, unit)} {unit} total</small>}
       </Card>
+
+      {dayTrend.length >= 2 && (
+        <button type="button" className="home-day-trend" onClick={onProgress} aria-label={`${dayMeta.label} day trend over your last ${dayTrend.length} ${dayMeta.label} days: ${dayTrend.map(point => `${point.date}, ${displayVolume(point.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
+          <div className="home-section-title"><div><h3>{dayMeta.label} day trend</h3><p>Last {dayTrend.length} {dayMeta.label} days</p></div></div>
+          <DayTrendSparkline points={dayTrend} unit={unit} />
+          {dayTrendDelta !== null && <span className="home-day-trend__delta">{dayTrendDelta >= 0 ? "+" : ""}{dayTrendDelta}% vs previous {dayMeta.label} day</span>}
+        </button>
+      )}
 
       <button type="button" className="home-heatmap" onClick={onProgress}>
         <div className="home-section-title"><div><h3>Muscle freshness</h3><p>Volt areas are ready to train</p></div><ArrowRight size={19} /></div>

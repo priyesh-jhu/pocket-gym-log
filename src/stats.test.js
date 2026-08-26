@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, muscleBalanceTrend, MUSCLE_GROUP_ORDER, rpeTrend, activityCalendar, recentDaysHeat, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
+  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, muscleBalanceTrend, MUSCLE_GROUP_ORDER, rpeTrend, activityCalendar, recentDaysHeat, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, sameDayTrend, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -290,6 +290,36 @@ describe("lastSameDaySummary", () => {
     assert.equal(result.date, "2026-08-18");
     assert.equal(result.volume, 1400 + 1440 + 850);
     assert.equal(result.exercises.length, 3);
+  });
+});
+
+describe("sameDayTrend", () => {
+  test("returns the last N occurrences of a day, oldest first", () => {
+    const sessions = [
+      mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "10")] }], "LEGS"),
+      mkSession("2026-08-08", [{ name: "A", sets: [mkSet("110", "10")] }], "LEGS"),
+      mkSession("2026-08-15", [{ name: "A", sets: [mkSet("120", "10")] }], "LEGS"),
+      mkSession("2026-08-05", [{ name: "A", sets: [mkSet("999", "10")] }], "PULL"),
+    ];
+    const result = sameDayTrend(sessions, "LEGS", 2, "2026-08-20");
+    assert.equal(result.length, 2);
+    assert.deepEqual(result.map(r => r.date), ["2026-08-08", "2026-08-15"]);
+    assert.equal(result[1].volume, 1200);
+  });
+
+  test("aggregates same-date records sharing the day into one occurrence", () => {
+    const sessions = [
+      mkSession("2026-08-18", [{ name: "A", sets: [mkSet("40", "12")] }], "TUE"),
+      mkSession("2026-08-18", [{ name: "B", sets: [mkSet("40", "12")] }], "TUE"),
+    ];
+    const result = sameDayTrend(sessions, "TUE", 8, "2026-08-25");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].volume, 960);
+  });
+
+  test("returns fewer than `occurrences` when there isn't enough history", () => {
+    const sessions = [mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "10")] }], "LEGS")];
+    assert.equal(sameDayTrend(sessions, "LEGS", 8, "2026-08-20").length, 1);
   });
 });
 

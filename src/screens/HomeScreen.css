@@ -21,6 +21,11 @@
 .home-plan__head span { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
 .home-plan__dot { width: 10px; height: 10px; margin-top: var(--sp1); border-radius: var(--shape-full); }
 .home-plan small { display: block; margin-top: var(--sp2); text-align: center; color: var(--on-surface-dim); font-size: var(--text-label-sm); }
+.home-day-trend { width: 100%; padding: var(--sp4) var(--sp5); border: 0; border-radius: var(--shape-xxl); background: var(--surface-container); color: var(--on-surface); text-align: left; cursor: pointer; box-shadow: var(--elev-1); }
+.home-day-trend__bars { display: flex; align-items: flex-end; gap: var(--sp1); height: 56px; margin-top: var(--sp3); }
+.home-day-trend__bar-wrap { display: flex; align-items: flex-end; flex: 1; height: 100%; }
+.home-day-trend__bar { width: 100%; min-height: 4px; border-radius: var(--shape-sm) var(--shape-sm) 0 0; background: var(--primary); }
+.home-day-trend__delta { display: block; margin-top: var(--sp2); color: var(--on-surface-variant); font-size: var(--text-body-sm); }
 .home-heatmap { width: 100%; padding: var(--sp5); border: 0; border-radius: var(--shape-xxl); background: var(--surface-container); color: var(--on-surface); text-align: left; cursor: pointer; box-shadow: var(--elev-1); }
 .home-heatmap__overdue { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); margin-top: var(--sp3); }
 .home-heatmap__overdue span:first-child { color: var(--on-surface-variant); font-size: var(--text-body-sm); }
