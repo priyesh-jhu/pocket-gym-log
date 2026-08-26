@@ -151,6 +151,24 @@ export function monthlyVolume(sessions, months = 12, todayIso = todayISO()) {
   return buckets.map(({ dates, ...bucket }) => ({ ...bucket, sessions: dates.size }));
 }
 
+/** Least-squares linear trend line, one value per index in `values`, rounded to 1 decimal. */
+export function linearTrend(values) {
+  const list = Array.isArray(values) ? values : [];
+  const n = list.length;
+  if (n === 0) return [];
+  if (n === 1) return [list[0]];
+  const meanX = (n - 1) / 2;
+  const meanY = list.reduce((sum, value) => sum + value, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - meanX) * (list[i] - meanY);
+    den += (i - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  const intercept = meanY - slope * meanX;
+  return list.map((_, i) => Math.round((slope * i + intercept) * 10) / 10);
+}
+
 const EXERCISE_TYPE_MUSCLES = {
   Push: ["chest", "frontDelts", "sideDelts", "triceps"],
   Pull: ["lats", "traps", "midBack", "lowerBack", "rearDelts", "biceps", "forearms"],

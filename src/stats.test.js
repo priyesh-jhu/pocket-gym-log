@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
+  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, linearTrend, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -149,6 +149,23 @@ describe("monthlyVolume", () => {
     const result = monthlyVolume(sessions, 1, "2026-08-13");
     assert.equal(result[0].sessions, 2);
     assert.equal(result[0].volume, 3000);
+  });
+});
+
+describe("linearTrend", () => {
+  test("fits a perfect line exactly", () => {
+    assert.deepEqual(linearTrend([10, 20, 30, 40]), [10, 20, 30, 40]);
+  });
+
+  test("smooths noisy data through a consistent upward line", () => {
+    const trend = linearTrend([10, 30, 15, 45, 20, 60]);
+    for (let i = 1; i < trend.length; i++) assert.ok(trend[i] >= trend[i - 1]);
+  });
+
+  test("handles short or flat inputs without dividing by zero", () => {
+    assert.deepEqual(linearTrend([]), []);
+    assert.deepEqual(linearTrend([5]), [5]);
+    assert.deepEqual(linearTrend([7, 7, 7]), [7, 7, 7]);
   });
 });
 
