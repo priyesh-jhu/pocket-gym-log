@@ -96,7 +96,7 @@ export function weeklyVolume(sessions, weeks = 12, todayIso = todayISO()) {
   const buckets = [];
   for (let i = weeks - 1; i >= 0; i--) {
     const weekStart = addDaysISO(currentWeekStart, -7 * i);
-    buckets.push({ weekStart, label: shortLabel(weekStart), volume: 0, sessions: 0, sets: 0 });
+    buckets.push({ weekStart, label: shortLabel(weekStart), volume: 0, sessions: 0, sets: 0, dates: new Set() });
   }
   const byStart = new Map(buckets.map(b => [b.weekStart, b]));
   for (const s of list) {
@@ -104,10 +104,13 @@ export function weeklyVolume(sessions, weeks = 12, todayIso = todayISO()) {
     const bucket = byStart.get(weekStartISO(s.date));
     if (!bucket) continue;
     bucket.volume += sessionVolume(s);
-    bucket.sessions += 1;
     bucket.sets += (s.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
+    bucket.dates.add(s.date);
   }
-  return buckets;
+  // "sessions" counts distinct training days, not raw records — a single
+  // training day is sometimes saved as several session records sharing one
+  // date (e.g. saving one exercise at a time), see lastSameDaySummary.
+  return buckets.map(({ dates, ...bucket }) => ({ ...bucket, sessions: dates.size }));
 }
 
 function shiftMonthKey(key, offset) {
@@ -132,7 +135,7 @@ export function monthlyVolume(sessions, months = 12, todayIso = todayISO()) {
   const buckets = [];
   for (let i = months - 1; i >= 0; i--) {
     const key = shiftMonthKey(currentKey, -i);
-    buckets.push({ monthStart: key, label: monthLabel(key), volume: 0, sessions: 0, sets: 0 });
+    buckets.push({ monthStart: key, label: monthLabel(key), volume: 0, sessions: 0, sets: 0, dates: new Set() });
   }
   const byKey = new Map(buckets.map(b => [b.monthStart, b]));
   for (const s of list) {
@@ -140,10 +143,12 @@ export function monthlyVolume(sessions, months = 12, todayIso = todayISO()) {
     const bucket = byKey.get(monthKey(s.date));
     if (!bucket) continue;
     bucket.volume += sessionVolume(s);
-    bucket.sessions += 1;
     bucket.sets += (s.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
+    bucket.dates.add(s.date);
   }
-  return buckets;
+  // "sessions" counts distinct training days, not raw records — see the
+  // matching comment in weeklyVolume.
+  return buckets.map(({ dates, ...bucket }) => ({ ...bucket, sessions: dates.size }));
 }
 
 /**

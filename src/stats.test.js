@@ -107,6 +107,17 @@ describe("weeklyVolume", () => {
     const result = weeklyVolume(sessions, 1, "2026-08-13");
     assert.equal(result[0].sets, 2);
   });
+
+  test("counts a training day once even when saved as several same-date session records", () => {
+    const sessions = [
+      mkSession("2026-08-10", [{ name: "Bench Press", sets: [mkSet("100", "10")] }]),
+      mkSession("2026-08-10", [{ name: "Row", sets: [mkSet("100", "10")] }]),
+      mkSession("2026-08-11", [{ name: "Squat", sets: [mkSet("100", "10")] }]),
+    ];
+    const result = weeklyVolume(sessions, 1, "2026-08-13");
+    assert.equal(result[0].sessions, 2);
+    assert.equal(result[0].volume, 3000);
+  });
 });
 
 describe("monthlyVolume", () => {
@@ -127,6 +138,17 @@ describe("monthlyVolume", () => {
     assert.equal(result[1].monthStart, "2025-12");
     assert.equal(result[2].monthStart, "2026-01");
     assert.equal(result[1].volume, 1000);
+  });
+
+  test("counts a training day once even when saved as several same-date session records", () => {
+    const sessions = [
+      mkSession("2026-08-10", [{ name: "Bench Press", sets: [mkSet("100", "10")] }]),
+      mkSession("2026-08-10", [{ name: "Row", sets: [mkSet("100", "10")] }]),
+      mkSession("2026-08-11", [{ name: "Squat", sets: [mkSet("100", "10")] }]),
+    ];
+    const result = monthlyVolume(sessions, 1, "2026-08-13");
+    assert.equal(result[0].sessions, 2);
+    assert.equal(result[0].volume, 3000);
   });
 });
 

@@ -1,6 +1,6 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
 import { shareElementAsImage } from "../imageShare.js";
@@ -139,22 +139,26 @@ function DayTypeTrendGroup({ sessions, reducedMotion }) {
 
   return <Card variant="raised" className="progress-group progress-group--day-type-trend">
     <div className="progress-section-heading">
-      <div><p className="progress-eyebrow">Day-type comparison</p><h2>Trend across day types</h2></div>
+      <div><p className="progress-eyebrow">Day-type comparison</p><h2>{valueLabel} by day type</h2></div>
       <SegmentedButtons ariaLabel="Day-type trend metric" value={param} onChange={setParam} options={[{ value: "volume", label: "Volume" }, { value: "sets", label: "Sets" }]} />
     </div>
     {error ? <div className="progress-group-error" role="alert"><strong>Day-type trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
       : data.length === 0 ? <div className="progress-chart-empty"><strong>No training days with a day label yet.</strong><p>Log a workout with a day (e.g. Push, Pull, Legs) to compare trends.</p></div>
-      : <div className="progress-chart" role="img" aria-label={`${valueLabel} trend compared across day types`}>
+      : <>
+      <p className="progress-section-note">Each line follows one day type's own history — e.g. its 1st, 2nd, 3rd time logged — so you can compare whether Push, Pull, Legs, etc. is trending up, independent of the calendar.</p>
+      <div className="progress-chart" role="img" aria-label={`${valueLabel} trend compared across day types: ${dayTypes.join(", ")}`}>
         <ResponsiveContainer minWidth={0} minHeight={0}>
           <LineChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
             <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
-            <XAxis dataKey="occurrence" stroke={chartTheme.axis} tick={{ fontSize: 11 }} label={{ value: "Occurrence #", position: "insideBottom", offset: -2, fontSize: 11, fill: chartTheme.axis }} />
+            <XAxis dataKey="occurrence" stroke={chartTheme.axis} tick={{ fontSize: 11 }} label={{ value: "Nth time that day type was logged", position: "insideBottom", offset: -2, fontSize: 11, fill: chartTheme.axis }} />
             <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={param === "volume" ? ` ${unit}` : ""} domain={[0, "auto"]} />
             <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name) => [`${value}${param === "volume" ? ` ${unit}` : ""}`, name]} />
+            <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
             {dayTypes.map((day, index) => <Line key={day} type="monotone" dataKey={day} name={day} stroke={day === "Other" ? chartTheme.muted : chartTheme[DAY_TREND_COLOR_KEYS[index]] || chartTheme.muted} strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={!reducedMotion} />)}
           </LineChart>
         </ResponsiveContainer>
-      </div>}
+      </div>
+      </>}
   </Card>;
 }
 
@@ -185,12 +189,13 @@ function VolumeTrendGroup({ sessions, reducedMotion }) {
     }
   }, [sessions, period, spanWeeks, spanMonths, metric, unit]);
 
-  const metricLabel = metric === "volume" ? `Volume (${unit})` : metric === "sets" ? "Sets" : "Sessions";
+  const metricTitle = metric === "volume" ? "Volume" : metric === "sets" ? "Sets" : "Sessions";
+  const metricLabel = metric === "volume" ? `Volume (${unit})` : metricTitle;
   const hasResults = data.some(point => point.value > 0);
 
   return <Card variant="raised" className="progress-group progress-group--volume-trend">
     <div className="progress-section-heading">
-      <div><p className="progress-eyebrow">Long-range trend</p><h2>Volume over time</h2></div>
+      <div><p className="progress-eyebrow">Long-range trend</p><h2>{metricTitle} over time</h2></div>
     </div>
     <div className="progress-trend-toolbar">
       <SegmentedButtons ariaLabel="Volume trend period" value={period} onChange={setPeriod} options={[{ value: "week", label: "Weekly" }, { value: "month", label: "Monthly" }]} />
