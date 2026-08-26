@@ -33,13 +33,23 @@ function todayLabel() {
   return new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
 }
 
+const compactNumber = new Intl.NumberFormat([], { notation: "compact", maximumFractionDigits: 1 });
+
+function compactVolume(value, unit) {
+  const converted = unit === "kg" ? value / 2.20462 : value;
+  return compactNumber.format(converted);
+}
+
 function DayTrendSparkline({ points, unit }) {
   const max = Math.max(1, ...points.map(point => point.volume));
   return (
     <div className="home-day-trend__bars">
       {points.map(point => (
         <div key={point.date} className="home-day-trend__bar-wrap" title={`${point.date}: ${displayVolume(point.volume, unit)} ${unit}`}>
-          <div className="home-day-trend__bar" style={{ height: `${Math.max(6, Math.round((point.volume / max) * 100))}%` }} />
+          <span className="home-day-trend__bar-value">{compactVolume(point.volume, unit)}</span>
+          <div className="home-day-trend__bar-track">
+            <div className="home-day-trend__bar" style={{ height: `${Math.max(6, Math.round((point.volume / max) * 100))}%` }} />
+          </div>
         </div>
       ))}
     </div>
