@@ -153,39 +153,47 @@ describe("monthlyVolume", () => {
 });
 
 describe("dayTypeTrend", () => {
-  test("aggregates same-date/day records into one occurrence and orders types by frequency", () => {
+  test("classifies training days by dominant exercise type, ignoring the session's own day label", () => {
     const sessions = [
-      mkSession("2026-08-03", [{ name: "Bench Press", sets: [mkSet("100", "10")] }], "PUSH"),
-      mkSession("2026-08-04", [{ name: "Row", sets: [mkSet("100", "10")] }], "PULL"),
-      mkSession("2026-08-10", [{ name: "Bench Press", sets: [mkSet("110", "10")] }], "PUSH"),
-      mkSession("2026-08-10", [{ name: "Incline Press", sets: [mkSet("50", "10")] }], "PUSH"),
+      // 2026-08-03: shoulder work -> Push, despite being labeled "LEG DAY".
+      mkSession("2026-08-03", [{ name: "Overhead Press", sets: [mkSet("100", "10")] }], "LEG DAY"),
+      // 2026-08-04: back work -> Pull.
+      mkSession("2026-08-04", [{ name: "Bent-Over Barbell Row", sets: [mkSet("100", "10")] }], "PULL"),
+      // 2026-08-10: saved as two separate records sharing one date -> one Push occurrence.
+      mkSession("2026-08-10", [{ name: "Overhead Press", sets: [mkSet("110", "10")] }]),
+      mkSession("2026-08-10", [{ name: "Overhead Press", sets: [mkSet("50", "10")] }]),
     ];
     const { dayTypes, data } = dayTypeTrend(sessions);
-    assert.deepEqual(dayTypes, ["PUSH", "PULL"]);
+    assert.deepEqual(dayTypes, ["Push", "Pull"]);
     assert.equal(data.length, 2);
-    assert.equal(data[0].PUSH, 1000);
-    assert.equal(data[0].PULL, 1000);
-    assert.equal(data[1].PUSH, 1600);
-    assert.equal(data[1].PULL, undefined);
+    assert.equal(data[0].Push, 1000);
+    assert.equal(data[0].Pull, 1000);
+    assert.equal(data[1].Push, 1600);
+    assert.equal(data[1].Pull, undefined);
   });
 
-  test("folds day types beyond maxTypes into Other", () => {
-    const sessions = [
-      mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "1")] }], "PUSH"),
-      mkSession("2026-08-02", [{ name: "A", sets: [mkSet("100", "1")] }], "PULL"),
-      mkSession("2026-08-03", [{ name: "A", sets: [mkSet("100", "1")] }], "LEGS"),
-      mkSession("2026-08-04", [{ name: "A", sets: [mkSet("100", "1")] }], "CORE"),
-      mkSession("2026-08-05", [{ name: "A", sets: [mkSet("100", "1")] }], "MOBILITY"),
-    ];
-    const { dayTypes } = dayTypeTrend(sessions, { maxTypes: 4 });
-    assert.equal(dayTypes.length, 5);
-    assert.ok(dayTypes.includes("Other"));
+  test("classifies an exercise by majority primary muscle when it spans two types", () => {
+    // Conventional Deadlift: lowerBack (Pull) vs glutes+hamstrings (Legs) -> Legs wins.
+    const sessions = [mkSession("2026-08-01", [{ name: "Conventional Deadlift", sets: [mkSet("200", "5")] }])];
+    const { dayTypes } = dayTypeTrend(sessions);
+    assert.deepEqual(dayTypes, ["Legs"]);
   });
 
-  test("supports the sets param", () => {
-    const sessions = [mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "1"), mkSet("100", "1")] }], "PUSH")];
-    const { data } = dayTypeTrend(sessions, { param: "sets" });
-    assert.equal(data[0].PUSH, 2);
+  test("excludes a training day with no classifiable exercises", () => {
+    const sessions = [mkSession("2026-08-01", [{ name: "Totally Made Up Exercise", sets: [mkSet("50", "5")] }])];
+    const { dayTypes, data } = dayTypeTrend(sessions);
+    assert.deepEqual(dayTypes, []);
+    assert.deepEqual(data, []);
+  });
+
+  test("supports the sets param, counting all of that day's sets even outside the dominant type", () => {
+    const sessions = [mkSession("2026-08-01", [
+      { name: "Incline DB Press", sets: [mkSet("100", "1"), mkSet("100", "1")] },
+      { name: "Weighted Sit-ups/Bicycle Crunches", sets: [mkSet("0", "10")] },
+    ])];
+    const { dayTypes, data } = dayTypeTrend(sessions, { param: "sets" });
+    assert.deepEqual(dayTypes, ["Push"]);
+    assert.equal(data[0].Push, 3);
   });
 });
 

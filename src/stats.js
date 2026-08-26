@@ -151,44 +151,80 @@ export function monthlyVolume(sessions, months = 12, todayIso = todayISO()) {
   return buckets.map(({ dates, ...bucket }) => ({ ...bucket, sessions: dates.size }));
 }
 
-/**
- * Groups sessions into distinct training days (same date + day — a single
- * training day is not always one session record, see lastSameDaySummary),
- * then compares day types (session.day) against each other across
- * successive occurrences. Returns the day types charted (the `maxTypes`
- * most common, with any remainder folded into "Other") and one row per
- * occurrence number, each row holding that occurrence's value per day type
- * (a day type with fewer occurrences than others simply has no key for the
- * later occurrence numbers).
- */
-export function dayTypeTrend(sessions, { param = "volume", maxTypes = 4 } = {}) {
-  const byKey = new Map();
-  for (const session of Array.isArray(sessions) ? sessions : []) {
-    if (!session?.date || !session.day) continue;
-    const key = `${session.date}|${session.day}`;
-    const entry = byKey.get(key) || { date: session.date, day: session.day, volume: 0, sets: 0 };
-    entry.volume += sessionVolume(session);
-    entry.sets += (session.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
-    byKey.set(key, entry);
+const EXERCISE_TYPE_MUSCLES = {
+  Push: ["chest", "frontDelts", "sideDelts", "triceps"],
+  Pull: ["lats", "traps", "midBack", "lowerBack", "rearDelts", "biceps", "forearms"],
+  Legs: ["glutes", "quads", "hamstrings", "calves", "adductors"],
+  Core: ["abs", "obliques"],
+};
+const EXERCISE_TYPES = Object.keys(EXERCISE_TYPE_MUSCLES);
+const MUSCLE_TO_EXERCISE_TYPE = Object.fromEntries(
+  EXERCISE_TYPES.flatMap(type => EXERCISE_TYPE_MUSCLES[type].map(muscle => [muscle, type]))
+);
+
+/** Push/Pull/Legs/Core for an exercise, by majority vote of its primary muscles. Null if unclassifiable. */
+function exerciseType(name) {
+  const primary = formGuide[name]?.primary || [];
+  const tally = {};
+  for (const muscle of primary) {
+    const type = MUSCLE_TO_EXERCISE_TYPE[muscle];
+    if (type) tally[type] = (tally[type] || 0) + 1;
   }
-  const trainingDays = [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date));
+  let best = null;
+  for (const type of EXERCISE_TYPES) if (tally[type] && (!best || tally[type] > tally[best])) best = type;
+  return best;
+}
 
-  const counts = new Map();
-  for (const day of trainingDays) counts.set(day.day, (counts.get(day.day) || 0) + 1);
-  const byFrequency = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([day]) => day);
-  const topTypes = byFrequency.slice(0, maxTypes);
-  const hasOther = byFrequency.length > maxTypes;
-  const dayTypes = hasOther ? [...topTypes, "Other"] : topTypes;
-  const bucketFor = day => (topTypes.includes(day) ? day : "Other");
+/**
+ * Groups sessions into distinct training days (same date — a single
+ * training day is not always one session record, see lastSameDaySummary),
+ * classifies each by whichever exercise type (Push/Pull/Legs/Core, from the
+ * app's muscle guide) makes up most of its sets, then compares those types
+ * against each other across successive occurrences of each — independent of
+ * whatever free-text `day` label the session itself was saved under. A
+ * training day with no classifiable exercises (e.g. only custom exercises
+ * without a muscle guide entry) is excluded rather than lumped into a
+ * misleading catch-all bucket. Returns the exercise types with at least one
+ * occurrence and one row per occurrence number, each row holding that
+ * occurrence's value per type (a type with fewer occurrences than others
+ * simply has no key for the later occurrence numbers).
+ */
+export function dayTypeTrend(sessions, { param = "volume" } = {}) {
+  const byDate = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date) continue;
+    const entry = byDate.get(session.date) || {
+      date: session.date, volume: 0, totalSets: 0,
+      setsByType: Object.fromEntries(EXERCISE_TYPES.map(type => [type, 0])),
+    };
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      const type = exerciseType(exercise?.name);
+      const sets = Array.isArray(exercise?.sets) ? exercise.sets : [];
+      entry.totalSets += sets.length;
+      if (type) entry.setsByType[type] += sets.length;
+      for (const set of sets) entry.volume += setVolume(set, exercise?.name);
+    }
+    byDate.set(session.date, entry);
+  }
 
-  const occurrence = new Map(dayTypes.map(day => [day, 0]));
+  const trainingDays = [...byDate.values()]
+    .map(day => {
+      let type = null, best = 0;
+      for (const candidate of EXERCISE_TYPES) if (day.setsByType[candidate] > best) { best = day.setsByType[candidate]; type = candidate; }
+      return type ? { date: day.date, type, volume: day.volume, sets: day.totalSets } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const dayTypes = EXERCISE_TYPES.filter(type => trainingDays.some(day => day.type === type));
+
+  const occurrence = new Map(dayTypes.map(type => [type, 0]));
   const rows = [];
   for (const trainingDay of trainingDays) {
-    const bucket = bucketFor(trainingDay.day);
-    const index = (occurrence.get(bucket) || 0) + 1;
-    occurrence.set(bucket, index);
+    const index = (occurrence.get(trainingDay.type) || 0) + 1;
+    occurrence.set(trainingDay.type, index);
     const row = rows[index - 1] || (rows[index - 1] = { occurrence: index });
-    row[bucket] = Math.round(param === "sets" ? trainingDay.sets : trainingDay.volume);
+    row[trainingDay.type] = Math.round(param === "sets" ? trainingDay.sets : trainingDay.volume);
   }
 
   return { dayTypes, data: rows.filter(Boolean) };

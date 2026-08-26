@@ -143,9 +143,9 @@ function DayTypeTrendGroup({ sessions, reducedMotion }) {
       <SegmentedButtons ariaLabel="Day-type trend metric" value={param} onChange={setParam} options={[{ value: "volume", label: "Volume" }, { value: "sets", label: "Sets" }]} />
     </div>
     {error ? <div className="progress-group-error" role="alert"><strong>Day-type trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
-      : data.length === 0 ? <div className="progress-chart-empty"><strong>No training days with a day label yet.</strong><p>Log a workout with a day (e.g. Push, Pull, Legs) to compare trends.</p></div>
+      : data.length === 0 ? <div className="progress-chart-empty"><strong>No classifiable training days yet.</strong><p>Log exercises from the muscle guide (e.g. bench press, rows, squats) to compare Push, Pull, Legs, and Core days.</p></div>
       : <>
-      <p className="progress-section-note">Each line follows one day type's own history — e.g. its 1st, 2nd, 3rd time logged — so you can compare whether Push, Pull, Legs, etc. is trending up, independent of the calendar.</p>
+      <p className="progress-section-note">Each training day is classified by its dominant exercise type (Push, Pull, Legs, or Core), regardless of what you named it. Each line follows one type's own history — its 1st, 2nd, 3rd time logged — so you can compare whether Push, Pull, or Legs is trending up.</p>
       <div className="progress-chart" role="img" aria-label={`${valueLabel} trend compared across day types: ${dayTypes.join(", ")}`}>
         <ResponsiveContainer minWidth={0} minHeight={0}>
           <LineChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
@@ -154,7 +154,7 @@ function DayTypeTrendGroup({ sessions, reducedMotion }) {
             <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={param === "volume" ? ` ${unit}` : ""} domain={[0, "auto"]} />
             <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name) => [`${value}${param === "volume" ? ` ${unit}` : ""}`, name]} />
             <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
-            {dayTypes.map((day, index) => <Line key={day} type="monotone" dataKey={day} name={day} stroke={day === "Other" ? chartTheme.muted : chartTheme[DAY_TREND_COLOR_KEYS[index]] || chartTheme.muted} strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={!reducedMotion} />)}
+            {dayTypes.map((day, index) => <Line key={day} type="monotone" dataKey={day} name={day} stroke={chartTheme[DAY_TREND_COLOR_KEYS[index]] || chartTheme.muted} strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={!reducedMotion} />)}
           </LineChart>
         </ResponsiveContainer>
       </div>
