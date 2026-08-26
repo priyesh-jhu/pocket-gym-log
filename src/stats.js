@@ -38,11 +38,28 @@ export function dominantUnit(sessions) {
   return counts.kg > counts.lb ? "kg" : "lb";
 }
 
-/** Volume of a single set, in lb. 0 if weight or reps is blank/NaN. */
-export function setVolume(set) {
+const UNILATERAL_RE = /\b(single[- ]arm|one[- ]arm|unilateral)\b/i;
+
+/**
+ * True if an exercise name refers to a two-handed dumbbell variant
+ * ("Dumbbell ...", "DB ..."). Single-arm/unilateral variants are excluded
+ * since those are logged and lifted with only one dumbbell.
+ */
+export function isDumbbellExercise(name) {
+  const text = String(name ?? "");
+  return /\b(dumbbell|db)\b/i.test(text) && !UNILATERAL_RE.test(text);
+}
+
+/**
+ * Volume of a single set, in lb. 0 if weight or reps is blank/NaN.
+ * Dumbbell exercises are logged as the weight of ONE dumbbell, so volume is
+ * doubled for them to reflect the load of both implements.
+ */
+export function setVolume(set, exerciseName) {
   const reps = parseFloat(set?.reps);
   if (isNaN(reps)) return 0;
-  return toLb(set?.weight, set?.unit) * reps;
+  const multiplier = isDumbbellExercise(exerciseName) ? 2 : 1;
+  return toLb(set?.weight, set?.unit) * reps * multiplier;
 }
 
 /** Total volume of a session, in lb, across all exercises' sets. */
@@ -50,7 +67,7 @@ export function sessionVolume(session) {
   let total = 0;
   for (const ex of Array.isArray(session?.exercises) ? session.exercises : []) {
     for (const set of Array.isArray(ex?.sets) ? ex.sets : []) {
-      total += setVolume(set);
+      total += setVolume(set, ex?.name);
     }
   }
   return total;
@@ -315,7 +332,7 @@ export function muscleBalance(sessions, weeks = 4, todayIso = todayISO()) {
     for (const ex of Array.isArray(s.exercises) ? s.exercises : []) {
       const guide = formGuide[ex?.name];
       if (!guide || !Array.isArray(guide.primary) || guide.primary.length === 0) continue;
-      const exVolume = (Array.isArray(ex.sets) ? ex.sets : []).reduce((sum, set) => sum + setVolume(set), 0);
+      const exVolume = (Array.isArray(ex.sets) ? ex.sets : []).reduce((sum, set) => sum + setVolume(set, ex.name), 0);
       if (exVolume <= 0) continue;
       const groups = [...new Set(guide.primary.map(m => MUSCLE_GROUPS[m]).filter(Boolean))];
       if (groups.length === 0) continue;

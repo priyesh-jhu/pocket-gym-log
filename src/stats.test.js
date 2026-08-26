@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
+  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -28,6 +28,41 @@ describe("sessionVolume", () => {
     ]);
     // 100*10 lb + (100*2.20462)*10 lb = 1000 + 2204.62
     assert.equal(Math.round(sessionVolume(session)), 3205);
+  });
+
+  test("doubles volume for dumbbell exercises, logged as one implement's weight", () => {
+    const session = mkSession("2026-08-10", [
+      { name: "Dumbbell Bench Press", sets: [mkSet("30", "10", "lb")] },
+      { name: "Barbell Bench Press", sets: [mkSet("30", "10", "lb")] },
+    ]);
+    assert.equal(sessionVolume(session), 30 * 10 * 2 + 30 * 10);
+  });
+});
+
+describe("isDumbbellExercise", () => {
+  test("matches whole-word 'dumbbell' or 'db', case-insensitively", () => {
+    assert.equal(isDumbbellExercise("Dumbbell Bench Press"), true);
+    assert.equal(isDumbbellExercise("DB Row"), true);
+    assert.equal(isDumbbellExercise("dumbbell curl"), true);
+  });
+
+  test("does not false-positive on unrelated or embedded-letter names", () => {
+    assert.equal(isDumbbellExercise("Deadlift"), false);
+    assert.equal(isDumbbellExercise("Adductor Machine"), false);
+    assert.equal(isDumbbellExercise(undefined), false);
+  });
+
+  test("excludes single-arm/unilateral dumbbell variants, which use only one implement", () => {
+    assert.equal(isDumbbellExercise("Single-Arm DB Row"), false);
+    assert.equal(isDumbbellExercise("One-Arm Dumbbell Row"), false);
+    assert.equal(isDumbbellExercise("Unilateral DB Curl"), false);
+  });
+});
+
+describe("setVolume", () => {
+  test("doubles for a dumbbell exercise name, not for others", () => {
+    assert.equal(setVolume(mkSet("30", "10"), "Dumbbell Curl"), 600);
+    assert.equal(setVolume(mkSet("30", "10"), "Barbell Curl"), 300);
   });
 });
 
@@ -196,10 +231,11 @@ describe("muscleBalance", () => {
     const result = muscleBalance(sessions, 4, "2026-08-13");
     assert.equal(result.length, 2);
     const byGroup = new Map(result.map(r => [r.group, r]));
+    // "DB" doubles volume (1000*2=2000 total), split evenly across the two groups.
     assert.equal(byGroup.get("Chest").pct, 50);
-    assert.equal(byGroup.get("Chest").volume, 500);
+    assert.equal(byGroup.get("Chest").volume, 1000);
     assert.equal(byGroup.get("Shoulders").pct, 50);
-    assert.equal(byGroup.get("Shoulders").volume, 500);
+    assert.equal(byGroup.get("Shoulders").volume, 1000);
   });
 
   test("collapses three primary muscles spanning two groups into 50/50, not thirds", () => {
