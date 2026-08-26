@@ -1,10 +1,10 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
 import { shareElementAsImage } from "../imageShare.js";
-import { dominantUnit, exerciseE1RMSeries, toLb } from "../stats.js";
+import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, monthlyVolume, toLb, weeklyVolume } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { bigLiftSummary, getStandardsSex } from "../strengthStandards.js";
 import { normalizeBodyweights } from "../weightRecords.js";
@@ -115,6 +115,104 @@ function E1RMGroup({ sessions, reducedMotion }) {
   </Card>;
 }
 
+const DAY_TREND_COLOR_KEYS = ["primary", "secondary", "tertiary", "quaternary"];
+
+function DayTypeTrendGroup({ sessions, reducedMotion }) {
+  const chartTheme = useThemeTokens();
+  const [param, setParam] = useState("volume");
+  const unit = dominantUnit(sessions);
+  const { dayTypes, data, error } = useMemo(() => {
+    try {
+      const raw = dayTypeTrend(sessions, { param });
+      const toDisplay = value => (param === "volume" && unit === "kg" ? Math.round(value / 2.20462) : value);
+      const data = raw.data.map(row => {
+        const converted = { occurrence: row.occurrence };
+        for (const day of raw.dayTypes) if (row[day] !== undefined) converted[day] = toDisplay(row[day]);
+        return converted;
+      });
+      return { dayTypes: raw.dayTypes, data, error: false };
+    } catch {
+      return { dayTypes: [], data: [], error: true };
+    }
+  }, [sessions, param, unit]);
+  const valueLabel = param === "volume" ? `Volume (${unit})` : "Sets";
+
+  return <Card variant="raised" className="progress-group progress-group--day-type-trend">
+    <div className="progress-section-heading">
+      <div><p className="progress-eyebrow">Day-type comparison</p><h2>Trend across day types</h2></div>
+      <SegmentedButtons ariaLabel="Day-type trend metric" value={param} onChange={setParam} options={[{ value: "volume", label: "Volume" }, { value: "sets", label: "Sets" }]} />
+    </div>
+    {error ? <div className="progress-group-error" role="alert"><strong>Day-type trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : data.length === 0 ? <div className="progress-chart-empty"><strong>No training days with a day label yet.</strong><p>Log a workout with a day (e.g. Push, Pull, Legs) to compare trends.</p></div>
+      : <div className="progress-chart" role="img" aria-label={`${valueLabel} trend compared across day types`}>
+        <ResponsiveContainer minWidth={0} minHeight={0}>
+          <LineChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+            <XAxis dataKey="occurrence" stroke={chartTheme.axis} tick={{ fontSize: 11 }} label={{ value: "Occurrence #", position: "insideBottom", offset: -2, fontSize: 11, fill: chartTheme.axis }} />
+            <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit={param === "volume" ? ` ${unit}` : ""} domain={[0, "auto"]} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name) => [`${value}${param === "volume" ? ` ${unit}` : ""}`, name]} />
+            {dayTypes.map((day, index) => <Line key={day} type="monotone" dataKey={day} name={day} stroke={day === "Other" ? chartTheme.muted : chartTheme[DAY_TREND_COLOR_KEYS[index]] || chartTheme.muted} strokeWidth={2.5} dot={{ r: 3 }} isAnimationActive={!reducedMotion} />)}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>}
+  </Card>;
+}
+
+const VOLUME_TREND_SPANS = { week: [12, 26, 52], month: [6, 12, 24] };
+
+function VolumeTrendGroup({ sessions, reducedMotion }) {
+  const chartTheme = useThemeTokens();
+  const [period, setPeriod] = useState("week");
+  const [metric, setMetric] = useState("volume");
+  const [spanWeeks, setSpanWeeks] = useState(12);
+  const [spanMonths, setSpanMonths] = useState(12);
+  const unit = dominantUnit(sessions);
+  const span = period === "week" ? spanWeeks : spanMonths;
+  const setSpan = period === "week" ? setSpanWeeks : setSpanMonths;
+
+  const { data, error } = useMemo(() => {
+    try {
+      const buckets = period === "week" ? weeklyVolume(sessions, spanWeeks) : monthlyVolume(sessions, spanMonths);
+      const data = buckets.map(bucket => ({
+        label: bucket.label,
+        value: metric === "volume"
+          ? (unit === "kg" ? Math.round(bucket.volume / 2.20462) : Math.round(bucket.volume))
+          : metric === "sets" ? bucket.sets : bucket.sessions,
+      }));
+      return { data, error: false };
+    } catch {
+      return { data: [], error: true };
+    }
+  }, [sessions, period, spanWeeks, spanMonths, metric, unit]);
+
+  const metricLabel = metric === "volume" ? `Volume (${unit})` : metric === "sets" ? "Sets" : "Sessions";
+  const hasResults = data.some(point => point.value > 0);
+
+  return <Card variant="raised" className="progress-group progress-group--volume-trend">
+    <div className="progress-section-heading">
+      <div><p className="progress-eyebrow">Long-range trend</p><h2>Volume over time</h2></div>
+    </div>
+    <div className="progress-trend-toolbar">
+      <SegmentedButtons ariaLabel="Volume trend period" value={period} onChange={setPeriod} options={[{ value: "week", label: "Weekly" }, { value: "month", label: "Monthly" }]} />
+      <SegmentedButtons ariaLabel="Volume trend metric" value={metric} onChange={setMetric} options={[{ value: "volume", label: "Volume" }, { value: "sets", label: "Sets" }, { value: "sessions", label: "Sessions" }]} />
+      <SegmentedButtons ariaLabel={`Volume trend length in ${period === "week" ? "weeks" : "months"}`} value={span} onChange={setSpan} options={VOLUME_TREND_SPANS[period].map(value => ({ value, label: period === "week" ? `${value}w` : `${value}mo` }))} />
+    </div>
+    {error ? <div className="progress-group-error" role="alert"><strong>Volume trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : <div className="progress-chart" role="img" aria-label={`${metricLabel} per ${period} over time`}>
+        <ResponsiveContainer minWidth={0} minHeight={0}>
+          <BarChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+            <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={16} />
+            <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={value => [value, metricLabel]} />
+            <Bar dataKey="value" name={metricLabel} fill={chartTheme.primary} radius={[5, 5, 0, 0]} isAnimationActive={!reducedMotion} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>}
+    {!error && !hasResults && <p className="progress-daily-empty">No {metricLabel.toLowerCase()} recorded in this window.</p>}
+  </Card>;
+}
+
 const LIFT_LABELS = { bench: "Bench", squat: "Squat", deadlift: "Deadlift" };
 
 function StrengthGroup({ sessions, bodyweights, sex }) {
@@ -210,6 +308,8 @@ export default function ProgressScreen({ sessions = [], preferences = {}, bodywe
     heatmap: <BodyHeatmapGroup sessions={sessions} settings={settings} onSaveSettings={saveChanges} onAddExercise={onAddExercise} reducedMotion={reducedMotion} />,
     balance: <BalanceGroup sessions={sessions} settings={settings} reducedMotion={reducedMotion} />,
     strength: <StrengthGroup sessions={sessions} bodyweights={bodyweights} sex={sex} />,
+    dayTypeTrend: <DayTypeTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
+    volumeTrend: <VolumeTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
   };
 
   return <section className="progress-screen" aria-labelledby="progress-title">

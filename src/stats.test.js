@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
+  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -100,6 +100,70 @@ describe("weeklyVolume", () => {
     const sessions = [mkSession("2026-08-10", [{ name: "Totally Made Up Exercise", sets: [mkSet("50", "5")] }])];
     const result = weeklyVolume(sessions, 1, "2026-08-13");
     assert.equal(result[0].volume, 250);
+  });
+
+  test("also tallies working sets per week", () => {
+    const sessions = [mkSession("2026-08-10", [{ name: "A", sets: [mkSet("50", "5"), mkSet("50", "5")] }])];
+    const result = weeklyVolume(sessions, 1, "2026-08-13");
+    assert.equal(result[0].sets, 2);
+  });
+});
+
+describe("monthlyVolume", () => {
+  test("returns exactly `months` entries including zero-activity gaps, and tallies sets", () => {
+    const sessions = [mkSession("2026-06-15", [{ name: "A", sets: [mkSet("100", "10")] }])];
+    const result = monthlyVolume(sessions, 6, "2026-08-13");
+    assert.equal(result.length, 6);
+    const nonZero = result.filter(m => m.volume > 0);
+    assert.equal(nonZero.length, 1);
+    assert.equal(nonZero[0].monthStart, "2026-06");
+    assert.equal(nonZero[0].sets, 1);
+  });
+
+  test("buckets correctly across a year boundary", () => {
+    const sessions = [mkSession("2025-12-05", [{ name: "A", sets: [mkSet("100", "10")] }])];
+    const result = monthlyVolume(sessions, 3, "2026-01-15");
+    assert.equal(result[0].monthStart, "2025-11");
+    assert.equal(result[1].monthStart, "2025-12");
+    assert.equal(result[2].monthStart, "2026-01");
+    assert.equal(result[1].volume, 1000);
+  });
+});
+
+describe("dayTypeTrend", () => {
+  test("aggregates same-date/day records into one occurrence and orders types by frequency", () => {
+    const sessions = [
+      mkSession("2026-08-03", [{ name: "Bench Press", sets: [mkSet("100", "10")] }], "PUSH"),
+      mkSession("2026-08-04", [{ name: "Row", sets: [mkSet("100", "10")] }], "PULL"),
+      mkSession("2026-08-10", [{ name: "Bench Press", sets: [mkSet("110", "10")] }], "PUSH"),
+      mkSession("2026-08-10", [{ name: "Incline Press", sets: [mkSet("50", "10")] }], "PUSH"),
+    ];
+    const { dayTypes, data } = dayTypeTrend(sessions);
+    assert.deepEqual(dayTypes, ["PUSH", "PULL"]);
+    assert.equal(data.length, 2);
+    assert.equal(data[0].PUSH, 1000);
+    assert.equal(data[0].PULL, 1000);
+    assert.equal(data[1].PUSH, 1600);
+    assert.equal(data[1].PULL, undefined);
+  });
+
+  test("folds day types beyond maxTypes into Other", () => {
+    const sessions = [
+      mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "1")] }], "PUSH"),
+      mkSession("2026-08-02", [{ name: "A", sets: [mkSet("100", "1")] }], "PULL"),
+      mkSession("2026-08-03", [{ name: "A", sets: [mkSet("100", "1")] }], "LEGS"),
+      mkSession("2026-08-04", [{ name: "A", sets: [mkSet("100", "1")] }], "CORE"),
+      mkSession("2026-08-05", [{ name: "A", sets: [mkSet("100", "1")] }], "MOBILITY"),
+    ];
+    const { dayTypes } = dayTypeTrend(sessions, { maxTypes: 4 });
+    assert.equal(dayTypes.length, 5);
+    assert.ok(dayTypes.includes("Other"));
+  });
+
+  test("supports the sets param", () => {
+    const sessions = [mkSession("2026-08-01", [{ name: "A", sets: [mkSet("100", "1"), mkSet("100", "1")] }], "PUSH")];
+    const { data } = dayTypeTrend(sessions, { param: "sets" });
+    assert.equal(data[0].PUSH, 2);
   });
 });
 

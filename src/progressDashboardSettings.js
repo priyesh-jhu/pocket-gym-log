@@ -1,13 +1,15 @@
 import { MUSCLES } from "./data/formGuide.js";
 
 export const DASHBOARD_KEY = "__dashboardSettings";
-export const PROGRESS_GROUP_IDS = ["e1rm", "trend", "heatmap", "balance", "strength"];
+export const PROGRESS_GROUP_IDS = ["e1rm", "trend", "heatmap", "balance", "strength", "dayTypeTrend", "volumeTrend"];
 export const PROGRESS_GROUP_LABELS = {
   e1rm: "e1RM progression",
   trend: "Daily trend",
   heatmap: "Body heatmap",
   balance: "Balance",
   strength: "Strength levels",
+  dayTypeTrend: "Day-type trend",
+  volumeTrend: "Volume over time",
 };
 
 const LEGACY_DAILY_IDS = ["summary", "calendar", "trend"];

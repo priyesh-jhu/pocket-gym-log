@@ -96,7 +96,7 @@ export function weeklyVolume(sessions, weeks = 12, todayIso = todayISO()) {
   const buckets = [];
   for (let i = weeks - 1; i >= 0; i--) {
     const weekStart = addDaysISO(currentWeekStart, -7 * i);
-    buckets.push({ weekStart, label: shortLabel(weekStart), volume: 0, sessions: 0 });
+    buckets.push({ weekStart, label: shortLabel(weekStart), volume: 0, sessions: 0, sets: 0 });
   }
   const byStart = new Map(buckets.map(b => [b.weekStart, b]));
   for (const s of list) {
@@ -105,8 +105,88 @@ export function weeklyVolume(sessions, weeks = 12, todayIso = todayISO()) {
     if (!bucket) continue;
     bucket.volume += sessionVolume(s);
     bucket.sessions += 1;
+    bucket.sets += (s.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
   }
   return buckets;
+}
+
+function shiftMonthKey(key, offset) {
+  const [year, month] = key.split("-").map(Number);
+  const date = new Date(year, month - 1 + offset, 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabel(key) {
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString([], { month: "short", year: "2-digit" });
+}
+
+/**
+ * Last `months` calendar-month buckets ending with the month containing
+ * `todayIso`, oldest first. Always exactly `months` entries — zero-activity
+ * months included. Mirrors weeklyVolume's shape at month granularity.
+ */
+export function monthlyVolume(sessions, months = 12, todayIso = todayISO()) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const currentKey = monthKey(todayIso);
+  const buckets = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const key = shiftMonthKey(currentKey, -i);
+    buckets.push({ monthStart: key, label: monthLabel(key), volume: 0, sessions: 0, sets: 0 });
+  }
+  const byKey = new Map(buckets.map(b => [b.monthStart, b]));
+  for (const s of list) {
+    if (!s?.date) continue;
+    const bucket = byKey.get(monthKey(s.date));
+    if (!bucket) continue;
+    bucket.volume += sessionVolume(s);
+    bucket.sessions += 1;
+    bucket.sets += (s.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
+  }
+  return buckets;
+}
+
+/**
+ * Groups sessions into distinct training days (same date + day — a single
+ * training day is not always one session record, see lastSameDaySummary),
+ * then compares day types (session.day) against each other across
+ * successive occurrences. Returns the day types charted (the `maxTypes`
+ * most common, with any remainder folded into "Other") and one row per
+ * occurrence number, each row holding that occurrence's value per day type
+ * (a day type with fewer occurrences than others simply has no key for the
+ * later occurrence numbers).
+ */
+export function dayTypeTrend(sessions, { param = "volume", maxTypes = 4 } = {}) {
+  const byKey = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date || !session.day) continue;
+    const key = `${session.date}|${session.day}`;
+    const entry = byKey.get(key) || { date: session.date, day: session.day, volume: 0, sets: 0 };
+    entry.volume += sessionVolume(session);
+    entry.sets += (session.exercises || []).reduce((n, ex) => n + (ex.sets?.length || 0), 0);
+    byKey.set(key, entry);
+  }
+  const trainingDays = [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date));
+
+  const counts = new Map();
+  for (const day of trainingDays) counts.set(day.day, (counts.get(day.day) || 0) + 1);
+  const byFrequency = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([day]) => day);
+  const topTypes = byFrequency.slice(0, maxTypes);
+  const hasOther = byFrequency.length > maxTypes;
+  const dayTypes = hasOther ? [...topTypes, "Other"] : topTypes;
+  const bucketFor = day => (topTypes.includes(day) ? day : "Other");
+
+  const occurrence = new Map(dayTypes.map(day => [day, 0]));
+  const rows = [];
+  for (const trainingDay of trainingDays) {
+    const bucket = bucketFor(trainingDay.day);
+    const index = (occurrence.get(bucket) || 0) + 1;
+    occurrence.set(bucket, index);
+    const row = rows[index - 1] || (rows[index - 1] = { occurrence: index });
+    row[bucket] = Math.round(param === "sets" ? trainingDay.sets : trainingDay.volume);
+  }
+
+  return { dayTypes, data: rows.filter(Boolean) };
 }
 
 /** Current Mon→Sun week vs the previous one. deltaPct is null if prevVolume is 0. */
