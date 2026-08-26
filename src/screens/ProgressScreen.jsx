@@ -1,13 +1,13 @@
 import { Component, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
 import { shareElementAsImage } from "../imageShare.js";
-import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, monthlyVolume, toLb, weeklyVolume } from "../stats.js";
+import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, monthlyVolume, MUSCLE_GROUP_ORDER, muscleBalanceTrend, rpeTrend, toLb, weeklyVolume } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { bigLiftSummary, getStandardsSex } from "../strengthStandards.js";
-import { normalizeBodyweights } from "../weightRecords.js";
+import { bodyweightOnOrNearest, normalizeBodyweights } from "../weightRecords.js";
 import { DASHBOARD_KEY, PROGRESS_GROUP_IDS, PROGRESS_GROUP_LABELS, normalizeDashboardSettings, updateDashboardSettings } from "../progressDashboardSettings.js";
 import { BalanceGroup, BodyHeatmapGroup, DailyTrendGroup } from "../ProgressDashboard.jsx";
 import "./ProgressScreen.css";
@@ -263,6 +263,122 @@ function StrengthGroup({ sessions, bodyweights, sex }) {
   );
 }
 
+function RpeTrendGroup({ sessions, reducedMotion }) {
+  const chartTheme = useThemeTokens();
+  const { data, error } = useMemo(() => {
+    try {
+      return { data: rpeTrend(sessions, 12), error: false };
+    } catch {
+      return { data: [], error: true };
+    }
+  }, [sessions]);
+  const hasResults = data.some(week => week.avgRpe !== null);
+
+  return <Card variant="raised" className="progress-group progress-group--rpe-trend">
+    <div className="progress-section-heading">
+      <div><p className="progress-eyebrow">Training intensity</p><h2>Average RPE over time</h2></div>
+    </div>
+    {error ? <div className="progress-group-error" role="alert"><strong>RPE trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : !hasResults ? <div className="progress-chart-empty"><strong>No RPE ratings yet.</strong><p>Rate a set's effort while logging a workout to start this trend.</p></div>
+      : <div className="progress-chart" role="img" aria-label="Average RPE per week over the last 12 weeks">
+        <ResponsiveContainer minWidth={0} minHeight={0}>
+          <LineChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+            <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={16} />
+            <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} domain={[0, 10]} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name, item) => [value === null ? "No rated sets" : value, `Avg RPE (${item.payload.ratedSets} rated set${item.payload.ratedSets === 1 ? "" : "s"})`]} />
+            <Line type="monotone" dataKey="avgRpe" name="Avg RPE" stroke={chartTheme.primary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} isAnimationActive={!reducedMotion} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>}
+  </Card>;
+}
+
+const MUSCLE_GROUP_COLOR_KEYS = ["primary", "secondary", "tertiary", "quaternary", "quinary", "senary"];
+
+function MuscleBalanceTrendGroup({ sessions, reducedMotion }) {
+  const chartTheme = useThemeTokens();
+  const { data, error } = useMemo(() => {
+    try {
+      return { data: muscleBalanceTrend(sessions, 12), error: false };
+    } catch {
+      return { data: [], error: true };
+    }
+  }, [sessions]);
+  const hasResults = data.some(week => MUSCLE_GROUP_ORDER.some(group => week[group] > 0));
+
+  return <Card variant="raised" className="progress-group progress-group--muscle-balance-trend">
+    <div className="progress-section-heading">
+      <div><p className="progress-eyebrow">Balance over time</p><h2>Muscle-group share by week</h2></div>
+    </div>
+    {error ? <div className="progress-group-error" role="alert"><strong>Balance trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : !hasResults ? <div className="progress-chart-empty"><strong>Not enough mapped exercises yet.</strong><p>Log exercises from the muscle guide to see how your balance shifts week to week.</p></div>
+      : <div className="progress-chart" role="img" aria-label="Muscle-group share of weekly volume over the last 12 weeks">
+        <ResponsiveContainer minWidth={0} minHeight={0}>
+          <AreaChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+            <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={16} />
+            <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit="%" domain={[0, 100]} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name) => [`${value}%`, name]} />
+            <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
+            {MUSCLE_GROUP_ORDER.map((group, index) => <Area key={group} type="monotone" dataKey={group} name={group} stackId="balance" stroke={chartTheme[MUSCLE_GROUP_COLOR_KEYS[index]] || chartTheme.muted} fill={chartTheme[MUSCLE_GROUP_COLOR_KEYS[index]] || chartTheme.muted} fillOpacity={0.65} isAnimationActive={!reducedMotion} />)}
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>}
+  </Card>;
+}
+
+function RelativeStrengthGroup({ sessions, bodyweights, reducedMotion }) {
+  const chartTheme = useThemeTokens();
+  const exercises = useMemo(() => [...new Set(sessions.flatMap(session =>
+    (session.exercises || []).map(item => item.name)).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [sessions]);
+  const [exercise, setExercise] = useState(() => exercises[0] || "");
+  const selected = exercises.includes(exercise) ? exercise : exercises[0] || "";
+  const hasBodyweights = normalizeBodyweights(bodyweights).length > 0;
+
+  const { series, error } = useMemo(() => {
+    try {
+      if (!hasBodyweights) return { series: [], error: false };
+      const series = exerciseE1RMSeries(sessions, selected)
+        .map(point => {
+          const bw = bodyweightOnOrNearest(bodyweights, point.date);
+          return bw ? { date: point.date, ratio: Math.round((point.value / bw.weightLb) * 100) / 100 } : null;
+        })
+        .filter(Boolean);
+      return { series, error: false };
+    } catch {
+      return { series: [], error: true };
+    }
+  }, [sessions, bodyweights, selected, hasBodyweights]);
+  const latest = series.at(-1);
+
+  return <Card variant="raised" className="progress-group progress-group--relative-strength">
+    <div className="progress-section-heading">
+      <div><p className="progress-eyebrow">Strength progression</p><h2>Relative strength</h2></div>
+      <select aria-label="Exercise for relative strength" value={selected} onChange={event => setExercise(event.target.value)}>
+        {exercises.map(name => <option key={name} value={name}>{name}</option>)}
+      </select>
+    </div>
+    {error ? <div className="progress-group-error" role="alert"><strong>Relative strength couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
+      : !hasBodyweights ? <div className="progress-chart-empty"><strong>Log your weight to see relative strength.</strong><p>This compares your estimated 1RM to your bodyweight over time.</p></div>
+      : series.length === 0 ? <div className="progress-chart-empty"><strong>No weighted sets for {selected || "this exercise"} yet.</strong></div>
+      : <>
+      <div className="progress-e1rm-headline"><strong>{latest.ratio}× bodyweight</strong><span>Latest estimated 1RM ÷ bodyweight</span></div>
+      <div className="progress-chart" role="img" aria-label={`Estimated one-rep max relative to bodyweight for ${selected}`}>
+        <ResponsiveContainer minWidth={0} minHeight={0}>
+          <LineChart data={series} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
+            <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
+            <XAxis dataKey="date" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={24} />
+            <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} unit="×" domain={[0, "auto"]} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={value => [`${value}×`, "Relative strength"]} />
+            <Line type="monotone" dataKey="ratio" stroke={chartTheme.primary} strokeWidth={3} dot={{ r: 3, fill: chartTheme.primary, strokeWidth: 0 }} activeDot={{ r: 5 }} isAnimationActive={!reducedMotion} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      </>}
+  </Card>;
+}
+
 export default function ProgressScreen({ sessions = [], preferences = {}, bodyweights = [], onSavePreferences, onAddExercise, onGoHome, loading = false }) {
   const normalized = useMemo(() => normalizeDashboardSettings(preferences), [preferences]);
   const confirmedRef = useRef(normalized);
@@ -316,6 +432,9 @@ export default function ProgressScreen({ sessions = [], preferences = {}, bodywe
     strength: <StrengthGroup sessions={sessions} bodyweights={bodyweights} sex={sex} />,
     dayTypeTrend: <DayTypeTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
     volumeTrend: <VolumeTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
+    rpeTrend: <RpeTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
+    muscleBalanceTrend: <MuscleBalanceTrendGroup sessions={sessions} reducedMotion={reducedMotion} />,
+    relativeStrength: <RelativeStrengthGroup sessions={sessions} bodyweights={bodyweights} reducedMotion={reducedMotion} />,
   };
 
   return <section className="progress-screen" aria-labelledby="progress-title">

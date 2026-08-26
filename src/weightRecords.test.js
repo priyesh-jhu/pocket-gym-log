@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  bodyweightOnOrNearest,
   buildWeightView,
   commitWeightMutation,
   createWeightCloudOperation,
@@ -23,6 +24,24 @@ test("normalizeBodyweights keeps every finite stored weight, including zero and 
     null,
   ]);
   assert.deepEqual(entries.map(e => e.id), ["a", "b", "c"]);
+});
+
+test("bodyweightOnOrNearest picks the closest entry on or before the date, in lb", () => {
+  const entries = [
+    { id: "a", date: "2026-08-01", weight: 180, unit: "lb" },
+    { id: "b", date: "2026-08-10", weight: 80, unit: "kg" },
+  ];
+  assert.equal(bodyweightOnOrNearest(entries, "2026-08-05").weightLb, 180);
+  assert.equal(Math.round(bodyweightOnOrNearest(entries, "2026-08-15").weightLb), 176);
+});
+
+test("bodyweightOnOrNearest falls back to the earliest entry when the date predates all weigh-ins", () => {
+  const entries = [{ id: "a", date: "2026-08-10", weight: 180, unit: "lb" }];
+  assert.equal(bodyweightOnOrNearest(entries, "2026-01-01").date, "2026-08-10");
+});
+
+test("bodyweightOnOrNearest returns null with no usable weigh-ins", () => {
+  assert.equal(bodyweightOnOrNearest([], "2026-08-05"), null);
 });
 
 test("buildWeightView with zero entries never fabricates a summary", () => {

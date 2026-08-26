@@ -6,13 +6,27 @@ const prefs = value => ({ [DASHBOARD_KEY]: value });
 
 test("migrates all five legacy cards and uses the earliest daily position", () => {
   const settings = normalizeDashboardSettings(prefs({ cardOrder: ["heatmap", "calendar", "summary", "trend", "balance"] }));
-  assert.deepEqual(settings.cardOrder, ["e1rm", "heatmap", "trend", "balance", "strength", "dayTypeTrend", "volumeTrend"]);
+  assert.deepEqual(settings.cardOrder, ["heatmap", "trend", "balance", "volumeTrend", "rpeTrend", "dayTypeTrend", "muscleBalanceTrend", "e1rm", "relativeStrength", "strength"]);
 });
 
 test("repairs duplicate and missing identifiers", () => {
   const settings = normalizeDashboardSettings(prefs({ cardOrder: ["balance", "balance", "unknown"] }));
-  assert.deepEqual(settings.cardOrder, ["e1rm", "balance", "trend", "heatmap", "strength", "dayTypeTrend", "volumeTrend"]);
+  assert.deepEqual(settings.cardOrder, ["balance", "trend", "volumeTrend", "rpeTrend", "dayTypeTrend", "muscleBalanceTrend", "heatmap", "e1rm", "relativeStrength", "strength"]);
   assert.deepEqual([...settings.cardOrder].sort(), [...PROGRESS_GROUP_IDS].sort());
+});
+
+test("upgrades a saved order that still exactly matches an old shipped default", () => {
+  const sevenItem = normalizeDashboardSettings(prefs({ cardOrder: ["e1rm", "trend", "heatmap", "balance", "strength", "dayTypeTrend", "volumeTrend"] }));
+  assert.deepEqual(sevenItem.cardOrder, PROGRESS_GROUP_IDS);
+  const fiveItem = normalizeDashboardSettings(prefs({ cardOrder: ["e1rm", "trend", "heatmap", "balance", "strength"] }));
+  assert.deepEqual(fiveItem.cardOrder, PROGRESS_GROUP_IDS);
+  const sevenThemed = normalizeDashboardSettings(prefs({ cardOrder: ["trend", "volumeTrend", "dayTypeTrend", "balance", "heatmap", "e1rm", "strength"] }));
+  assert.deepEqual(sevenThemed.cardOrder, PROGRESS_GROUP_IDS);
+});
+
+test("leaves a genuinely customized order untouched", () => {
+  const settings = normalizeDashboardSettings(prefs({ cardOrder: ["e1rm", "strength", "trend", "heatmap", "balance", "dayTypeTrend", "volumeTrend"] }));
+  assert.deepEqual(settings.cardOrder, ["e1rm", "strength", "trend", "heatmap", "balance", "dayTypeTrend", "volumeTrend", "rpeTrend", "muscleBalanceTrend", "relativeStrength"]);
 });
 
 test("treats a missing card order as legacy and hides Daily only when all legacy parts were hidden", () => {
@@ -27,7 +41,7 @@ test("preserves normalized hidden Daily trend through repeated normalization", (
   const first = normalizeDashboardSettings(raw);
   const second = normalizeDashboardSettings(prefs(first));
   assert.deepEqual(first, second);
-  assert.deepEqual(second.cardOrder, ["e1rm", "trend", "heatmap", "balance", "strength", "dayTypeTrend", "volumeTrend"]);
+  assert.deepEqual(second.cardOrder, ["e1rm", "trend", "heatmap", "balance", "volumeTrend", "rpeTrend", "dayTypeTrend", "muscleBalanceTrend", "relativeStrength", "strength"]);
   assert.deepEqual(second.hiddenCards, ["trend"]);
 });
 

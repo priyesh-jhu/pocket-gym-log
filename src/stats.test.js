@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { addDaysISO } from "./dateUtils.js";
 import { MUSCLES } from "./data/formGuide.js";
 import {
-  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, activityCalendar, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
+  toLb, setVolume, isDumbbellExercise, sessionVolume, weekStartISO, weeklyVolume, monthlyVolume, dayTypeTrend, weekSummary, weekVolumeDelta, currentStreak, estimated1RM, exerciseE1RMSeries, personalRecords, muscleFreshness, pushPullRatio, muscleBalance, muscleBalanceTrend, MUSCLE_GROUP_ORDER, rpeTrend, activityCalendar, recentDaysHeat, consistencySummary, muscleCoverageGaps, muscleHeatmapCoverage, exerciseSuggestionsForMissed, muscleSetVolume, dashboardRangeSummary, musclePriorities, monthSummary, lastSameDaySummary, topSetForExercise,
 } from "./stats.js";
 
 function mkSet(weight, reps, unit = "lb") { return { weight, reps, unit }; }
@@ -346,6 +346,56 @@ describe("muscleBalance", () => {
   });
 });
 
+describe("muscleBalanceTrend", () => {
+  test("returns exactly `weeks` rows, each with every group present", () => {
+    const sessions = [mkSession("2026-08-10", [{ name: "Back Squat/Goblet Squat", sets: [mkSet("100", "10")] }])];
+    const result = muscleBalanceTrend(sessions, 3, "2026-08-13");
+    assert.equal(result.length, 3);
+    for (const week of result) for (const group of MUSCLE_GROUP_ORDER) assert.equal(typeof week[group], "number");
+  });
+
+  test("computes each week's own composition independently, not a rolling window", () => {
+    const sessions = [
+      mkSession("2026-08-03", [{ name: "Back Squat/Goblet Squat", sets: [mkSet("100", "10")] }]), // Legs-only week
+      mkSession("2026-08-10", [{ name: "Bent-Over Barbell Row", sets: [mkSet("100", "10")] }]),   // Back-only week
+    ];
+    const result = muscleBalanceTrend(sessions, 2, "2026-08-13");
+    assert.equal(result[0].Legs, 100);
+    assert.equal(result[0].Back, 0);
+    assert.equal(result[1].Back, 100);
+    assert.equal(result[1].Legs, 0);
+  });
+
+  test("a week with no mapped volume has every group at 0", () => {
+    const result = muscleBalanceTrend([], 1, "2026-08-13");
+    for (const group of MUSCLE_GROUP_ORDER) assert.equal(result[0][group], 0);
+  });
+});
+
+describe("rpeTrend", () => {
+  test("averages rated sets per week and returns exactly `weeks` entries", () => {
+    const sessions = [mkSession("2026-08-10", [{ name: "A", sets: [{ weight: 100, reps: 10, rpe: 8 }, { weight: 100, reps: 10, rpe: 6 }] }])];
+    const result = rpeTrend(sessions, 2, "2026-08-13");
+    assert.equal(result.length, 2);
+    assert.equal(result[1].avgRpe, 7);
+    assert.equal(result[1].ratedSets, 2);
+  });
+
+  test("a week with no rated sets is null, not 0", () => {
+    const sessions = [mkSession("2026-08-10", [{ name: "A", sets: [{ weight: 100, reps: 10, rpe: null }] }])];
+    const result = rpeTrend(sessions, 1, "2026-08-13");
+    assert.equal(result[0].avgRpe, null);
+    assert.equal(result[0].ratedSets, 0);
+  });
+
+  test("ignores non-positive or non-finite rpe values", () => {
+    const sessions = [mkSession("2026-08-10", [{ name: "A", sets: [{ weight: 100, reps: 10, rpe: 0 }, { weight: 100, reps: 10, rpe: "abc" }, { weight: 100, reps: 10, rpe: 9 }] }])];
+    const result = rpeTrend(sessions, 1, "2026-08-13");
+    assert.equal(result[0].avgRpe, 9);
+    assert.equal(result[0].ratedSets, 1);
+  });
+});
+
 describe("activity calendar and consistency", () => {
   test("builds complete Monday-to-Sunday weeks ending with the current week", () => {
     const sessions = [mkSession("2026-08-10", []), mkSession("2026-08-10", []), mkSession("2026-08-13", [])];
@@ -366,6 +416,19 @@ describe("activity calendar and consistency", () => {
     assert.equal(week[1].count, 1);
     assert.ok(week[0].level > week[1].level, "a heavier day should reach a higher level than a lighter day");
     assert.equal(week[2].level, 0, "an untrained day is level 0");
+  });
+
+  test("recentDaysHeat returns a trailing window ending today, bucketed by volume", () => {
+    const heavyDay = mkSession("2026-08-11", [{ name: "A", sets: [mkSet(200, 10)] }]);
+    const lightDay = mkSession("2026-08-12", [{ name: "A", sets: [mkSet(20, 10)] }]);
+    const heat = recentDaysHeat([heavyDay, lightDay], 7, "2026-08-13");
+    assert.equal(heat.length, 7);
+    assert.equal(heat[0].date, "2026-08-07");
+    assert.equal(heat.at(-1).date, "2026-08-13");
+    const heavy = heat.find(day => day.date === "2026-08-11");
+    const light = heat.find(day => day.date === "2026-08-12");
+    assert.ok(heavy.level > light.level);
+    assert.equal(heat.find(day => day.date === "2026-08-13").level, 0);
   });
 
   test("summarizes unique workout days over the rolling last 28 days", () => {

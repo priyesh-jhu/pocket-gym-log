@@ -59,6 +59,23 @@ export function normalizeBodyweights(bodyweights) {
 }
 
 /**
+ * The bodyweight on `date`, or the closest entry on/before it — falls back to
+ * the earliest entry if `date` predates every weigh-in. Returned in lb since
+ * callers pairing this against training data (e.g. a relative-strength chart)
+ * need it lb-normalized. Null if there are no usable weigh-ins at all.
+ */
+export function bodyweightOnOrNearest(bodyweights, date) {
+  const sorted = normalizeBodyweights(bodyweights).sort((a, b) => a.date.localeCompare(b.date));
+  if (sorted.length === 0) return null;
+  let best = sorted[0];
+  for (const entry of sorted) {
+    if (entry.date > date) break;
+    best = entry;
+  }
+  return { date: best.date, weightLb: round1(toLb(best.weight, best.unit)) };
+}
+
+/**
  * Summary/trend/history view for the Weight screen, in the selected display
  * unit. Stored unit/date/id are never rewritten by this calculation — only the
  * returned display copy converts.

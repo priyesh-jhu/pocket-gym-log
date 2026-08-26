@@ -470,6 +470,78 @@ export function muscleBalance(sessions, weeks = 4, todayIso = todayISO()) {
     .sort((a, b) => b.volume - a.volume);
 }
 
+/** The 6 muscle groups, in a stable order — for consistent chart color assignment. */
+export const MUSCLE_GROUP_ORDER = [...new Set(Object.values(MUSCLE_GROUPS))];
+
+/**
+ * Per-week muscle-group volume share (like muscleBalance, but one independent
+ * week at a time instead of a single rolling window), for charting how the
+ * balance drifts over time. Each row has one 0-100 field per MUSCLE_GROUP_ORDER
+ * group; a week with no mapped volume has every group at 0.
+ */
+export function muscleBalanceTrend(sessions, weeks = 12, todayIso = todayISO()) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const currentWeekStart = weekStartISO(todayIso);
+  const buckets = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = addDaysISO(currentWeekStart, -7 * i);
+    buckets.push({ weekStart, label: shortLabel(weekStart), totals: Object.fromEntries(MUSCLE_GROUP_ORDER.map(g => [g, 0])) });
+  }
+  const byStart = new Map(buckets.map(b => [b.weekStart, b]));
+  for (const session of list) {
+    if (!session?.date) continue;
+    const bucket = byStart.get(weekStartISO(session.date));
+    if (!bucket) continue;
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      const guide = formGuide[exercise?.name];
+      if (!guide || !Array.isArray(guide.primary) || guide.primary.length === 0) continue;
+      const exVolume = (Array.isArray(exercise.sets) ? exercise.sets : []).reduce((sum, set) => sum + setVolume(set, exercise.name), 0);
+      if (exVolume <= 0) continue;
+      const groups = [...new Set(guide.primary.map(m => MUSCLE_GROUPS[m]).filter(Boolean))];
+      if (groups.length === 0) continue;
+      const share = exVolume / groups.length;
+      for (const g of groups) bucket.totals[g] += share;
+    }
+  }
+  return buckets.map(bucket => {
+    const total = MUSCLE_GROUP_ORDER.reduce((sum, g) => sum + bucket.totals[g], 0);
+    const pct = Object.fromEntries(MUSCLE_GROUP_ORDER.map(g => [g, total > 0 ? Math.round((bucket.totals[g] / total) * 100) : 0]));
+    return { weekStart: bucket.weekStart, label: bucket.label, ...pct };
+  });
+}
+
+/**
+ * Average RPE per week across every rated set (rpe > 0), oldest first, always
+ * exactly `weeks` entries. avgRpe is null for a week with no rated sets —
+ * distinct from a real low RPE — so charts can render it as a gap, not zero.
+ */
+export function rpeTrend(sessions, weeks = 12, todayIso = todayISO()) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const currentWeekStart = weekStartISO(todayIso);
+  const buckets = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const weekStart = addDaysISO(currentWeekStart, -7 * i);
+    buckets.push({ weekStart, label: shortLabel(weekStart), sum: 0, ratedSets: 0 });
+  }
+  const byStart = new Map(buckets.map(b => [b.weekStart, b]));
+  for (const session of list) {
+    if (!session?.date) continue;
+    const bucket = byStart.get(weekStartISO(session.date));
+    if (!bucket) continue;
+    for (const exercise of Array.isArray(session.exercises) ? session.exercises : []) {
+      for (const set of Array.isArray(exercise?.sets) ? exercise.sets : []) {
+        const rpe = Number(set?.rpe);
+        if (!Number.isFinite(rpe) || rpe <= 0) continue;
+        bucket.sum += rpe;
+        bucket.ratedSets += 1;
+      }
+    }
+  }
+  return buckets.map(({ sum, ratedSets, ...bucket }) => ({
+    ...bucket, ratedSets, avgRpe: ratedSets ? Math.round((sum / ratedSets) * 10) / 10 : null,
+  }));
+}
+
 /**
  * Twelve-week Monday→Sunday activity grid. Each inner array is one week.
  * `level` (0-4) buckets each day's total volume relative to the busiest day
@@ -498,6 +570,33 @@ export function activityCalendar(sessions, weeks = 12, todayIso = todayISO()) {
     const volume = volumeByDate.get(date) || 0;
     return { date, count:countByDate.get(date) || 0, volume, level:levelFor(volume), future:date>todayIso };
   }));
+}
+
+/**
+ * Per-day volume for the trailing `days` days ending `todayIso` (inclusive),
+ * oldest first, each bucketed 0-4 relative to the busiest day in the window —
+ * a compact heat-strip version of activityCalendar for a home-screen summary.
+ */
+export function recentDaysHeat(sessions, days = 7, todayIso = todayISO()) {
+  const span = Math.max(1, days);
+  const start = addDaysISO(todayIso, -(span - 1));
+  const volumeByDate = new Map();
+  for (const session of Array.isArray(sessions) ? sessions : []) {
+    if (!session?.date || session.date < start || session.date > todayIso) continue;
+    volumeByDate.set(session.date, (volumeByDate.get(session.date) || 0) + sessionVolume(session));
+  }
+  const maxVolume = Math.max(0, ...volumeByDate.values());
+  const levelFor = volume => {
+    if (!volume) return 0;
+    if (!maxVolume) return 1;
+    const ratio = volume / maxVolume;
+    return ratio >= 0.75 ? 4 : ratio >= 0.5 ? 3 : ratio >= 0.25 ? 2 : 1;
+  };
+  return Array.from({ length: span }, (_, index) => {
+    const date = addDaysISO(start, index);
+    const volume = Math.round(volumeByDate.get(date) || 0);
+    return { date, volume, level: levelFor(volume) };
+  });
 }
 
 /** Adherence summary for the rolling last four weeks, against a five-day plan. */

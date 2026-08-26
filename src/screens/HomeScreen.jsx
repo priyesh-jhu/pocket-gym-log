@@ -1,7 +1,7 @@
 import { ArrowRight, Flame, Play, Trophy } from "lucide-react";
 import { Button, Card, Chip, SegmentedButtons, StatTile } from "../components/index.js";
 import MuscleHeatmap from "../MuscleHeatmap.jsx";
-import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, weekVolumeDelta } from "../stats.js";
+import { currentStreak, dominantUnit, lastSameDaySummary, monthSummary, muscleFreshness, muscleSetVolume, musclePriorities, personalRecords, recentDaysHeat, weekVolumeDelta } from "../stats.js";
 import { MUSCLES } from "../data/formGuide.js";
 import { deloadReminder } from "../deloadInsight.js";
 import { todayISO } from "../dateUtils.js";
@@ -13,6 +13,10 @@ import "./HomeScreen.css";
 function displayVolume(value, unit) {
   const converted = unit === "kg" ? value / 2.20462 : value;
   return Math.round(converted).toLocaleString();
+}
+
+function weekdayLetter(iso) {
+  return new Date(iso + "T12:00:00").toLocaleDateString([], { weekday: "narrow" });
 }
 
 export default function HomeScreen({ sessions, dayMeta, currentDay, displayName, hasDraft, draftSavedAt, onStart, onProgress }) {
@@ -37,9 +41,21 @@ export default function HomeScreen({ sessions, dayMeta, currentDay, displayName,
     ? "No prior-period baseline"
     : `${activeSummary.deltaPct >= 0 ? "+" : ""}${activeSummary.deltaPct}% volume vs last ${activeLabel}`;
   const sameDay = lastSameDaySummary(sessions, currentDay, todayISO());
+  const weekHeat = recentDaysHeat(sessions, 7);
 
   return (
     <section className="home-screen" aria-labelledby="home-greeting">
+      <button type="button" className="home-week-heat" onClick={onProgress} aria-label={`Last 7 days of training volume: ${weekHeat.map(day => `${day.date}, ${displayVolume(day.volume, unit)} ${unit}`).join("; ")}. View full progress.`}>
+        <div className="home-week-heat__row">
+          {weekHeat.map(day => (
+            <div key={day.date} className="home-week-heat__day">
+              <span className="home-week-heat__cell" data-level={day.level} />
+              <span className="home-week-heat__label">{weekdayLetter(day.date)}</span>
+            </div>
+          ))}
+        </div>
+      </button>
+
       <div className="home-screen__intro">
         <div><p className="home-screen__eyebrow">Ready when you are</p><h2 id="home-greeting">{firstName ? `Hi, ${firstName}` : "Your training, today"}</h2></div>
         <Chip selected><Flame size={14} /> {streak.current} day streak</Chip>
