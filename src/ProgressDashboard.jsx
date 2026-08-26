@@ -177,7 +177,7 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
         <div className="progress-calendar-actions">{historyControls}</div>
         <div className="progress-calendar-layout">
           <div className="progress-calendar-days">{["M","","W","","F","",""] .map((label,index)=><span key={index}>{label}</span>)}</div>
-          <div className="progress-calendar-scroll" role="region" aria-label="Scrollable 12-week training calendar" tabIndex="0">
+          <div className="progress-calendar-scroll">
           <div aria-label="12-week training calendar" className="progress-calendar-grid">
             {calendar.map((week,wi)=><div key={wi} className="progress-calendar-week">{week.map(day=>{
               const volumeLabel = day.count ? `, ${fmtVolume(day.volume,unit)} ${unit} volume` : "";
@@ -186,7 +186,8 @@ export default function ProgressDashboard({ sessions, preferences={}, onAddExerc
           </div>
           </div>
         </div>
-        <div className="progress-consistency-track"><div className={consistency.goalPct>=80?"is-success":""} style={{width:consistency.goalPct+"%"}} /></div>
+        <p className="progress-consistency-caption">5-day goal progress · {consistency.goalPct}%</p>
+        <div className="progress-consistency-track" role="img" aria-label={`5-day goal progress: ${consistency.goalPct}%`}><div className={consistency.goalPct>=80?"is-success":""} style={{width:consistency.goalPct+"%"}} /></div>
         {selectedSessions.length>0&&(
           <div className="progress-workout-details">
             <div className="progress-workout-details-heading">
