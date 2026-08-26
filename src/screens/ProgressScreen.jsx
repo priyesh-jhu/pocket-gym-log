@@ -4,7 +4,7 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ResponsiveC
 import { Button, Card, Chip, SegmentedButtons, Sheet, ShareableStatsCard } from "../components/index.js";
 import useThemeTokens from "../charts/useThemeTokens.js";
 import { shareElementAsImage } from "../imageShare.js";
-import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, linearTrend, monthlyVolume, toLb, weeklyVolume } from "../stats.js";
+import { dayTypeTrend, dominantUnit, exerciseE1RMSeries, monthlyVolume, toLb, weeklyVolume } from "../stats.js";
 import { trainingInsights } from "../trainingInsights.js";
 import { bigLiftSummary, getStandardsSex } from "../strengthStandards.js";
 import { normalizeBodyweights } from "../weightRecords.js";
@@ -177,11 +177,12 @@ function VolumeTrendGroup({ sessions, reducedMotion }) {
   const { data, error } = useMemo(() => {
     try {
       const buckets = period === "week" ? weeklyVolume(sessions, spanWeeks) : monthlyVolume(sessions, spanMonths);
-      const values = buckets.map(bucket => metric === "volume"
-        ? (unit === "kg" ? Math.round(bucket.volume / 2.20462) : Math.round(bucket.volume))
-        : metric === "sets" ? bucket.sets : bucket.sessions);
-      const trend = linearTrend(values);
-      const data = buckets.map((bucket, index) => ({ label: bucket.label, value: values[index], trend: Math.max(0, trend[index]) }));
+      const data = buckets.map(bucket => ({
+        label: bucket.label,
+        value: metric === "volume"
+          ? (unit === "kg" ? Math.round(bucket.volume / 2.20462) : Math.round(bucket.volume))
+          : metric === "sets" ? bucket.sets : bucket.sessions,
+      }));
       return { data, error: false };
     } catch {
       return { data: [], error: true };
@@ -202,16 +203,15 @@ function VolumeTrendGroup({ sessions, reducedMotion }) {
       <SegmentedButtons ariaLabel={`Volume trend length in ${period === "week" ? "weeks" : "months"}`} value={span} onChange={setSpan} options={VOLUME_TREND_SPANS[period].map(value => ({ value, label: period === "week" ? `${value}w` : `${value}mo` }))} />
     </div>
     {error ? <div className="progress-group-error" role="alert"><strong>Volume trend couldn’t be calculated.</strong><p>Review this group again after reloading the app.</p><Button variant="tonal" onClick={() => window.location.reload()}>Retry</Button></div>
-      : <div className="progress-chart" role="img" aria-label={`${metricLabel} per ${period} over time, with a linear trend line`}>
+      : <div className="progress-chart" role="img" aria-label={`${metricLabel} per ${period} over time`}>
         <ResponsiveContainer minWidth={0} minHeight={0}>
           <ComposedChart data={data} margin={{ top: 12, right: 10, left: -16, bottom: 0 }}>
             <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 4" vertical={false} />
             <XAxis dataKey="label" stroke={chartTheme.axis} tick={{ fontSize: 11 }} minTickGap={16} />
             <YAxis stroke={chartTheme.axis} tick={{ fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={(value, name) => [value, name === "Trend" ? "Trend" : metricLabel]} />
-            <Legend verticalAlign="top" height={28} wrapperStyle={{ fontSize: 11 }} />
+            <Tooltip contentStyle={{ background: chartTheme.tooltipBg, border: `1px solid ${chartTheme.tooltipBorder}`, borderRadius: 12 }} formatter={value => [value, metricLabel]} />
             <Bar dataKey="value" name={metricLabel} fill={chartTheme.primary} radius={[5, 5, 0, 0]} isAnimationActive={!reducedMotion} />
-            <Line type="monotone" dataKey="trend" name="Trend" stroke={chartTheme.secondary} strokeWidth={2} strokeDasharray="5 3" dot={false} isAnimationActive={!reducedMotion} />
+            <Line type="monotone" dataKey="value" name={metricLabel} legendType="none" stroke={chartTheme.secondary} strokeWidth={2} dot={{ r: 3 }} isAnimationActive={!reducedMotion} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>}
